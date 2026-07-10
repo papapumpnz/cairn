@@ -295,3 +295,16 @@ failure in all 400 skill/task ablations.
 
 This exceeds the G3 threshold on the frozen initial suite. G4-G6 remain open.
 See docs/experiments/G3_UNSEEN_SKILL_COMPOSITION_PASS.md.
+
+## 12. ADR-0007 checkpoint: initial G4 pass
+
+Across 100 unknown action-law worlds, the online version space and separate
+curriculum resolved 24 competing theories using 300 interventions versus 791
+random actions, predicted 32,400/32,400 transitions, transferred to 100 shifted
+layouts, and relearned 100 changed action laws. In 100 hidden-mode worlds the
+learner rejected one-state models, induced the required two-state variable,
+predicted 12,600/12,600 latent transitions, and constructed 100 independently
+shortest plans.
+
+This satisfies G4 on the frozen initial suites. G5-G6 remain open. See
+docs/experiments/G4_ACTIVE_CAUSAL_WORLD_PASS.md.

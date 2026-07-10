@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "gate": "G4",
+  "date": "2026-07-11",
+  "status": "pass_on_frozen_initial_suite",
+  "general_intelligence_claim": false,
+  "active_worlds": 100,
+  "competing_theories_per_world": 24,
+  "active_exploratory_actions": 300,
+  "random_exploratory_actions": 791,
+  "exploration_reduction_percent": 62.07,
+  "next_state_predictions_exact": 32400,
+  "next_state_predictions_total": 32400,
+  "layout_transfers_exact": 100,
+  "changed_action_laws_relearned": 100,
+  "hidden_worlds": 100,
+  "one_state_models_rejected": 100,
+  "two_state_models_inferred": 100,
+  "latent_predictions_exact": 12600,
+  "latent_predictions_total": 12600,
+  "latent_shortest_plans": 100,
+  "open_gates": ["G5", "G6"]
+}

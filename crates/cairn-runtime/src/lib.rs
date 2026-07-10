@@ -62,6 +62,17 @@ impl VersionSpace {
     /// Select the intervention producing the most distinct predicted outcomes.
     #[must_use]
     pub fn next_discriminating_test(&self) -> Option<DiscriminatingTest> {
+        self.discriminating_tests().into_iter().max_by_key(|test| {
+            (
+                test.outcome_partitions,
+                std::cmp::Reverse(test.intervention),
+            )
+        })
+    }
+
+    /// Expose all outcome partition counts to the separate curriculum runtime.
+    #[must_use]
+    pub fn discriminating_tests(&self) -> Vec<DiscriminatingTest> {
         let interventions = self
             .theories
             .values()
@@ -81,12 +92,17 @@ impl VersionSpace {
                     outcome_partitions: outcomes.len(),
                 }
             })
-            .max_by_key(|test| {
-                (
-                    test.outcome_partitions,
-                    std::cmp::Reverse(test.intervention),
-                )
-            })
+            .collect()
+    }
+
+    /// Return the resolved theory identity only when one hypothesis remains.
+    #[must_use]
+    pub fn sole_hypothesis_id(&self) -> Option<Hash32> {
+        if self.theories.len() == 1 {
+            self.theories.keys().next().copied()
+        } else {
+            None
+        }
     }
 
     /// Eliminate hypotheses contradicted by an observed intervention outcome.

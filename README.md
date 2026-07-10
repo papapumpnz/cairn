@@ -119,6 +119,12 @@ The regenerated G3 suite induces four conditional skills independently and
 composes them on 100 never-demonstrated tasks with 100% exact completion and
 400 explicit skill calls. All 400 skill/task ablations fail predictably. See
 [G3_UNSEEN_SKILL_COMPOSITION_PASS.md](docs/experiments/G3_UNSEEN_SKILL_COMPOSITION_PASS.md).
+The regenerated G4 suite maintains competing action-law theories, uses 62.1%
+fewer exploratory actions than random, predicts 32,400/32,400 transitions, and
+transfers after 100 layout shifts and 100 changed action laws. The latent suite
+rejects memoryless explanations and recovers the required hidden two-state
+model in 100/100 worlds. See
+[G4_ACTIVE_CAUSAL_WORLD_PASS.md](docs/experiments/G4_ACTIVE_CAUSAL_WORLD_PASS.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and proof DAGs, richer ontology invention, one shared orchestrating runtime,

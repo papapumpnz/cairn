@@ -214,6 +214,11 @@ dependencies = [
 [[package]]
 name = "cairn-world"
 version = "0.1.0"
+dependencies = [
+ "cairn-core",
+ "cairn-curriculum",
+ "cairn-runtime",
+]
 
 [[package]]
 name = "camino"

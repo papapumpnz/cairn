@@ -13,5 +13,5 @@
   "explicit_skill_invocations": 400,
   "ablation_cases": 400,
   "predictable_ablation_failures": 400,
-  "open_gates": ["G4", "G5", "G6"]
+  "open_gates": ["G5", "G6"]
 }
