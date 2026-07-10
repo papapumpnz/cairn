@@ -1,13 +1,68 @@
 //! Typed, deterministic RKL bytecode compiler and executor.
 
 use cairn_rkl::{
-    BinaryOp, CheckedTheory, Definition, ExecError, ExecLimits, ExecutionTrace, Expr, TraceEvent,
-    TraceLevel, Type, TypedExpr, UnaryOp, Value, VarName,
+    execute_theory_with, BinaryOp, CheckedTheory, Definition, ExecError, ExecLimits,
+    ExecutionTrace, Expr, RuntimeEnvironment, TheoryExecError, TheoryExecLimits,
+    TheoryExecutionRequest, TheoryExecutionTrace, TheoryExpressionExecutor, TraceEvent, TraceLevel,
+    Type, TypedExpr, UnaryOp, Value, VarName,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 pub const BYTECODE_SEMANTICS_VERSION: &str = "1.0.0";
+
+/// Whole-theory executor using compiled RKL expressions and the shared,
+/// deterministic rule/schedule semantics.
+#[derive(Clone, Copy, Debug)]
+pub struct FastTheoryExecutor {
+    compile_limits: CompileLimits,
+}
+
+impl FastTheoryExecutor {
+    #[must_use]
+    pub const fn new(compile_limits: CompileLimits) -> Self {
+        Self { compile_limits }
+    }
+
+    /// Execute a checked theory through bytecode expressions.
+    ///
+    /// # Errors
+    ///
+    /// Returns stable compiler, execution, schedule, or conflict failures.
+    pub fn execute(
+        &self,
+        theory: &CheckedTheory,
+        request: &TheoryExecutionRequest,
+        limits: TheoryExecLimits,
+    ) -> Result<TheoryExecutionTrace, TheoryExecError> {
+        let backend = BytecodeTheoryExpressionExecutor {
+            compile_limits: self.compile_limits,
+        };
+        execute_theory_with(&backend, theory, request, limits)
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+struct BytecodeTheoryExpressionExecutor {
+    compile_limits: CompileLimits,
+}
+
+impl TheoryExpressionExecutor for BytecodeTheoryExpressionExecutor {
+    fn execute(
+        &self,
+        theory: &CheckedTheory,
+        expression: &TypedExpr,
+        environment: &RuntimeEnvironment,
+        limits: ExecLimits,
+    ) -> Result<ExecutionTrace, TheoryExecError> {
+        let program = BytecodeCompiler::with_theory(theory, self.compile_limits)
+            .compile(expression)
+            .map_err(|error| TheoryExecError::ExpressionBackend(error.to_string()))?;
+        FastExecutor::new(limits, TraceLevel::Off)
+            .execute(&program, environment)
+            .map_err(TheoryExecError::from)
+    }
+}
 
 type Register = usize;
 

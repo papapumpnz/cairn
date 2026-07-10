@@ -117,7 +117,7 @@ fn atom_canonical_cbor_has_stable_golden_bytes() {
     }
     assert_eq!(
         hex,
-        "8465747970656465312e302e30816961746f6d5f74797065826461746f6d07"
+        "8465747970656465312e312e30816961746f6d5f74797065826461746f6d07"
     );
 }
 
@@ -374,6 +374,7 @@ fn sample_theory(parameter: &str, entity: &str, proof: &[u8]) -> Theory {
         upper: 10,
     });
     Theory {
+        inputs: Vec::new(),
         definitions: vec![Definition {
             name: "identity".to_owned(),
             parameters: vec![Binder {

@@ -1,0 +1,16 @@
+[package]
+name = "cairn-entity"
+description = "Demand-driven environment-neutral entity hypothesis generation"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cairn-reg = { path = "../cairn-reg" }
+
+[dev-dependencies]
+cairn-core = { path = "../cairn-core" }
+
+[lints]
+workspace = true

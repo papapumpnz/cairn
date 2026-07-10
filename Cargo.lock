@@ -28,6 +28,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cairn-arc"
+version = "0.1.0"
+dependencies = [
+ "cairn-field",
+ "cairn-invent",
+ "cairn-rkl",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "cairn-bytecode"
 version = "0.1.0"
 dependencies = [
@@ -40,6 +51,15 @@ version = "0.1.0"
 dependencies = [
  "blake3",
  "cairn-core",
+]
+
+[[package]]
+name = "cairn-cegis"
+version = "0.1.0"
+dependencies = [
+ "cairn-core",
+ "cairn-proof",
+ "cairn-rkl",
 ]
 
 [[package]]
@@ -63,6 +83,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "cairn-entity"
+version = "0.1.0"
+dependencies = [
+ "cairn-core",
+ "cairn-reg",
+]
+
+[[package]]
+name = "cairn-events"
+version = "0.1.0"
+dependencies = [
+ "cairn-reg",
+]
+
+[[package]]
+name = "cairn-field"
+version = "0.1.0"
+dependencies = [
+ "cairn-core",
+ "cairn-invent",
+ "cairn-rkl",
+]
+
+[[package]]
 name = "cairn-invent"
 version = "0.1.0"
 dependencies = [
@@ -81,6 +125,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "cairn-proof"
+version = "0.1.0"
+dependencies = [
+ "cairn-core",
+ "cairn-rkl",
+]
+
+[[package]]
 name = "cairn-reg"
 version = "0.1.0"
 dependencies = [
@@ -92,6 +144,14 @@ name = "cairn-rkl"
 version = "0.1.0"
 dependencies = [
  "cairn-core",
+]
+
+[[package]]
+name = "cairn-theory"
+version = "0.1.0"
+dependencies = [
+ "cairn-invent",
+ "cairn-rkl",
 ]
 
 [[package]]

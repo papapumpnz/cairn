@@ -10,8 +10,10 @@ centre or sufficient evidence of general learning.
 
 ## Current implementation status
 
-The repository has completed WP00, WP01, WP03, and WP04, and has working WP05
-reference/bytecode execution plus an initial WP20 task-invention vertical slice.
+The repository has completed WP00, WP01, WP03, and WP04, and now has an initial
+end-to-end static-learning vertical slice spanning WP05-WP07, WP09,
+WP14-WP15, WP17-WP19, and WP22. These are functional starts, not full work
+package acceptance.
 Implemented today:
 
 - a pinned Rust workspace;
@@ -36,6 +38,26 @@ Implemented today:
 - an exact bounded RKL reference executor and typed register bytecode executor
   with deterministic traces, reusable workspaces, explicit fuel/progress caps,
   and zero mismatches over one million generated scalar programs;
+- complete checked-theory execution for quantifiers, effects, schedules,
+  conflicts, state, and rendering; typed observation inputs replay through both
+  reference and bytecode expression paths with matching external semantics;
+- content-addressed generic `Observation`, `Demonstration`, `Intervention`,
+  `PredictionRequest`, and `LearningProblem` contracts with source provenance
+  and explicit certainty;
+- synthesis-free replay certificates binding theory, evidence, semantics
+  versions, and canonical outputs; planted output/evidence/version corruptions
+  fail closed;
+- demand-driven relation-defined entity hypotheses and generic preserve,
+  update, create, delete, split, and merge event hypotheses;
+- bounded guard-conjunction induction, executable constructor invention,
+  dependency-DAG schedule induction, and counterexample-guided whole-theory
+  selection with final independent replay;
+- a generic finite-field frontend whose initial gate invents a missing
+  pointwise constructor and transfers it exactly to changed geometry, values,
+  counts, and positions;
+- a quarantined `adapters/cairn-arc` JSON adapter and CLI. Its first adapter
+  fixture was solved by the generic constructor learner, but no official ARC
+  corpus has yet been evaluated and no ARC capability claim is made;
 - domain-neutral task-local definition invention from input/output
   demonstrations. The frozen initial GLL-1 suite autonomously synthesized five
   omitted executable concepts and replayed 5,835 varied predictions exactly,
@@ -65,10 +87,11 @@ Implemented today:
   permits deterministic reuse after the continuation resolves it.
 
 This establishes bounded task-level symbolic learning, not general learning.
-Entity/event induction, full proof certificates, richer ontology invention,
-continual memory, interactive world learning, planning, cross-domain runtime
-integration, and knowledge learning remain targets; they are not claimed as
-achieved. See the
+The new entity/event, proof, component-induction, CEGIS, and ARC paths are
+initial bounded implementations. Full generator coverage, certificate decoding
+and proof DAGs, richer ontology invention, one shared orchestrating runtime,
+vector-domain integration, official ARC evaluation, and knowledge learning
+remain targets. See the
 [GLL-1 evidence report](docs/experiments/GLL1_OMITTED_CONCEPT_INVENTION.md).
 The continual-learning result is documented in the
 [GLL-2 evidence report](docs/experiments/GLL2_CONTINUAL_MECHANISM_MEMORY.md).
@@ -80,6 +103,8 @@ The latent-state extension is documented in
 [HIDDEN_STATE_WORLD_LEARNING.md](docs/experiments/HIDDEN_STATE_WORLD_LEARNING.md).
 The failure, architecture correction, and five passing reruns are recorded in
 [FIVE_LATENT_EXPERIMENTS.md](docs/experiments/FIVE_LATENT_EXPERIMENTS.md).
+The new static-learning slice and its limitations are recorded in
+[INITIAL_STATIC_LEARNING_PIPELINE.md](docs/experiments/INITIAL_STATIC_LEARNING_PIPELINE.md).
 
 The normative target and claim boundary are in
 [`08_GENERAL_LEARNER_REQUIREMENTS.md`](docs/CAIRN_handoff/08_GENERAL_LEARNER_REQUIREMENTS.md).

@@ -167,3 +167,24 @@ Do not describe CAIRN as a generally learning AI until it has passed all six
 gates. If it solves ARC but fails transfer, continual improvement, unknown-world
 learning, skill composition, or cross-domain reuse, report it as a symbolic ARC
 solver and preserve the negative evidence.
+
+## 7. Implementation checkpoint: 2026-07-11
+
+The initial static-learning vertical slice now includes typed theory inputs,
+whole-theory reference/bytecode execution, generic observation contracts,
+synthesis-free replay certificates, first relation-defined entity and generic
+event hypotheses, guard/constructor/schedule induction, CEGIS over complete
+candidates, a finite-field invention gate, and a quarantined ARC adapter.
+
+This checkpoint does not mark any new general-learning gate complete beyond the
+previously documented bounded initial GLL-1 through GLL-4 results. In particular:
+
+- the finite-field gate is one pointwise constructor family, not the multiple
+  unrelated families required for final GLL-1;
+- cross-domain GLL-5 still lacks vector graphics through one orchestrator;
+- GLL-6 structure is enforced, but no official ARC corpus has been attempted;
+- the verifier is synthesis-free but does not yet independently reimplement
+  every critical rule/effect/renderer semantic required by WP06.
+
+See `docs/adr/0005-generic-static-learning-runtime-boundaries.md` and
+`docs/experiments/INITIAL_STATIC_LEARNING_PIPELINE.md`.

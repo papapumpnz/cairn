@@ -33,6 +33,10 @@ impl TypeEnvironment {
     pub fn get(&self, name: &VarName) -> Option<&Type> {
         self.variables.get(name)
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&VarName, &Type)> {
+        self.variables.iter()
+    }
 }
 
 /// Exact reference type and range checker.
@@ -419,16 +423,35 @@ impl TheoryChecker for TypeChecker {
             ));
         }
 
+        let inputs = check_inputs(&theory.inputs)?;
         let checker = checker_with_definitions(self, &theory.definitions)?;
         check_definitions(&checker, &theory.definitions)?;
-        let rule_names = check_rules(&checker, &theory.rules)?;
+        let rule_names = check_rules(&checker, &theory.rules, &inputs)?;
         validate_schedule(&theory.schedule, &rule_names)?;
-        check_renderer_and_assumptions(&checker, theory)?;
+        check_renderer_and_assumptions(&checker, theory, &inputs)?;
 
         Ok(CheckedTheory {
             theory: theory.clone(),
         })
     }
+}
+
+fn check_inputs(inputs: &[crate::Binder]) -> Result<TypeEnvironment, CheckError> {
+    let mut environment = TypeEnvironment::new();
+    for (index, input) in inputs.iter().enumerate() {
+        let path = ExprPath::default().child(PathSegment::Binder(index));
+        validate_type(&input.ty, &path)?;
+        if environment
+            .insert(input.name.clone(), input.ty.clone())
+            .is_some()
+        {
+            return Err(CheckError::new(
+                path,
+                CheckErrorKind::DuplicateBinder(input.name.0.clone()),
+            ));
+        }
+    }
+    Ok(environment)
 }
 
 fn checker_with_definitions(
@@ -482,6 +505,7 @@ fn check_definitions(checker: &TypeChecker, definitions: &[Definition]) -> Resul
 fn check_rules(
     checker: &TypeChecker,
     rules: &[crate::RewriteRule],
+    inputs: &TypeEnvironment,
 ) -> Result<BTreeSet<String>, CheckError> {
     let mut names = BTreeSet::new();
     for (index, rule) in rules.iter().enumerate() {
@@ -492,7 +516,7 @@ fn check_rules(
                 CheckErrorKind::DuplicateRule(rule.name.clone()),
             ));
         }
-        let environment = check_rule_binders(checker, rule, &path)?;
+        let environment = check_rule_binders(checker, rule, &path, inputs)?;
         checker
             .check_predicate(&rule.guard, &environment)
             .map_err(|error| prefix_path(error, &path.child(PathSegment::Guard)))?;
@@ -505,9 +529,13 @@ fn check_rule_binders(
     checker: &TypeChecker,
     rule: &crate::RewriteRule,
     rule_path: &ExprPath,
+    inputs: &TypeEnvironment,
 ) -> Result<TypeEnvironment, CheckError> {
-    let mut environment = TypeEnvironment::new();
-    let mut names = BTreeSet::new();
+    let mut environment = inputs.clone();
+    let mut names = inputs
+        .iter()
+        .map(|(name, _)| name.clone())
+        .collect::<BTreeSet<_>>();
     for (index, binder) in rule.binders.iter().enumerate() {
         let path = rule_path.child(PathSegment::Binder(index));
         if !names.insert(binder.variable.name.clone()) {
@@ -526,9 +554,14 @@ fn check_rule_binders(
                 CheckErrorKind::InvalidDomain(domain.ty().clone()),
             )
         })?;
+        let binding_type = if binder.quantifier == crate::Quantifier::Group {
+            domain.ty().clone()
+        } else {
+            element
+        };
         require_compatible(
             &binder.variable.ty,
-            &element,
+            &binding_type,
             path.child(PathSegment::Domain),
         )?;
         environment.insert(binder.variable.name.clone(), binder.variable.ty.clone());
@@ -550,6 +583,14 @@ fn check_effects(
                     .check(value, environment)
                     .map_err(|error| prefix_path(error, &path))?;
             }
+            Effect::Write { target, value } => {
+                checker
+                    .check(target, environment)
+                    .map_err(|error| prefix_path(error, &path))?;
+                checker
+                    .check(value, environment)
+                    .map_err(|error| prefix_path(error, &path))?;
+            }
             Effect::SetState { target, value } => {
                 let target_type = checker
                     .check(target, environment)
@@ -567,21 +608,22 @@ fn check_effects(
 fn check_renderer_and_assumptions(
     checker: &TypeChecker,
     theory: &Theory,
+    inputs: &TypeEnvironment,
 ) -> Result<(), CheckError> {
     checker
-        .check(&theory.renderer.canvas, &TypeEnvironment::new())
+        .check(&theory.renderer.canvas, inputs)
         .map_err(|error| prefix_error(error, PathSegment::Canvas))?;
     for (index, layer) in theory.renderer.layers.iter().enumerate() {
         checker
-            .check(layer, &TypeEnvironment::new())
+            .check(layer, inputs)
             .map_err(|error| prefix_error(error, PathSegment::Layer(index)))?;
     }
     checker
-        .check(&theory.renderer.background, &TypeEnvironment::new())
+        .check(&theory.renderer.background, inputs)
         .map_err(|error| prefix_error(error, PathSegment::Background))?;
     for (index, assumption) in theory.assumptions.iter().enumerate() {
         checker
-            .check_predicate(assumption, &TypeEnvironment::new())
+            .check_predicate(assumption, inputs)
             .map_err(|error| prefix_error(error, PathSegment::Assumption(index)))?;
     }
     Ok(())

@@ -38,11 +38,31 @@ allow_unsafe_modules = []
 layer = "evidence"
 allow_unsafe_modules = []
 
+[crates.cairn-entity]
+layer = "evidence"
+allow_unsafe_modules = []
+
+[crates.cairn-events]
+layer = "evidence"
+allow_unsafe_modules = []
+
 [crates.cairn-bytecode]
 layer = "execution"
 allow_unsafe_modules = []
 
+[crates.cairn-proof]
+layer = "verification"
+allow_unsafe_modules = []
+
 [crates.cairn-invent]
+layer = "synthesis"
+allow_unsafe_modules = []
+
+[crates.cairn-theory]
+layer = "synthesis"
+allow_unsafe_modules = []
+
+[crates.cairn-cegis]
 layer = "synthesis"
 allow_unsafe_modules = []
 
@@ -52,4 +72,12 @@ allow_unsafe_modules = []
 
 [crates.cairn-world]
 layer = "synthesis"
+allow_unsafe_modules = []
+
+[crates.cairn-field]
+layer = "frontend"
+allow_unsafe_modules = []
+
+[crates.cairn-arc]
+layer = "benchmark"
 allow_unsafe_modules = []

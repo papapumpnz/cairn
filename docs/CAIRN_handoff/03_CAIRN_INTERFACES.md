@@ -336,11 +336,13 @@ pub enum Effect {
     Update(UpdateEffect),
     Emit(EmitEffect),
     CreateRelation(CreateRelationEffect),
+    Write { target: Expr, value: Expr },
     SetState(SetStateEffect),
 }
 
 pub struct Theory {
     pub version: TheoryVersion,
+    pub inputs: Vec<Binder>,
     pub definitions: Vec<Definition>,
     pub rules: Vec<RewriteRule>,
     pub schedule: Schedule,
@@ -348,6 +350,11 @@ pub struct Theory {
     pub assumptions: Vec<Assumption>,
 }
 ```
+
+`inputs` are the only observation/request variables visible before rule-local
+binders. Admission checks them once; execution requires matching runtime types
+and values. This prevents unchecked free variables and avoids embedding one
+observation into a supposedly reusable theory.
 
 No synthesis score is included in the semantic hash. Score and search metadata live in `TheoryCandidate`.
 

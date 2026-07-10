@@ -1,13 +1,20 @@
 [workspace]
 members = [
+  "adapters/cairn-arc",
   "crates/cairn-bytecode",
   "crates/cairn-cas",
+  "crates/cairn-cegis",
   "crates/cairn-check",
   "crates/cairn-core",
+  "crates/cairn-entity",
+  "crates/cairn-events",
+  "crates/cairn-field",
   "crates/cairn-invent",
   "crates/cairn-memory",
+  "crates/cairn-proof",
   "crates/cairn-reg",
   "crates/cairn-rkl",
+  "crates/cairn-theory",
   "crates/cairn-world",
 ]
 resolver = "2"

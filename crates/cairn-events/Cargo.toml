@@ -1,0 +1,13 @@
+[package]
+name = "cairn-events"
+description = "Generic source-target event induction for CAIRN"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cairn-reg = { path = "../cairn-reg" }
+
+[lints]
+workspace = true

@@ -290,7 +290,15 @@ pub enum Effect {
     Preserve(Expr),
     Delete(Expr),
     Emit(Expr),
-    SetState { target: Expr, value: Expr },
+    /// Write a value to an adapter-neutral logical target.
+    Write {
+        target: Expr,
+        value: Expr,
+    },
+    SetState {
+        target: Expr,
+        value: Expr,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -333,6 +341,8 @@ pub struct Renderer {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Theory {
+    /// Typed observation/request values supplied when the theory is executed.
+    pub inputs: Vec<Binder>,
     pub definitions: Vec<Definition>,
     pub rules: Vec<RewriteRule>,
     pub schedule: Schedule,

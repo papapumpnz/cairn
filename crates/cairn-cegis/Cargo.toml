@@ -1,0 +1,15 @@
+[package]
+name = "cairn-cegis"
+description = "Counterexample-guided complete-theory search"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cairn-core = { path = "../cairn-core" }
+cairn-proof = { path = "../cairn-proof" }
+cairn-rkl = { path = "../cairn-rkl" }
+
+[lints]
+workspace = true

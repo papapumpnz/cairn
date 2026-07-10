@@ -1,11 +1,15 @@
 use cairn_bytecode::{
     BytecodeCompiler, CompileError, CompileLimits, ExecutionWorkspace, FastExecutor,
+    FastTheoryExecutor,
 };
 use cairn_rkl::{
-    BinaryOp, Binder, ConflictPolicy, Definition, DefinitionSignature, ExecLimits, Expr, IntRange,
-    ReferenceExecutor, Renderer, RuntimeEnvironment, Schedule, Theory, TheoryChecker, TraceLevel,
-    Type, TypeChecker, TypeEnvironment, UnaryOp, Value, VarName,
+    BinaryOp, Binder, ConflictPolicy, Definition, DefinitionSignature, Effect, ExecLimits, Expr,
+    IntRange, Quantifier, ReferenceExecutor, ReferenceTheoryExecutor, Renderer, RewriteRule,
+    RuleBinder, RuntimeEnvironment, Schedule, Theory, TheoryChecker, TheoryExecLimits,
+    TheoryExecutionRequest, TraceLevel, Type, TypeChecker, TypeEnvironment, UnaryOp, Value,
+    VarName,
 };
+use std::collections::{BTreeMap, BTreeSet};
 
 fn execution_limits() -> ExecLimits {
     ExecLimits {
@@ -13,6 +17,88 @@ fn execution_limits() -> ExecLimits {
         maximum_call_depth: 32,
         maximum_trace_events: 10_000,
     }
+}
+
+#[test]
+fn whole_theory_bytecode_matches_reference_on_typed_observation_inputs() {
+    let cells = VarName("cells".to_owned());
+    let cell = VarName("cell".to_owned());
+    let cells_type = Type::List {
+        element: Box::new(Type::Coord2),
+        maximum: 4,
+    };
+    let theory = TypeChecker::new(10_000)
+        .check_theory(&Theory {
+            inputs: vec![Binder {
+                name: cells.clone(),
+                ty: cells_type.clone(),
+            }],
+            definitions: Vec::new(),
+            rules: vec![RewriteRule {
+                name: "paint_observed".to_owned(),
+                binders: vec![RuleBinder {
+                    variable: Binder {
+                        name: cell.clone(),
+                        ty: Type::Coord2,
+                    },
+                    domain: Expr::Var(cells.clone()),
+                    quantifier: Quantifier::ForEach,
+                }],
+                guard: Expr::Bool(true),
+                effects: vec![Effect::Write {
+                    target: Expr::Var(cell),
+                    value: Expr::Atom(9),
+                }],
+                priority: 0,
+            }],
+            schedule: Schedule::Parallel,
+            renderer: Renderer {
+                canvas: Expr::Int(2),
+                layers: Vec::new(),
+                conflict_policy: ConflictPolicy::Reject,
+                background: Expr::Atom(0),
+            },
+            assumptions: vec![Expr::Bool(true)],
+            proof_annotations: Vec::new(),
+        })
+        .expect("checked theory");
+    let coordinates = BTreeSet::from([
+        Value::Coord2 { row: 0, column: 0 },
+        Value::Coord2 { row: 1, column: 1 },
+    ]);
+    let mut types = TypeEnvironment::new();
+    types.insert(cells.clone(), cells_type);
+    let mut values = RuntimeEnvironment::new();
+    values.insert(
+        cells,
+        Value::Set {
+            element_type: Type::Coord2,
+            maximum: 4,
+            values: coordinates,
+        },
+    );
+    let request = TheoryExecutionRequest {
+        types,
+        values,
+        initial_facts: BTreeSet::new(),
+        initial_state: BTreeMap::new(),
+    };
+    let limits = TheoryExecLimits {
+        expression: execution_limits(),
+        maximum_bindings: 100,
+        maximum_rule_firings: 100,
+    };
+    let reference = ReferenceTheoryExecutor
+        .execute(&theory, &request, limits)
+        .expect("reference theory");
+    let optimized = FastTheoryExecutor::new(CompileLimits::default())
+        .execute(&theory, &request, limits)
+        .expect("optimized theory");
+
+    assert_eq!(optimized.rendered, reference.rendered);
+    assert_eq!(optimized.state, reference.state);
+    assert_eq!(optimized.rule_firings, reference.rule_firings);
+    assert_eq!(optimized.fixpoint_iterations, reference.fixpoint_iterations);
 }
 
 #[test]
@@ -62,6 +148,7 @@ fn checked_task_local_definition_compiles_to_equivalent_micro_ops() {
         upper: 20,
     });
     let theory = Theory {
+        inputs: Vec::new(),
         definitions: vec![Definition {
             name: "double".to_owned(),
             parameters: vec![Binder {

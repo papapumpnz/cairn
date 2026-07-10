@@ -7,6 +7,7 @@
 mod artifact;
 mod canonical;
 mod hash;
+mod learning;
 
 pub use artifact::{
     AdditiveMapReader, ArtifactEnvelope, ArtifactError, ArtifactKind, BudgetRecord, ProducerRecord,
@@ -17,6 +18,10 @@ pub use canonical::{
     CanonicalValue,
 };
 pub use hash::{ArtifactId, BlobId, Hash32, HashParseError};
+pub use learning::{
+    Demonstration, Intervention, LearningProblem, ModalityId, Observation, ObservationCertainty,
+    ObservationError, ObservationId, PredictionRequest, SourceReference, TaskId,
+};
 
 /// Artifact protocol implemented by this crate.
 pub const ARTIFACT_PROTOCOL_VERSION: u16 = 1;

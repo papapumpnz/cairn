@@ -1,6 +1,6 @@
 use crate::{
     BinaryOp, CheckedTheory, ConflictPolicy, Definition, Effect, Expr, Quantifier, RewriteRule,
-    Schedule, Theory, Type, TypedExpr, UnaryOp, VarName, RKL_SEMANTICS_VERSION,
+    Schedule, Theory, Type, TypedExpr, UnaryOp, Value, VarName, RKL_SEMANTICS_VERSION,
 };
 use cairn_core::{CanonicalEncode, CanonicalError, CanonicalValue, Hash32};
 
@@ -128,6 +128,64 @@ impl CanonicalEncode for CheckedTheory {
     }
 }
 
+impl CanonicalEncode for Value {
+    fn encode_canonical(&self) -> Result<Vec<u8>, CanonicalError> {
+        canonical_runtime_value(self).encode_canonical()
+    }
+}
+
+/// Convert a runtime value into the stable RKL canonical value profile.
+#[must_use]
+pub fn canonical_runtime_value(value: &Value) -> CanonicalValue {
+    match value {
+        Value::Bool(value) => tagged("bool", vec![CanonicalValue::Bool(*value)]),
+        Value::Int(value) if *value >= 0 => {
+            tagged("int", vec![CanonicalValue::Unsigned(value.unsigned_abs())])
+        }
+        Value::Int(value) => tagged("int", vec![CanonicalValue::Negative(*value)]),
+        Value::Atom(value) => tagged("atom", vec![CanonicalValue::Unsigned(u64::from(*value))]),
+        Value::Coord2 { row, column } => tagged(
+            "coord2",
+            vec![signed(i64::from(*row)), signed(i64::from(*column))],
+        ),
+        Value::Tuple(values) => tagged(
+            "tuple",
+            vec![CanonicalValue::Array(
+                values.iter().map(canonical_runtime_value).collect(),
+            )],
+        ),
+        Value::Set {
+            element_type,
+            maximum,
+            values,
+        } => tagged(
+            "set",
+            vec![
+                type_value(element_type),
+                CanonicalValue::Unsigned(u64::from(*maximum)),
+                CanonicalValue::Array(values.iter().map(canonical_runtime_value).collect()),
+            ],
+        ),
+        Value::Handle { kind, id } => tagged(
+            "handle",
+            vec![
+                CanonicalValue::Text(
+                    match kind {
+                        crate::HandleKind::Shape => "shape",
+                        crate::HandleKind::Entity => "entity",
+                        crate::HandleKind::Symbol => "symbol",
+                        crate::HandleKind::Action => "action",
+                        crate::HandleKind::State => "state",
+                    }
+                    .to_owned(),
+                ),
+                CanonicalValue::Unsigned(u64::from(*id)),
+            ],
+        ),
+        Value::Unit => tagged("unit", Vec::new()),
+    }
+}
+
 fn theory_value(theory: &Theory) -> Result<CanonicalValue, CanonicalError> {
     let mut definitions = theory.definitions.iter().collect::<Vec<_>>();
     definitions.sort_by(|left, right| left.name.cmp(&right.name));
@@ -137,6 +195,21 @@ fn theory_value(theory: &Theory) -> Result<CanonicalValue, CanonicalError> {
         "theory",
         vec![
             CanonicalValue::Array(
+                theory
+                    .inputs
+                    .iter()
+                    .map(|binder| {
+                        tagged(
+                            "input",
+                            vec![
+                                CanonicalValue::Text(binder.name.0.clone()),
+                                type_value(&binder.ty),
+                            ],
+                        )
+                    })
+                    .collect(),
+            ),
+            CanonicalValue::Array(
                 definitions
                     .into_iter()
                     .map(definition_value)
@@ -145,34 +218,39 @@ fn theory_value(theory: &Theory) -> Result<CanonicalValue, CanonicalError> {
             CanonicalValue::Array(
                 rules
                     .into_iter()
-                    .map(rule_value)
+                    .map(|rule| rule_value(rule, &theory.inputs))
                     .collect::<Result<Vec<_>, _>>()?,
             ),
             schedule_value(&theory.schedule)?,
             tagged(
                 "renderer",
                 vec![
-                    expression_value(&theory.renderer.canvas, &mut Vec::new())?,
+                    expression_value(&theory.renderer.canvas, &mut input_names(&theory.inputs))?,
                     CanonicalValue::Array(
                         theory
                             .renderer
                             .layers
                             .iter()
-                            .map(|layer| expression_value(layer, &mut Vec::new()))
+                            .map(|layer| expression_value(layer, &mut input_names(&theory.inputs)))
                             .collect::<Result<Vec<_>, _>>()?,
                     ),
                     tagged(
                         conflict_policy_name(theory.renderer.conflict_policy),
                         Vec::new(),
                     ),
-                    expression_value(&theory.renderer.background, &mut Vec::new())?,
+                    expression_value(
+                        &theory.renderer.background,
+                        &mut input_names(&theory.inputs),
+                    )?,
                 ],
             ),
             CanonicalValue::Array(
                 theory
                     .assumptions
                     .iter()
-                    .map(|assumption| expression_value(assumption, &mut Vec::new()))
+                    .map(|assumption| {
+                        expression_value(assumption, &mut input_names(&theory.inputs))
+                    })
                     .collect::<Result<Vec<_>, _>>()?,
             ),
         ],
@@ -214,8 +292,15 @@ fn definition_value(definition: &Definition) -> Result<CanonicalValue, Canonical
     ))
 }
 
-fn rule_value(rule: &RewriteRule) -> Result<CanonicalValue, CanonicalError> {
-    let mut environment = Vec::new();
+fn input_names(inputs: &[crate::Binder]) -> Vec<VarName> {
+    inputs.iter().map(|input| input.name.clone()).collect()
+}
+
+fn rule_value(
+    rule: &RewriteRule,
+    inputs: &[crate::Binder],
+) -> Result<CanonicalValue, CanonicalError> {
+    let mut environment = input_names(inputs);
     let mut binders = Vec::with_capacity(rule.binders.len());
     for binder in &rule.binders {
         let domain = expression_value(&binder.domain, &mut environment)?;
@@ -260,6 +345,13 @@ fn effect_value(
             vec![expression_value(value, environment)?],
         )),
         Effect::Emit(value) => Ok(tagged("emit", vec![expression_value(value, environment)?])),
+        Effect::Write { target, value } => Ok(tagged(
+            "write",
+            vec![
+                expression_value(target, environment)?,
+                expression_value(value, environment)?,
+            ],
+        )),
         Effect::SetState { target, value } => Ok(tagged(
             "set_state",
             vec![

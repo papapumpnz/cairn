@@ -122,6 +122,7 @@ fn checked_task_local_definition_is_executable() {
         upper: 20,
     });
     let theory = Theory {
+        inputs: Vec::new(),
         definitions: vec![Definition {
             name: "double".to_owned(),
             parameters: vec![Binder {

@@ -125,6 +125,10 @@ impl RuntimeEnvironment {
     pub fn get(&self, name: &VarName) -> Option<&Value> {
         self.0.get(name)
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&VarName, &Value)> {
+        self.0.iter()
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

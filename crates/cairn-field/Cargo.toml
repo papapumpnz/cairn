@@ -1,0 +1,15 @@
+[package]
+name = "cairn-field"
+description = "Generic finite-field frontend and learned pointwise theory gate"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cairn-core = { path = "../cairn-core" }
+cairn-invent = { path = "../cairn-invent" }
+cairn-rkl = { path = "../cairn-rkl" }
+
+[lints]
+workspace = true

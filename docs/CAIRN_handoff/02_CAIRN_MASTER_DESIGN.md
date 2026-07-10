@@ -462,6 +462,7 @@ A theory contains definitions, rules, a schedule, and a renderer.
 
 ```rust
 pub struct Theory {
+    pub inputs: Vec<Binder>,
     pub definitions: Vec<Definition>,
     pub rules: Vec<RewriteRule>,
     pub schedule: Schedule,
@@ -477,6 +478,10 @@ pub struct RewriteRule {
     pub priority: PriorityExpr,
 }
 ```
+
+Theory inputs are typed generic observation/request bindings. They are in scope
+for rule domains and guards, renderer expressions, and assumptions. Adapter
+types never enter this declaration.
 
 Rule binders support one entity, tuples, groups, variable-arity sets, and operator-valued symbols.
 
@@ -497,6 +502,7 @@ Paint
 Erase
 CreateRelation
 SetLatentState
+Write
 EmitRewardHypothesis
 ```
 
