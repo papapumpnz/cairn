@@ -7,7 +7,7 @@ pub use latent::*;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt;
 
-pub const WORLD_LEARNING_SEMANTICS_VERSION: &str = "1.0.0";
+pub const WORLD_LEARNING_SEMANTICS_VERSION: &str = "1.1.0";
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct WorldState(pub Vec<i64>);

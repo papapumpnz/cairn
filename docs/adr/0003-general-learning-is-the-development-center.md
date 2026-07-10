@@ -92,6 +92,12 @@ memory-off ablations.
 Determinism: exact semantic results remain deterministic; uncertain frontends
 and beliefs record seeds and evidence.
 
+Latent-state uncertainty: an observationally adequate hidden-state theory is
+not treated as identified when episode boundaries leave successor states
+unconstrained. Competing successors remain explicit and trigger a
+discriminating continuation under ADR-0004 before deterministic promotion or
+planning.
+
 Verifier impact: modality hooks may verify source/render semantics, but core
 theory acceptance remains independent of synthesis and memory.
 
@@ -126,3 +132,4 @@ compatible.
 - `02_CAIRN_MASTER_DESIGN.md`
 - `04_CAIRN_EXPERIMENT_LADDER.md`
 - `HANDOFF_INDEX.md`
+- `0004-latent-successor-ambiguity-requires-intervention.md`

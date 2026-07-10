@@ -59,6 +59,10 @@ Implemented today:
   In 100 further worlds, the one-state theory was rejected, a two-state latent
   mode was invented, 12,600 hidden-mode transitions were predicted exactly, and
   100 shortest plans were constructed through the inferred latent dynamics.
+- explicit latent-successor ambiguity and active continuation selection. A
+  five-experiment campaign exposed an unidentifiable terminal successor; CAIRN
+  now preserves that uncertainty, requests a distinguishing action, and only
+  permits deterministic reuse after the continuation resolves it.
 
 This establishes bounded task-level symbolic learning, not general learning.
 Entity/event induction, full proof certificates, richer ontology invention,
@@ -74,6 +78,8 @@ The initial unknown-world result is in the
 [GLL-4 evidence report](docs/experiments/GLL4_UNKNOWN_WORLD_LEARNING.md).
 The latent-state extension is documented in
 [HIDDEN_STATE_WORLD_LEARNING.md](docs/experiments/HIDDEN_STATE_WORLD_LEARNING.md).
+The failure, architecture correction, and five passing reruns are recorded in
+[FIVE_LATENT_EXPERIMENTS.md](docs/experiments/FIVE_LATENT_EXPERIMENTS.md).
 
 The normative target and claim boundary are in
 [`08_GENERAL_LEARNER_REQUIREMENTS.md`](docs/CAIRN_handoff/08_GENERAL_LEARNER_REQUIREMENTS.md).

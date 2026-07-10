@@ -45,6 +45,7 @@ pub struct LatentTransitionTheory {
     space: StateSpace,
     latent_states: u8,
     rules: BTreeMap<(u8, ActionId), LatentTransitionRule>,
+    unresolved_successors: std::collections::BTreeSet<(u8, ActionId)>,
 }
 
 impl LatentTransitionTheory {
@@ -72,6 +73,12 @@ impl LatentTransitionTheory {
         }
         if state.latent >= self.latent_states {
             return Err(LatentError::LatentOutOfBounds(state.latent));
+        }
+        if self.unresolved_successors.contains(&(state.latent, action)) {
+            return Err(LatentError::AmbiguousSuccessor {
+                latent: state.latent,
+                action,
+            });
         }
         let rule = self
             .rules
@@ -105,6 +112,11 @@ impl LatentTransitionTheory {
     pub const fn space(&self) -> &StateSpace {
         &self.space
     }
+
+    #[must_use]
+    pub fn unresolved_successors(&self) -> usize {
+        self.unresolved_successors.len()
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -112,6 +124,17 @@ pub struct LatentInductionReport {
     pub theory: LatentTransitionTheory,
     pub search_nodes: u64,
     pub rejected_state_counts: u8,
+    pub successor_ambiguities: Vec<LatentSuccessorAmbiguity>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LatentSuccessorAmbiguity {
+    pub latent: u8,
+    pub source_action: ActionId,
+    pub terminal_episode: usize,
+    /// An action whose immediate visible effects differ between at least two
+    /// possible successor states. `None` means a longer experiment is needed.
+    pub distinguishing_action: Option<ActionId>,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -159,14 +182,22 @@ impl LatentWorldLearner {
                 limits.maximum_search_nodes,
             )? {
                 let rules = supported_rules(episodes, latent_states, rules)?;
+                let successor_ambiguities =
+                    successor_ambiguities(episodes, latent_states, &actions, &rules)?;
+                let unresolved_successors = successor_ambiguities
+                    .iter()
+                    .map(|ambiguity| (ambiguity.latent, ambiguity.source_action))
+                    .collect();
                 return Ok(LatentInductionReport {
                     theory: LatentTransitionTheory {
                         space: space.clone(),
                         latent_states,
                         rules,
+                        unresolved_successors,
                     },
                     search_nodes,
                     rejected_state_counts: latent_states - 1,
+                    successor_ambiguities,
                 });
             }
         }
@@ -259,6 +290,7 @@ pub enum LatentError {
     UnknownEpisodeAction(ActionId),
     LatentOutOfBounds(u8),
     UnknownRule { latent: u8, action: ActionId },
+    AmbiguousSuccessor { latent: u8, action: ActionId },
     SearchCapacity { maximum: u64 },
     NoTheory { maximum_latent_states: u8 },
     InvalidPlanLineage,
@@ -411,6 +443,56 @@ fn supported_rules(
                 Ok(rules)
             }
         })
+}
+
+fn successor_ambiguities(
+    episodes: &[LatentEpisode],
+    latent_states: u8,
+    actions: &[ActionId],
+    rules: &BTreeMap<(u8, ActionId), LatentTransitionRule>,
+) -> Result<Vec<LatentSuccessorAmbiguity>, LatentError> {
+    let mut occurrences = BTreeMap::<(u8, ActionId), (bool, usize)>::new();
+    for (episode_index, episode) in episodes.iter().enumerate() {
+        let mut latent = 0_u8;
+        for (transition_index, transition) in episode.transitions.iter().enumerate() {
+            let key = (latent, transition.action);
+            let is_nonterminal = transition_index + 1 < episode.transitions.len();
+            let occurrence = occurrences.entry(key).or_insert((false, episode_index));
+            occurrence.0 |= is_nonterminal;
+            if !is_nonterminal {
+                occurrence.1 = occurrence.1.min(episode_index);
+            }
+            latent = rules
+                .get(&key)
+                .ok_or(LatentError::UnknownRule {
+                    latent,
+                    action: transition.action,
+                })?
+                .next_latent;
+        }
+    }
+    occurrences
+        .into_iter()
+        .filter(|(_, (has_nonterminal_support, _))| !has_nonterminal_support)
+        .map(|((latent, source_action), (_, terminal_episode))| {
+            let distinguishing_action = actions.iter().copied().find(|action| {
+                let effects = (0..latent_states)
+                    .filter_map(|candidate| {
+                        rules
+                            .get(&(candidate, *action))
+                            .map(|rule| rule.delta.clone())
+                    })
+                    .collect::<std::collections::BTreeSet<_>>();
+                effects.len() > 1
+            });
+            Ok(LatentSuccessorAmbiguity {
+                latent,
+                source_action,
+                terminal_episode,
+                distinguishing_action,
+            })
+        })
+        .collect()
 }
 
 fn validate_episodes(space: &StateSpace, episodes: &[LatentEpisode]) -> Result<(), LatentError> {

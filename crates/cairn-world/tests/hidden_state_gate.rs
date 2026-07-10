@@ -75,7 +75,7 @@ fn learns_minimal_hidden_modes_and_plans_through_them() {
                 },
             ),
         ]);
-        let training_actions = [move_one, move_two, flip, move_one, move_two, flip];
+        let training_actions = [move_one, move_two, flip, move_one, move_two, flip, move_one];
         let episode = observed_episode(
             &space,
             &truth,
@@ -99,6 +99,8 @@ fn learns_minimal_hidden_modes_and_plans_through_them() {
         assert_eq!(report.theory.latent_states(), 2);
         assert_eq!(report.rejected_state_counts, 1);
         assert_eq!(report.theory.rules().count(), 6);
+        assert!(report.successor_ambiguities.is_empty());
+        assert_eq!(report.theory.unresolved_successors(), 0);
         rejected_one_state_models += 1;
         first_episode_search_nodes += report.search_nodes;
 
@@ -216,7 +218,7 @@ fn one_state_ablation_and_search_caps_fail_closed() {
             visible: WorldState(vec![10]),
             latent: 0,
         },
-        &[forward, flip, forward, flip],
+        &[forward, flip, forward, flip, forward],
     );
     assert_eq!(
         LatentWorldLearner.induce(

@@ -32,6 +32,12 @@ every latent/action pair. The first accepted theory is therefore minimum-state
 under the bounded grammar. Search-node and latent-state caps are explicit typed
 terminal outcomes.
 
+Minimum-state fit does not by itself identify a terminal transition's next
+latent state. Under ADR-0004, terminal-only successor choices are reported as
+ambiguities and require a distinguishing continuation before deterministic use.
+The frozen 100-world training histories include such continuations and finish
+with zero unresolved successors.
+
 Planning uses bounded breadth-first search over the learned joint state. A
 separate truth-model search in the frozen test checks shortest-plan length.
 
@@ -75,5 +81,7 @@ test `crates/cairn-world/tests/hidden_state_gate.rs`.
   are not implemented.
 - Effects remain additive over bounded integer state vectors; entity/relation
   perception is not part of this slice.
+- When a one-step continuation cannot distinguish candidate successors, full
+  belief-set retention and contingent experimentation remain future work.
 - This strengthens interactive causal learning but does not establish one
   cognition runtime across three external domains.
