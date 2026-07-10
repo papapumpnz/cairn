@@ -49,6 +49,7 @@ pub struct MechanismModule {
     lineage: Vec<Hash32>,
     status: ModuleStatus,
     structural_cost: u16,
+    reuse: BTreeMap<Hash32, ReuseEvidence>,
 }
 
 impl MechanismModule {
@@ -76,6 +77,73 @@ impl MechanismModule {
     pub const fn status(&self) -> ModuleStatus {
         self.status
     }
+
+    #[must_use]
+    pub fn reuse_metrics(&self) -> ReuseMetrics {
+        let mut metrics = ReuseMetrics::default();
+        for evidence in self.reuse.values() {
+            metrics.verified_invocations += 1;
+            metrics.necessary_invocations += u64::from(evidence.necessary_under_ablation);
+            metrics.candidate_executions_without = metrics
+                .candidate_executions_without
+                .saturating_add(evidence.candidate_executions_without);
+            metrics.candidate_executions_with = metrics
+                .candidate_executions_with
+                .saturating_add(evidence.candidate_executions_with);
+            metrics.examples_without = metrics
+                .examples_without
+                .saturating_add(u64::from(evidence.examples_without));
+            metrics.examples_with = metrics
+                .examples_with
+                .saturating_add(u64::from(evidence.examples_with));
+            metrics.proof_nodes_without = metrics
+                .proof_nodes_without
+                .saturating_add(evidence.proof_nodes_without);
+            metrics.proof_nodes_with = metrics
+                .proof_nodes_with
+                .saturating_add(evidence.proof_nodes_with);
+            metrics.negative_transfers += u64::from(
+                evidence.candidate_executions_with > evidence.candidate_executions_without
+                    || evidence.examples_with > evidence.examples_without,
+            );
+        }
+        metrics
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReuseEvidence {
+    pub experience: Hash32,
+    pub independently_verified: bool,
+    pub necessary_under_ablation: bool,
+    pub candidate_executions_without: u64,
+    pub candidate_executions_with: u64,
+    pub examples_without: u32,
+    pub examples_with: u32,
+    pub proof_nodes_without: u64,
+    pub proof_nodes_with: u64,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct ReuseMetrics {
+    pub verified_invocations: u64,
+    pub necessary_invocations: u64,
+    pub candidate_executions_without: u64,
+    pub candidate_executions_with: u64,
+    pub examples_without: u64,
+    pub examples_with: u64,
+    pub proof_nodes_without: u64,
+    pub proof_nodes_with: u64,
+    pub negative_transfers: u64,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ReuseError {
+    UnknownModule,
+    NotPersistent,
+    Unverified,
+    DuplicateExperience,
+    EmptyCounterfactual,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -159,6 +227,7 @@ impl PromotionRunner {
             lineage,
             status: ModuleStatus::Provisional,
             structural_cost: representative.structural_cost,
+            reuse: BTreeMap::new(),
         })
     }
 }
@@ -227,6 +296,39 @@ impl MechanismStore {
         }
         module.status = ModuleStatus::Persistent;
         true
+    }
+
+    /// Record one independently verified invocation and its frozen
+    /// without-memory counterfactual. Negative transfer is retained in the
+    /// ledger rather than silently discarded.
+    ///
+    /// # Errors
+    ///
+    /// Rejects unknown/nonpersistent modules, unverified claims, duplicates,
+    /// and evidence without counterfactual work or examples.
+    pub fn record_verified_reuse(
+        &mut self,
+        id: Hash32,
+        evidence: ReuseEvidence,
+    ) -> Result<(), ReuseError> {
+        let module = self.modules.get_mut(&id).ok_or(ReuseError::UnknownModule)?;
+        if !matches!(
+            module.status,
+            ModuleStatus::Persistent | ModuleStatus::Compiled
+        ) {
+            return Err(ReuseError::NotPersistent);
+        }
+        if !evidence.independently_verified {
+            return Err(ReuseError::Unverified);
+        }
+        if evidence.candidate_executions_without == 0 || evidence.examples_without == 0 {
+            return Err(ReuseError::EmptyCounterfactual);
+        }
+        if module.reuse.contains_key(&evidence.experience) {
+            return Err(ReuseError::DuplicateExperience);
+        }
+        module.reuse.insert(evidence.experience, evidence);
+        Ok(())
     }
 
     fn proposals(&self, problem: &InventionProblem) -> Vec<ReboundProposal> {

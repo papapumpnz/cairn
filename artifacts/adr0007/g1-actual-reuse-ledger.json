@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "gate": "G1",
+  "date": "2026-07-11",
+  "status": "pass_on_frozen_initial_suite",
+  "general_intelligence_claim": false,
+  "persistent_mechanisms": 5,
+  "distinct_verified_invocations": 10,
+  "necessary_invocations": 10,
+  "candidate_executions_with": 10,
+  "candidate_executions_without": 33600,
+  "examples_with": 10,
+  "examples_without": 48,
+  "proof_nodes_with": 10,
+  "proof_nodes_without": 52,
+  "negative_transfers": 0,
+  "duplicate_claim_rejected": true,
+  "unverified_claim_rejected": true,
+  "pre_promotion_claim_rejected": true,
+  "known_limitation": "reuse ledger is not yet canonically persisted to CAS",
+  "open_gates": ["G2", "G3", "G4", "G5", "G6"]
+}

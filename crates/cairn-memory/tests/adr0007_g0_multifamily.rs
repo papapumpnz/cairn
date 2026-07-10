@@ -7,8 +7,8 @@ use cairn_mechanism::{
     SupportGeometry as MechanismSupport, VariableId,
 };
 use cairn_memory::{
-    MechanismStore, MemoryAssistedInventor, ModuleStatus, PromotionRunner, SolveOrigin,
-    SupportGeometry as MemorySupport, VariationDimension,
+    MechanismStore, MemoryAssistedInventor, ModuleStatus, PromotionRunner, ReuseError,
+    ReuseEvidence, SolveOrigin, SupportGeometry as MemorySupport, VariationDimension,
 };
 use cairn_rkl::{Effect, Expr};
 use cairn_verifier::PromotionVerifier;
@@ -23,6 +23,11 @@ struct Metrics {
     memory_candidates: u64,
     verified_predictions: u64,
     persistent_mechanisms: u32,
+    examples_without: u64,
+    examples_with: u64,
+    proof_nodes_without: u64,
+    proof_nodes_with: u64,
+    negative_transfers: u64,
 }
 
 fn structural_operations(expression: &Expr, output: &mut Vec<String>) {
@@ -204,7 +209,8 @@ fn five_unrelated_hidden_laws_are_compressed_promoted_and_reused() {
         let mut family_memory = 0_u64;
         let mut family_predictions = 0_u64;
         let mut family_post = 0_u32;
-        for task in &family.held_out_tasks {
+        let mut reuse_records = Vec::new();
+        for (task_index, task) in family.held_out_tasks.iter().enumerate() {
             let fresh = DefinitionInventor
                 .invent(&task.full_problem)
                 .expect("fresh-search baseline");
@@ -213,6 +219,9 @@ fn five_unrelated_hidden_laws_are_compressed_promoted_and_reused() {
                 .invent(&task.one_shot_problem, &store)
                 .expect("verified rebound proposal");
             assert_eq!(reused.origin, SolveOrigin::MemoryProposal);
+            let mut ablated = task.one_shot_problem.clone();
+            ablated.limits.maximum_candidates = reused.metrics.total_search_work;
+            assert!(DefinitionInventor.invent(&ablated).is_err());
             assert_eq!(
                 DefinitionInventor
                     .predict(
@@ -224,6 +233,21 @@ fn five_unrelated_hidden_laws_are_compressed_promoted_and_reused() {
                 task.probe.output
             );
             family_memory += reused.metrics.total_search_work;
+            reuse_records.push(ReuseEvidence {
+                experience: Hash32::digest(
+                    format!("{}:heldout:{task_index}", family.benchmark_family).as_bytes(),
+                ),
+                independently_verified: true,
+                necessary_under_ablation: true,
+                candidate_executions_without: fresh.proposal.candidates_evaluated,
+                candidate_executions_with: reused.metrics.total_search_work,
+                examples_without: u32::try_from(task.full_problem.demonstrations.len())
+                    .expect("small suite"),
+                examples_with: u32::try_from(task.one_shot_problem.demonstrations.len())
+                    .expect("small suite"),
+                proof_nodes_without: u64::from(fresh.proposal.structural_cost),
+                proof_nodes_with: 1,
+            });
             family_predictions += 1;
             family_post += 1;
         }
@@ -253,7 +277,35 @@ fn five_unrelated_hidden_laws_are_compressed_promoted_and_reused() {
         let token = PromotionVerifier
             .verify(&learned, &evidence)
             .expect("strict promotion evidence");
+        assert_eq!(
+            store.record_verified_reuse(module.id(), reuse_records[0].clone()),
+            Err(ReuseError::NotPersistent)
+        );
         assert!(store.apply_verified_promotion(module.id(), &token));
+        for record in &reuse_records {
+            store
+                .record_verified_reuse(module.id(), record.clone())
+                .expect("durable verified reuse");
+        }
+        assert_eq!(
+            store.record_verified_reuse(module.id(), reuse_records[0].clone()),
+            Err(ReuseError::DuplicateExperience)
+        );
+        let mut unverified = reuse_records[0].clone();
+        unverified.experience = Hash32::digest(b"unverified-distinct-experience");
+        unverified.independently_verified = false;
+        assert_eq!(
+            store.record_verified_reuse(module.id(), unverified),
+            Err(ReuseError::Unverified)
+        );
+        let reuse_metrics = store
+            .reusable_modules()
+            .next()
+            .expect("stored module")
+            .reuse_metrics();
+        assert_eq!(reuse_metrics.verified_invocations, 2);
+        assert_eq!(reuse_metrics.necessary_invocations, 2);
+        assert_eq!(reuse_metrics.negative_transfers, 0);
         assert_eq!(
             store
                 .reusable_modules()
@@ -268,10 +320,15 @@ fn five_unrelated_hidden_laws_are_compressed_promoted_and_reused() {
         total.memory_candidates += family_memory;
         total.verified_predictions += family_predictions;
         total.persistent_mechanisms += 1;
+        total.examples_without += reuse_metrics.examples_without;
+        total.examples_with += reuse_metrics.examples_with;
+        total.proof_nodes_without += reuse_metrics.proof_nodes_without;
+        total.proof_nodes_with += reuse_metrics.proof_nodes_with;
+        total.negative_transfers += reuse_metrics.negative_transfers;
     }
 
     eprintln!(
-        "G0_MULTI families={} initial={}/{} post={}/{} fresh_candidates={} memory_candidates={} verified_predictions={} persistent={}",
+        "G0_MULTI families={} initial={}/{} post={}/{} fresh_candidates={} memory_candidates={} examples={}/{} proof_nodes={}/{} verified_predictions={} persistent={} negative_transfers={}",
         families.len(),
         total.initial_successes,
         total.tasks,
@@ -279,12 +336,21 @@ fn five_unrelated_hidden_laws_are_compressed_promoted_and_reused() {
         total.tasks,
         total.fresh_candidates,
         total.memory_candidates,
+        total.examples_with,
+        total.examples_without,
+        total.proof_nodes_with,
+        total.proof_nodes_without,
         total.verified_predictions,
-        total.persistent_mechanisms
+        total.persistent_mechanisms,
+        total.negative_transfers
     );
     assert!(total.initial_successes.saturating_mul(5) < total.tasks);
     assert!(total.post_successes.saturating_mul(10) > total.tasks.saturating_mul(7));
     assert!(total.fresh_candidates >= total.memory_candidates.saturating_mul(4));
     assert_eq!(total.verified_predictions, u64::from(total.tasks));
     assert_eq!(total.persistent_mechanisms, 5);
+    assert_eq!(total.examples_with, 10);
+    assert!(total.examples_without >= 40);
+    assert!(total.proof_nodes_without > total.proof_nodes_with);
+    assert_eq!(total.negative_transfers, 0);
 }

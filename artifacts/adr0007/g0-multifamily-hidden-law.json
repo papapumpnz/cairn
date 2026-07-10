@@ -31,5 +31,5 @@
     "collection_cardinality_adjustment",
     "coordinate_translation"
   ],
-  "open_gates": ["G1", "G2", "G3", "G4", "G5", "G6"]
+  "open_gates": ["G2", "G3", "G4", "G5", "G6"]
 }

@@ -260,3 +260,15 @@ status.
 This satisfies G0 on the frozen initial suite. It does not satisfy G1-G6 or the
 general-learning pass. See
 docs/experiments/G0_MULTIFAMILY_HIDDEN_LAW_PASS.md.
+
+## 9. ADR-0007 checkpoint: initial G1 pass
+
+Every mechanism counted by the frozen G0 suite now carries task-distinct,
+independently verified reuse records. Across five persistent mechanisms and ten
+held-out tasks, the ledger records ten actual and necessary invocations,
+33,600 versus 10 candidate executions, 48 versus 10 demonstrations, and 52
+versus 10 proof nodes. Duplicate, unverified, and pre-promotion claims fail.
+
+This satisfies G1 on the frozen initial suite. The ledger is not yet a
+canonical CAS artifact, and G2-G6 remain open. See
+docs/experiments/G1_ACTUAL_REUSE_LEDGER_PASS.md.

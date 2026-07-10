@@ -105,6 +105,11 @@ transfer varied names, ranges, symbols, collection cardinalities, positions,
 and layouts. This is bounded continual mechanism learning, not general
 intelligence. See
 [G0_MULTIFAMILY_HIDDEN_LAW_PASS.md](docs/experiments/G0_MULTIFAMILY_HIDDEN_LAW_PASS.md).
+The initial G1 suite also passes: all five persistent mechanisms have
+task-distinct verified invocation and necessity records, covering 33,600 versus
+10 candidate executions, 48 versus 10 demonstrations, and 52 versus 10 proof
+nodes. See
+[G1_ACTUAL_REUSE_LEDGER_PASS.md](docs/experiments/G1_ACTUAL_REUSE_LEDGER_PASS.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and proof DAGs, richer ontology invention, one shared orchestrating runtime,
