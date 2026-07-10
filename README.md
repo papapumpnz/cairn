@@ -10,7 +10,7 @@ centre or sufficient evidence of general learning.
 
 ## Current implementation status
 
-The repository has completed WP00, WP01, and WP04. Implemented today:
+The repository has completed WP00, WP01, WP03, and WP04. Implemented today:
 
 - a pinned Rust workspace;
 - the repository operating law and architecture-layer manifest;
@@ -28,6 +28,9 @@ The repository has completed WP00, WP01, and WP04. Implemented today:
 - a modality-neutral bounded RKL with expression and whole-theory admission,
   exact range/collection checks, alpha-stable canonical hashes, schedule-cycle
   rejection, and 100,000 generated-term checks.
+- a typed immutable Relational Evidence Graph with provenance, temporal/value
+  indexes, deterministic joins, bounded causal paths, canonical replay, and
+  measured performance above its initial CPU gates.
 
 Entity/event induction, verification, ontology invention, continual memory,
 interactive world learning, planning, cross-domain integration, and knowledge
@@ -46,6 +49,7 @@ cargo test --locked --workspace --doc
 cargo run --locked -p cairn-check -- check .
 bash scripts/validate_schemas.sh
 bash scripts/wp00_acceptance.sh artifacts/wp00-acceptance
+bash scripts/wp03_acceptance.sh artifacts/wp03-acceptance
 bash scripts/wp04_acceptance.sh artifacts/wp04-acceptance
 ```
 
