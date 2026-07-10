@@ -59,7 +59,9 @@ Implemented today:
   batch runner. The official ARC-AGI-1 v1.0.2 training corpus is provenance-
   pinned under `datasets/`; its evaluation split is intentionally absent. The
   first frozen official batch produced honest unsupported/resource-limit
-  results and no exact solves, so no ARC capability claim is made;
+  results and no exact solves. After adding generic, synthetic-tested field
+  schemas, that same frozen batch reached 10/10 exact. A subsequent untouched
+  ten-task probe remained 0/10, so no broad ARC capability claim is made;
 - domain-neutral task-local definition invention from input/output
   demonstrations. The frozen initial GLL-1 suite autonomously synthesized five
   omitted executable concepts and replayed 5,835 varied predictions exactly,
@@ -110,6 +112,8 @@ The new static-learning slice and its limitations are recorded in
 [INITIAL_STATIC_LEARNING_PIPELINE.md](docs/experiments/INITIAL_STATIC_LEARNING_PIPELINE.md).
 The first official-corpus run is documented in
 [ARC_AGI_1_INITIAL_OFFICIAL_RUN.md](docs/experiments/ARC_AGI_1_INITIAL_OFFICIAL_RUN.md).
+The frozen first-ten pass and untouched follow-on failure are documented in
+[ARC_AGI_1_FROZEN_TEN_PASS.md](docs/experiments/ARC_AGI_1_FROZEN_TEN_PASS.md).
 
 The normative target and claim boundary are in
 [`08_GENERAL_LEARNER_REQUIREMENTS.md`](docs/CAIRN_handoff/08_GENERAL_LEARNER_REQUIREMENTS.md).

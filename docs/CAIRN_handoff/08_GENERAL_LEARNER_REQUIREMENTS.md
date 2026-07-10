@@ -190,3 +190,8 @@ previously documented bounded initial GLL-1 through GLL-4 results. In particular
 
 See `docs/adr/0005-generic-static-learning-runtime-boundaries.md` and
 `docs/experiments/INITIAL_STATIC_LEARNING_PIPELINE.md`.
+
+The same frozen first-ten ARC batch later reached 10/10 after generic field
+schemas were added under ADR-0006. An untouched tasks 11–20 probe remained 0/10.
+This is a development capability pass, not evidence that GLL-1, GLL-5, broad
+ARC generalization, or general intelligence is complete.

@@ -1,0 +1,110 @@
+{
+  "adapter_semantics": "1.1.0",
+  "rkl_semantics": "1.1.0",
+  "corpus": "datasets/arc-agi-1-v1.0.2/training",
+  "maximum_tasks": 10,
+  "maximum_cost": 9,
+  "maximum_candidates": 1000,
+  "selected_tasks": 10,
+  "parsed_tasks": 10,
+  "attempted_tasks": 10,
+  "exact_tasks": 10,
+  "incorrect_tasks": 0,
+  "unsupported_tasks": 0,
+  "no_theory_tasks": 0,
+  "resource_limited_tasks": 0,
+  "invalid_tasks": 0,
+  "execution_failures": 0,
+  "reports": [
+    {
+      "task": "007bbfb7",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 45,
+      "learned_expression": "TensorMask { background: 0 }",
+      "diagnostic": null
+    },
+    {
+      "task": "00d62c1b",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 736,
+      "learned_expression": "FillEnclosed { background: 0, fill: 4 }",
+      "diagnostic": null
+    },
+    {
+      "task": "017c7c7b",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 54,
+      "learned_expression": "PeriodicRows { added_rows: 3, from: 1, to: 2 }",
+      "diagnostic": null
+    },
+    {
+      "task": "025d127b",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 198,
+      "learned_expression": "BoundaryAnchoredShear { background: 0 }",
+      "diagnostic": null
+    },
+    {
+      "task": "045e512c",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 1323,
+      "learned_expression": "TemplateRayRepeat { background: 0 }",
+      "diagnostic": null
+    },
+    {
+      "task": "0520fde7",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 63,
+      "learned_expression": "PanelIntersection { background: 0, separator: 5, fill: 2, vertical_split: true }",
+      "diagnostic": null
+    },
+    {
+      "task": "05269061",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 147,
+      "learned_expression": "DiagonalPeriodic { background: 0 }",
+      "diagnostic": null
+    },
+    {
+      "task": "05f2a901",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 326,
+      "learned_expression": "Attract { background: 0, mover: 2, anchor: 8 }",
+      "diagnostic": null
+    },
+    {
+      "task": "06df4c85",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 1458,
+      "learned_expression": "PanelSpanCompletion { background: 0 }",
+      "diagnostic": null
+    },
+    {
+      "task": "08ed6ac7",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 162,
+      "learned_expression": "ComponentSizeRank { background: 0 }",
+      "diagnostic": null
+    }
+  ]
+}

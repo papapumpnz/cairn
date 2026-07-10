@@ -1,13 +1,15 @@
 //! ARC-specific parsing and encoding quarantined from CAIRN cognition crates.
 
-use cairn_field::{FieldError, FiniteField, PointwiseFieldLearner};
+use cairn_field::{
+    FieldError, FieldSchemaError, FieldSchemaLearner, FiniteField, PointwiseFieldLearner,
+};
 use cairn_invent::InventionLimits;
 use cairn_rkl::ExecLimits;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.0.0";
+pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.1.0";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ArcGrid {
@@ -61,6 +63,7 @@ pub enum ArcAdapterError {
     InvalidCategoricalValue(u8),
     ShapeChangeUnsupported,
     Field(FieldError),
+    Schema(FieldSchemaError),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -169,12 +172,49 @@ pub fn attempt_task(
         .map(|pair| {
             let input = lower(&pair.input)?;
             let output = lower(&pair.output)?;
-            if input.shape != output.shape {
-                return Err(ArcAdapterError::ShapeChangeUnsupported);
-            }
             Ok((input, output))
         })
         .collect::<Result<Vec<_>, ArcAdapterError>>()?;
+    match FieldSchemaLearner.learn(&training) {
+        Ok(learned) => {
+            let predictions = task
+                .test
+                .iter()
+                .map(|case| {
+                    let input = lower(&case.input)?;
+                    let prediction = FieldSchemaLearner
+                        .predict(&learned, &input)
+                        .map_err(ArcAdapterError::Schema)?;
+                    raise(&prediction)
+                })
+                .collect::<Result<Vec<_>, ArcAdapterError>>()?;
+            let evaluated_tests = task
+                .test
+                .iter()
+                .filter(|case| case.output.is_some())
+                .count();
+            let exact_tests = predictions
+                .iter()
+                .zip(&task.test)
+                .filter(|(prediction, case)| case.output.as_ref() == Some(*prediction))
+                .count();
+            return Ok(ArcAttempt {
+                predictions,
+                evaluated_tests,
+                exact_tests,
+                training_cells: training.iter().map(|(input, _)| input.values.len()).sum(),
+                learned_expression: format!("{:?}", learned.transformation),
+            });
+        }
+        Err(FieldSchemaError::NoTheory) => {}
+        Err(error) => return Err(ArcAdapterError::Schema(error)),
+    }
+    if training
+        .iter()
+        .any(|(input, output)| input.shape != output.shape)
+    {
+        return Err(ArcAdapterError::ShapeChangeUnsupported);
+    }
     let learned = PointwiseFieldLearner
         .learn(&training, invention)
         .map_err(ArcAdapterError::Field)?;
@@ -360,17 +400,21 @@ fn classify_error(error: &ArcAdapterError) -> (ArcTaskStatus, String) {
         ArcAdapterError::ShapeChangeUnsupported => ArcTaskStatus::UnsupportedShapeChange,
         ArcAdapterError::Field(FieldError::Invention(
             cairn_invent::InventionError::NoDefinition { .. },
-        )) => ArcTaskStatus::NoTheoryWithinBounds,
+        ))
+        | ArcAdapterError::Schema(FieldSchemaError::NoTheory) => {
+            ArcTaskStatus::NoTheoryWithinBounds
+        }
         ArcAdapterError::Field(FieldError::Invention(
             cairn_invent::InventionError::CandidateCapacity { .. },
-        )) => ArcTaskStatus::ResourceLimit,
+        ))
+        | ArcAdapterError::Schema(FieldSchemaError::Capacity) => ArcTaskStatus::ResourceLimit,
         ArcAdapterError::Json
         | ArcAdapterError::EmptyTraining
         | ArcAdapterError::EmptyTest
         | ArcAdapterError::EmptyGrid
         | ArcAdapterError::RaggedGrid
         | ArcAdapterError::InvalidCategoricalValue(_) => ArcTaskStatus::InvalidTask,
-        ArcAdapterError::Field(_) => ArcTaskStatus::ExecutionFailure,
+        ArcAdapterError::Field(_) | ArcAdapterError::Schema(_) => ArcTaskStatus::ExecutionFailure,
     };
     (status, format!("{error:?}"))
 }

@@ -75,6 +75,12 @@ No ARC-specific operation will be added to address these failures. Each new
 mechanism requires an environment-neutral synthetic family and a non-ARC case
 before this frozen batch is rerun.
 
+## Follow-up
+
+The frozen batch subsequently reached 10/10 after adding generic, synthetic-
+tested finite-field schemas. The untouched tasks 11–20 remained 0/10. See
+`ARC_AGI_1_FROZEN_TEN_PASS.md`; the baseline in this document remains preserved.
+
 ## Artifacts
 
 - `datasets/arc-agi-1-v1.0.2/SOURCE.md`

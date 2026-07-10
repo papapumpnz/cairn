@@ -1,5 +1,11 @@
 //! Adapter-neutral finite categorical fields and a first learned field model.
 
+mod schema;
+
+pub use schema::{
+    Direction, FieldSchemaError, FieldSchemaLearner, FieldTransformation, LearnedFieldTheory,
+};
+
 use cairn_core::{
     CanonicalValue, Hash32, ModalityId, Observation, ObservationCertainty, ObservationError,
     SourceReference,
