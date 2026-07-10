@@ -97,6 +97,13 @@ Implemented today:
   permits deterministic reuse after the continuation resolves it.
 
 This establishes bounded task-level symbolic learning, not general learning.
+Under ADR-0007, the first self-compression prototype has also passed in one
+narrow scalar family: empty-memory bounded success was 0/10; after two
+independent inventions and proof compression it was 10/10, with candidate
+executions falling from 440 to 10 and demonstrations from six to one. This is
+bounded continual mechanism learning, not a full G0 or general-intelligence
+pass. See
+[G0_SELF_COMPRESSION_PROTOTYPE.md](docs/experiments/G0_SELF_COMPRESSION_PROTOTYPE.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and proof DAGs, richer ontology invention, one shared orchestrating runtime,

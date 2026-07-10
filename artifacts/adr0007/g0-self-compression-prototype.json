@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "gate": "G0-prototype",
+  "date": "2026-07-11",
+  "general_intelligence_claim": false,
+  "domain": "bounded-scalar",
+  "source_episodes": 2,
+  "held_out_tasks": 10,
+  "initial_successes": 0,
+  "post_experience_successes": 10,
+  "source_code_changes": 0,
+  "fresh_candidate_executions": 440,
+  "memory_candidate_executions": 10,
+  "candidate_reduction_factor": 44.0,
+  "fresh_demonstrations_per_task": 6,
+  "memory_demonstrations_per_task": 1,
+  "held_out_predictions_verified": 10,
+  "actual_reuse_count": 10,
+  "necessary_reuse_count": 10,
+  "proof_subgraph_compression": "pass",
+  "strict_promotion": "persistent",
+  "full_g0": "open",
+  "open_dimensions": [
+    "unseen_collection_cardinality",
+    "unseen_layout",
+    "multiple_unrelated_hidden_laws",
+    "cross_domain_reuse"
+  ]
+}

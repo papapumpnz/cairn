@@ -12,5 +12,10 @@ cairn-core = { path = "../cairn-core" }
 cairn-invent = { path = "../cairn-invent" }
 cairn-rkl = { path = "../cairn-rkl" }
 
+[dev-dependencies]
+cairn-consolidator = { path = "../cairn-consolidator" }
+cairn-mechanism = { path = "../cairn-mechanism" }
+cairn-verifier = { path = "../cairn-verifier" }
+
 [lints]
 workspace = true

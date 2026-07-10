@@ -138,9 +138,12 @@ dependencies = [
 name = "cairn-memory"
 version = "0.1.0"
 dependencies = [
+ "cairn-consolidator",
  "cairn-core",
  "cairn-invent",
+ "cairn-mechanism",
  "cairn-rkl",
+ "cairn-verifier",
 ]
 
 [[package]]
