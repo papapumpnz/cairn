@@ -10,8 +10,7 @@ centre or sufficient evidence of general learning.
 
 ## Current implementation status
 
-The repository has completed WP00 and WP01 and has a committed WP04 reference
-checkpoint. Implemented today:
+The repository has completed WP00, WP01, and WP04. Implemented today:
 
 - a pinned Rust workspace;
 - the repository operating law and architecture-layer manifest;
@@ -26,8 +25,9 @@ checkpoint. Implemented today:
   identity independent of producer/time metadata;
 - crash-safe append-only content-addressed storage with thread/process
   idempotency, corruption checks, and recovery.
-- a first bounded RKL type/range checker and alpha-canonical expression form,
-  with 100,000 generated-term checks at the current checkpoint.
+- a modality-neutral bounded RKL with expression and whole-theory admission,
+  exact range/collection checks, alpha-stable canonical hashes, schedule-cycle
+  rejection, and 100,000 generated-term checks.
 
 Entity/event induction, verification, ontology invention, continual memory,
 interactive world learning, planning, cross-domain integration, and knowledge
@@ -46,6 +46,7 @@ cargo test --locked --workspace --doc
 cargo run --locked -p cairn-check -- check .
 bash scripts/validate_schemas.sh
 bash scripts/wp00_acceptance.sh artifacts/wp00-acceptance
+bash scripts/wp04_acceptance.sh artifacts/wp04-acceptance
 ```
 
 Emit a runtime record with:
