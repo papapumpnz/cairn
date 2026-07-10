@@ -284,3 +284,14 @@ exactness with zero measured negative transfer.
 
 This exceeds the G2 thresholds on the frozen initial suite. G3-G6 remain open
 under ADR-0007. See docs/experiments/G2_CONTINUAL_IMPROVEMENT_PASS.md.
+
+## 11. ADR-0007 checkpoint: initial G3 pass
+
+Four conditional skills were induced from separate successful trace families;
+no composite trace or operator was supplied. On 100 held-out compositions the
+generic effect-chain planner completed 100/100 and emitted 400 explicit learned
+skill invocations. Removing any required skill caused the predicted no-plan
+failure in all 400 skill/task ablations.
+
+This exceeds the G3 threshold on the frozen initial suite. G4-G6 remain open.
+See docs/experiments/G3_UNSEEN_SKILL_COMPOSITION_PASS.md.

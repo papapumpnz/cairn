@@ -86,6 +86,10 @@ allow_unsafe_modules = []
 layer = "synthesis"
 allow_unsafe_modules = []
 
+[crates.cairn-skill]
+layer = "synthesis"
+allow_unsafe_modules = []
+
 [crates.cairn-verifier]
 layer = "memory"
 allow_unsafe_modules = []

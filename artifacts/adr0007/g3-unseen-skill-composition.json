@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "gate": "G3",
+  "date": "2026-07-11",
+  "status": "pass_on_frozen_initial_suite",
+  "general_intelligence_claim": false,
+  "independently_induced_skills": 4,
+  "source_traces_per_skill": 2,
+  "composite_demonstrations": 0,
+  "held_out_composite_tasks": 100,
+  "exact_completions": 100,
+  "exact_completion_percent": 100.0,
+  "explicit_skill_invocations": 400,
+  "ablation_cases": 400,
+  "predictable_ablation_failures": 400,
+  "open_gates": ["G4", "G5", "G6"]
+}

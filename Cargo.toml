@@ -20,6 +20,7 @@ members = [
   "crates/cairn-rkl",
   "crates/cairn-theory",
   "crates/cairn-runtime",
+  "crates/cairn-skill",
   "crates/cairn-verifier",
   "crates/cairn-world",
 ]

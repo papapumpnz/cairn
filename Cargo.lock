@@ -42,8 +42,10 @@ dependencies = [
 name = "cairn-bench"
 version = "0.1.0"
 dependencies = [
+ "cairn-core",
  "cairn-invent",
  "cairn-rkl",
+ "cairn-skill",
 ]
 
 [[package]]
@@ -182,6 +184,14 @@ name = "cairn-runtime"
 version = "0.1.0"
 dependencies = [
  "cairn-core",
+]
+
+[[package]]
+name = "cairn-skill"
+version = "0.1.0"
+dependencies = [
+ "cairn-core",
+ "cairn-rkl",
 ]
 
 [[package]]

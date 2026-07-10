@@ -5,6 +5,7 @@
 
 use cairn_invent::{BindingExample, InventionLimits, InventionProblem};
 use cairn_rkl::{Binder, ExecLimits, IntRange, RuntimeEnvironment, Type, Value, VarName};
+use cairn_skill::{Condition, Fluent, SuccessfulTrace};
 use std::collections::BTreeSet;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -46,6 +47,135 @@ pub fn g0_hidden_law_families() -> Vec<HiddenLawFamily> {
         count_family(),
         translation_family(),
     ]
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SkillCompositionSuite {
+    pub independent_skill_traces: Vec<Vec<SuccessfulTrace>>,
+    pub scenarios: Vec<(BTreeSet<Fluent>, Condition)>,
+}
+
+/// Frozen trace families and never-demonstrated compositions for G3.
+#[must_use]
+#[allow(clippy::too_many_lines)] // Keep the complete frozen curriculum visible in one generator.
+pub fn g3_unseen_skill_compositions() -> SkillCompositionSuite {
+    const KEY_VISIBLE: Fluent = Fluent(1);
+    const HAS_KEY: Fluent = Fluent(2);
+    const AT_START: Fluent = Fluent(3);
+    const AT_BARRIER: Fluent = Fluent(4);
+    const BARRIER_OPEN: Fluent = Fluent(5);
+    const AT_TARGET: Fluent = Fluent(6);
+    let steps = ["acquire", "navigate", "open", "reach"]
+        .map(|name| cairn_core::Hash32::digest(name.as_bytes()));
+    let trace = |episode: &str,
+                 required: &[Fluent],
+                 added: Fluent,
+                 removed: Option<Fluent>,
+                 noise: Fluent,
+                 step: cairn_core::Hash32| {
+        let mut before = required.iter().copied().collect::<BTreeSet<_>>();
+        before.insert(noise);
+        let mut after = before.clone();
+        if let Some(removed) = removed {
+            after.remove(&removed);
+        }
+        after.insert(added);
+        SuccessfulTrace {
+            episode: cairn_core::Hash32::digest(episode.as_bytes()),
+            before,
+            primitive_steps: vec![step],
+            after,
+        }
+    };
+    let independent_skill_traces = vec![
+        vec![
+            trace(
+                "acquire-a",
+                &[KEY_VISIBLE],
+                HAS_KEY,
+                None,
+                Fluent(101),
+                steps[0],
+            ),
+            trace(
+                "acquire-b",
+                &[KEY_VISIBLE],
+                HAS_KEY,
+                None,
+                Fluent(102),
+                steps[0],
+            ),
+        ],
+        vec![
+            trace(
+                "navigate-a",
+                &[AT_START],
+                AT_BARRIER,
+                Some(AT_START),
+                Fluent(103),
+                steps[1],
+            ),
+            trace(
+                "navigate-b",
+                &[AT_START],
+                AT_BARRIER,
+                Some(AT_START),
+                Fluent(104),
+                steps[1],
+            ),
+        ],
+        vec![
+            trace(
+                "open-a",
+                &[HAS_KEY, AT_BARRIER],
+                BARRIER_OPEN,
+                None,
+                Fluent(105),
+                steps[2],
+            ),
+            trace(
+                "open-b",
+                &[HAS_KEY, AT_BARRIER],
+                BARRIER_OPEN,
+                None,
+                Fluent(106),
+                steps[2],
+            ),
+        ],
+        vec![
+            trace(
+                "reach-a",
+                &[BARRIER_OPEN],
+                AT_TARGET,
+                None,
+                Fluent(107),
+                steps[3],
+            ),
+            trace(
+                "reach-b",
+                &[BARRIER_OPEN],
+                AT_TARGET,
+                None,
+                Fluent(108),
+                steps[3],
+            ),
+        ],
+    ];
+    let scenarios = (0_u16..100)
+        .map(|index| {
+            (
+                BTreeSet::from([KEY_VISIBLE, AT_START, Fluent(200 + index)]),
+                Condition {
+                    required: BTreeSet::from([AT_TARGET]),
+                    forbidden: BTreeSet::new(),
+                },
+            )
+        })
+        .collect();
+    SkillCompositionSuite {
+        independent_skill_traces,
+        scenarios,
+    }
 }
 
 fn limits(maximum_cost: u16, maximum_candidates: u64) -> InventionLimits {

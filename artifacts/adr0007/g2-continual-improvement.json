@@ -20,5 +20,5 @@
   "unrelated_tasks": 100,
   "negative_transfers": 0,
   "negative_transfer_percent": 0.0,
-  "open_gates": ["G3", "G4", "G5", "G6"]
+  "open_gates": ["G4", "G5", "G6"]
 }

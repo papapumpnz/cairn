@@ -115,6 +115,10 @@ versus one, demonstrations two versus one, and observed median CPU time
 272.6 ms versus 0.553 ms. A 100-task unrelated audit remained 100% exact with
 zero direct memory acceptance and zero negative transfer. See
 [G2_CONTINUAL_IMPROVEMENT_PASS.md](docs/experiments/G2_CONTINUAL_IMPROVEMENT_PASS.md).
+The regenerated G3 suite induces four conditional skills independently and
+composes them on 100 never-demonstrated tasks with 100% exact completion and
+400 explicit skill calls. All 400 skill/task ablations fail predictably. See
+[G3_UNSEEN_SKILL_COMPOSITION_PASS.md](docs/experiments/G3_UNSEEN_SKILL_COMPOSITION_PASS.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and proof DAGs, richer ontology invention, one shared orchestrating runtime,
