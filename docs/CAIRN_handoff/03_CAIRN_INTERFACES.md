@@ -35,6 +35,44 @@ pub struct ArtifactId(pub Hash32);
 
 All persistent IDs except arena-local integers are BLAKE3 hashes of canonical CBOR. Human task names are metadata and never semantic keys.
 
+## 1.1 Universal mechanism contract
+
+```rust
+pub struct Mechanism {
+    pub signature: Signature,
+    pub variables: Vec<TypedVariable>,
+    pub entity_definitions: Vec<DerivedDefinition>,
+    pub preconditions: Formula,
+    pub transition_rules: Vec<CausalRule>,
+    pub invariants: Vec<Formula>,
+    pub termination: TerminationCondition,
+    pub effects: EffectModel,
+    pub support: SupportGeometry,
+    pub proof: DerivationCertificate,
+}
+
+pub struct SupportGeometry {
+    pub observed_domains: Set<DomainClass>,
+    pub observed_cardinalities: RangeSet,
+    pub varied_variables: Set<VariableId>,
+    pub invariant_variables: Set<VariableId>,
+    pub unknown_variables: Set<VariableId>,
+    pub validated_compositions: Set<CompositionId>,
+    pub failed_conditions: Vec<Formula>,
+}
+```
+
+Every field is represented by canonical, typed RKL or content-addressed
+references to it. Static prediction uses an implicit transform intervention;
+interactive transitions, procedures, and planning options use explicit actions.
+No adapter operation enum is a `Mechanism`.
+
+Mechanisms move through `candidate`, `local`, `provisional`, `validated`,
+`persistent`, `compiled`, and `deprecated`. Promotion records held-out replay,
+independent-task count, rebinding dimensions, negative transfer, candidate work
+saved, samples/actions saved, and independent verification. Storage without
+measured invocation and ablation is not library learning.
+
 ## 2. Artifact envelope
 
 ```rust

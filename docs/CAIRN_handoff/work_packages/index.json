@@ -276,9 +276,9 @@
         "WP19"
       ],
       "owned_scope": "cairn-invent",
-      "objective": "Expand the task-local practical language from explanation cores while remaining grounded in RKL.",
-      "deliverables": "Definition proposals, totality proofs, separation/compression reports, task-local admission, and promotion candidates.",
-      "acceptance_criteria": "T4 gate: at least 70% of omitted-vocabulary cases solved, negative false positives below 2%, every accepted definition exact and total, median invention below 10 s, no task IDs or opaque native semantics."
+      "objective": "Invent predicates, constructors, latent variables, recursive structures, and higher-order mechanisms from hidden-law evidence without named target templates.",
+      "deliverables": "Five independent invention routes, definition proposals, totality proofs, compression reports, task-local admission, and promotion candidates.",
+      "acceptance_criteria": "G0: initial success below 20%, post-experience above 70%, no source changes, held-out transfer across cardinalities/layouts, exact verification, and negative false positives below 2%."
     },
     {
       "id": "WP21",
@@ -301,7 +301,8 @@
       "dependencies": [
         "WP02",
         "WP06",
-        "WP29"
+        "WP29",
+        "WP34"
       ],
       "owned_scope": "adapters/arc12 and cairn-arc12",
       "objective": "Losslessly translate official ARC records into generic learning problems without introducing ARC semantics into cognition crates.",
@@ -318,9 +319,9 @@
         "WP06"
       ],
       "owned_scope": "cairn-memory",
-      "objective": "Make experience measurably reduce future demonstrations or CPU search while correctness remains verifier-controlled.",
-      "deliverables": "Mechanism store, support geometry, task-local and later ontology-definition adapters, proposal retrieval, offline promotion, fixed-budget memory-off ablation, and deprecation workflow.",
-      "acceptance_criteria": "GLL-2 passes: at least 50% lower median search and fewer demonstrations on a frozen related test set, no exact-accuracy regression on related or unrelated sets, transferred modules rebind across values, sizes, counts, and layouts, and zero unverified accepts."
+      "objective": "Consolidate repeated proof graphs into reusable mechanisms and make experience measurably reduce later learning while correctness remains verifier-controlled.",
+      "deliverables": "Separate consolidator, proof-subgraph compression, anti-unification, mechanism store, support geometry, typed search prior, actual-use counters, offline promotion, fixed-budget ablation, and deprecation.",
+      "acceptance_criteria": "G1-G2: every counted module has necessary actual reuse; at least 4x fewer candidates, 2x lower median CPU, 30% fewer examples/actions, no accuracy loss, under 2% negative transfer, and zero unverified accepts."
     },
     {
       "id": "WP24",
@@ -454,9 +455,9 @@
         "WP29"
       ],
       "owned_scope": "cairn-bench`, `cairn-eval`, experiment schemas",
-      "objective": "Make all three learning loops and every architecture claim reproducible, quarantined, comparable, and attributable.",
-      "deliverables": "Generic problem runner, GLL-1 through GLL-6 suites, JSONL metrics, memory/action ablations, report validator, confidence intervals, preregistration templates, sealed adapter evaluation workflow, and dashboard data.",
-      "acceptance_criteria": "All report self-tests pass; frozen memory-on/off and active/random comparisons enforce equal budgets; one three-domain dummy suite reproduces byte-identical summaries; verifier is required for success; standard evidence packs are automatic; overhead is below 2%."
+      "objective": "Make invention, reuse, developmental scaling, and every architecture claim reproducible, quarantined, comparable, and attributable.",
+      "deliverables": "G0-G6 runners, learning curves, mechanism-use and necessity metrics, support expansion, memory/action ablations, negative-transfer and forgetting reports, validators, confidence intervals, and sealed evaluation.",
+      "acceptance_criteria": "All report self-tests pass; frozen comparisons enforce equal budgets; three-domain summaries are byte-identical; verifier is mandatory; solve rate without reuse and cost curves is rejected; harness overhead is below 2%."
     },
     {
       "id": "WP34",
@@ -467,7 +468,6 @@
         "WP19",
         "WP20",
         "WP21",
-        "WP22",
         "WP23",
         "WP24",
         "WP28",
@@ -476,9 +476,9 @@
         "WP33"
       ],
       "owned_scope": "top-level `cairn` binary, integration configuration, release profiles",
-      "objective": "Integrate one cognition runtime across static induction, continual learning, interactive causal learning, knowledge use, and three adapters.",
-      "deliverables": "Single-node and swarm runtimes, staged budgets, checkpoint/resume, three-loop metrics, failure taxonomy, profiling reports, three-domain evidence packs, and optional ARC adapter reports.",
-      "acceptance_criteria": "GLL-1 through GLL-6 pass or an honest narrowed-scope report is published; one core revision runs grid transformation, gridworld, and vector graphics; all predictions and plans are independently verified; resource targets are reported; release binary passes attestation."
+      "objective": "Integrate one Mechanism-IR cognition runtime with separate online, consolidation, verification, and curriculum authority across three non-ARC domains.",
+      "deliverables": "Online version-space runtime, consolidator, verifier boundary, curriculum runtime, staged budgets, checkpoint/resume, G0-G6 metrics, failure taxonomy, and three-domain evidence packs.",
+      "acceptance_criteria": "G0-G6 pass or an honest narrowed-scope report is published; one unchanged core runs static relational, interactive, and vector/sequence domains; all predictions/plans are verified; developmental cost falls; release passes attestation."
     }
   ]
 }

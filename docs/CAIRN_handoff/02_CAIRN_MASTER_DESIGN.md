@@ -8,25 +8,27 @@ Status: implementable research design; no benchmark result is claimed by this do
 
 ## 0. Executive decision
 
-CAIRN is a CPU-only, transformer-free architecture whose central inference object is a **causal rewrite theory**, not an action sequence, a fixed ARC program, or a vector prediction.
+CAIRN is a CPU-only, transformer-free self-compressing causal theory learner.
+Its central persistent object is a verified **Mechanism**: a parameterized,
+executable causal rewrite theory with explicit support geometry and derivation.
+Its principal output is an expanding tested language of mechanisms, not an
+answer, action sequence, fixed ARC program, or vector prediction.
 
 For a static induction problem, the system must explain demonstrations with a compact set of quantified graph-rewrite rules. It discovers the rules by aligning observed events, solving unknown predicates and constructors, executing the resulting theory, and using exact mismatches as counterexamples. Perception is induced jointly with the theory: an entity, motif, region, symbol, or track exists in the working model only because its definition helps explain observations. ARC grid pairs are one adapter representation of this generic problem.
 
 For an interactive task, the same theory language models state transitions, observations, action effects, hidden variables, and goals. The system maintains a posterior over possible world theories, chooses interventions by expected information gain plus goal value, and plans through the surviving theories.
 
-The core design is summarized by this loop:
+The core design is summarized by three nested loops:
 
 ```text
-observe
-build relational evidence
-propose event correspondences
-weave a minimal causal theory
-execute
-refute with exact counterexamples
-invent missing relations or constructors when needed
-compress and verify
-predict or plan
+online: observe -> maintain competing theories -> test/refute -> predict or plan
+consolidation: compare proof graphs -> anti-unify -> invent -> verify -> promote
+curriculum: locate weak support -> seek informative experience -> test composition
 ```
+
+The online learner does not decide what becomes permanent. A separate
+consolidator proposes reusable mechanisms; an independent verifier gates replay;
+and a curriculum runtime chooses experiences. See ADR-0007.
 
 The architecture deliberately avoids two failed patterns:
 
@@ -53,6 +55,16 @@ ARC is one quarantined adapter and benchmark. It may exercise exact induction,
 but it does not define core APIs, development order, or the general-learning
 claim. The six mandatory gates are specified in
 `08_GENERAL_LEARNER_REQUIREMENTS.md`.
+
+### 0.2 Developer substrate and learner invention
+
+Developers provide bounded computation—types, sets, relations, variables,
+arithmetic, graphs, observations, time, actions, conditionals, bounded
+iteration/recursion, and composition. Objects, containers, paths, symmetries,
+selectors, constructors, transition laws, symbol semantics, and conditional
+skills count as invented only when synthesized from that substrate and shown to
+compress independent theories, predict held-out situations, rebind, and reduce
+future learning cost under ablation.
 
 ## 1. Requirements
 

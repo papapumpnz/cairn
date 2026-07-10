@@ -276,3 +276,121 @@ fn learns_template_completion_and_directional_repetition() {
         FieldTransformation::TemplateRayRepeat { .. }
     ));
 }
+
+#[test]
+fn learns_bijective_categorical_law_across_demonstrations() {
+    let pairs = [
+        (field(1, 2, &[1, 2]), field(1, 2, &[5, 6])),
+        (field(1, 2, &[5, 3]), field(1, 2, &[1, 4])),
+        (field(1, 2, &[4, 6]), field(1, 2, &[3, 2])),
+    ];
+    assert!(matches!(
+        learns(&pairs).transformation,
+        FieldTransformation::CategoricalMap { .. }
+    ));
+}
+
+#[test]
+fn learns_periodic_repair_while_ignoring_sparse_noise() {
+    let input = field(4, 4, &[0, 2, 1, 0, 3, 4, 3, 4, 1, 0, 1, 2, 3, 4, 0, 4]);
+    let output = field(4, 4, &[1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 4, 3, 4]);
+    let theory = learns(&[(input, output)]);
+    assert!(
+        matches!(
+            theory.transformation,
+            FieldTransformation::RobustPeriodicRepair { noise: 0, .. }
+        ),
+        "{:?}",
+        theory.transformation
+    );
+}
+
+#[test]
+fn learns_to_select_the_only_panel_with_a_distinct_signature() {
+    let input = field(
+        2,
+        10,
+        &[8, 8, 0, 0, 8, 8, 0, 0, 2, 2, 8, 0, 0, 0, 8, 0, 0, 0, 2, 0],
+    );
+    let output = field(2, 2, &[2, 2, 2, 0]);
+    assert!(matches!(
+        learns(&[(input, output)]).transformation,
+        FieldTransformation::UniquePanel { background: 0 }
+    ));
+}
+
+#[test]
+fn learns_marker_spacing_and_broadcast_axis() {
+    let input = field(
+        4,
+        7,
+        &[
+            0, 0, 2, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ],
+    );
+    let output = field(
+        4,
+        7,
+        &[
+            0, 0, 2, 0, 8, 0, 2, 0, 0, 2, 0, 8, 0, 2, 0, 0, 2, 0, 8, 0, 2, 0, 0, 2, 0, 8, 0, 2,
+        ],
+    );
+    assert!(matches!(
+        learns(&[(input, output)]).transformation,
+        FieldTransformation::MarkerRayBroadcast { .. }
+    ));
+}
+
+#[test]
+fn learns_fourfold_rotational_completion() {
+    let input = field(
+        5,
+        5,
+        &[
+            0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ],
+    );
+    let output = field(
+        5,
+        5,
+        &[
+            0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ],
+    );
+    assert!(matches!(
+        learns(&[(input, output)]).transformation,
+        FieldTransformation::RotationalCompletion { .. }
+    ));
+}
+
+#[test]
+fn learns_tiling_with_diagonal_halo_effects() {
+    let input = field(1, 2, &[2, 0]);
+    let output = field(2, 4, &[2, 8, 2, 8, 2, 8, 2, 8]);
+    assert!(matches!(
+        learns(&[(input, output)]).transformation,
+        FieldTransformation::TileDiagonalHalo { halo: 8, .. }
+    ));
+}
+
+#[test]
+fn learns_symbol_bound_local_effects() {
+    let input = from_rows(&[
+        &[0, 0, 0, 0, 0, 0, 0],
+        &[0, 0, 0, 0, 0, 0, 0],
+        &[0, 1, 0, 0, 0, 2, 0],
+        &[0, 0, 0, 0, 0, 0, 0],
+        &[0, 0, 0, 0, 0, 0, 0],
+    ]);
+    let output = from_rows(&[
+        &[0, 0, 0, 0, 0, 0, 0],
+        &[0, 7, 0, 0, 4, 0, 4],
+        &[7, 1, 7, 0, 0, 2, 0],
+        &[0, 7, 0, 0, 4, 0, 4],
+        &[0, 0, 0, 0, 0, 0, 0],
+    ]);
+    assert!(matches!(
+        learns(&[(input, output)]).transformation,
+        FieldTransformation::SymbolNeighborhood { .. }
+    ));
+}

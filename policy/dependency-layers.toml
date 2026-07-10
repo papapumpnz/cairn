@@ -70,6 +70,26 @@ allow_unsafe_modules = []
 layer = "memory"
 allow_unsafe_modules = []
 
+[crates.cairn-mechanism]
+layer = "synthesis"
+allow_unsafe_modules = []
+
+[crates.cairn-consolidator]
+layer = "memory"
+allow_unsafe_modules = []
+
+[crates.cairn-curriculum]
+layer = "synthesis"
+allow_unsafe_modules = []
+
+[crates.cairn-runtime]
+layer = "synthesis"
+allow_unsafe_modules = []
+
+[crates.cairn-verifier]
+layer = "memory"
+allow_unsafe_modules = []
+
 [crates.cairn-world]
 layer = "synthesis"
 allow_unsafe_modules = []

@@ -1,12 +1,16 @@
 # CAIRN
 
-CAIRN (Causal Analogical Induction over Relational Networks) is a planned
-CPU-only, transformer-free general learning architecture for inducing executable
-causal rewrite theories, retaining verified mechanisms, learning unknown worlds,
-and composing skills from relational evidence.
+CAIRN (Causal Analogical Induction over Relational Networks) is a CPU-only,
+transformer-free self-compressing causal theory learner. Its principal output is
+an expanding, independently verified language of executable mechanisms; answers
+and plans are consequences of applying those mechanisms to current evidence.
 
 ARC is one quarantined evaluation adapter. It is not the project's developmental
 centre or sufficient evidence of general learning.
+
+ADR-0007 changes the implementation order: universal Mechanism IR, blind
+invention, consolidation and support-aware memory, interactive causal learning,
+and conditional skills precede further ARC-driven core development.
 
 ## Current implementation status
 
@@ -60,8 +64,10 @@ Implemented today:
   pinned under `datasets/`; its evaluation split is intentionally absent. The
   first frozen official batch produced honest unsupported/resource-limit
   results and no exact solves. After adding generic, synthetic-tested field
-  schemas, that same frozen batch reached 10/10 exact. A subsequent untouched
-  ten-task probe remained 0/10, so no broad ARC capability claim is made;
+  schemas, that same frozen batch reached 10/10 exact. During the next frozen
+  ten-task development pass, generic field schemas reached 7/10 (17/20
+  cumulative) before ARC expansion was frozen by ADR-0007. This is diagnostic
+  adapter progress, not mechanism-library learning or broad ARC capability;
 - domain-neutral task-local definition invention from input/output
   demonstrations. The frozen initial GLL-1 suite autonomously synthesized five
   omitted executable concepts and replayed 5,835 varied predictions exactly,

@@ -11,10 +11,15 @@ members = [
   "crates/cairn-field",
   "crates/cairn-invent",
   "crates/cairn-memory",
+  "crates/cairn-mechanism",
+  "crates/cairn-consolidator",
+  "crates/cairn-curriculum",
   "crates/cairn-proof",
   "crates/cairn-reg",
   "crates/cairn-rkl",
   "crates/cairn-theory",
+  "crates/cairn-runtime",
+  "crates/cairn-verifier",
   "crates/cairn-world",
 ]
 resolver = "2"

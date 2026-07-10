@@ -2,14 +2,14 @@
   "schema_version": "1.0",
   "bundle": "CAIRN_ARCHITECTURE_HANDOFF",
   "architecture": "CAIRN — Causal Analogical Induction over Relational Networks",
-  "generated_utc": "2026-07-10T07:55:03Z",
+  "generated_utc": "2026-07-10T22:50:50Z",
   "hash_algorithm": "SHA-256",
   "manifest_excludes": [
     "manifest.json",
     "manifest.sha256"
   ],
   "file_count": 62,
-  "total_bytes": 364217,
+  "total_bytes": 373122,
   "source_archives": [
     {
       "name": "mosasic_experiments.zip",
@@ -37,13 +37,13 @@
     },
     {
       "path": "02_CAIRN_MASTER_DESIGN.md",
-      "bytes": 68994,
-      "sha256": "4e28f915748e510125ee6d92f5a89e90a5e19eda7e139830657999dc637f8f60"
+      "bytes": 70204,
+      "sha256": "8e1c2aeed71935f8853324ad9ce179a8bbcaaa5a51c8525f206d25804caa5765"
     },
     {
       "path": "03_CAIRN_INTERFACES.md",
-      "bytes": 16802,
-      "sha256": "fcfef8fc293d42b121acef0c9f50b1879af2150f7667f67452e8e176422708ea"
+      "bytes": 18589,
+      "sha256": "c3f41bdf01b964397de664b066f7159b52f1a2382ed0042f7bfc9998dc6f66a6"
     },
     {
       "path": "04_CAIRN_EXPERIMENT_LADDER.md",
@@ -67,8 +67,8 @@
     },
     {
       "path": "08_GENERAL_LEARNER_REQUIREMENTS.md",
-      "bytes": 6148,
-      "sha256": "5e7698f4f8432c7293b09a2292fd5598fd91b91d74c4e9a5e7b2ca6cbd932b92"
+      "bytes": 9895,
+      "sha256": "805e883c374ac9c46c14c2a0d0b492494b73e6cce793acc4df98c1468da160e1"
     },
     {
       "path": "BIBLIOGRAPHY.md",
@@ -77,8 +77,8 @@
     },
     {
       "path": "HANDOFF_INDEX.md",
-      "bytes": 5373,
-      "sha256": "613fab4227f554f8da1c89cfc1ab5bd170bbba8325e2f31db7cfbfb35a2bf927"
+      "bytes": 6141,
+      "sha256": "5cb893ee5e93c347e68665ef28975b2a6d056df0d961601444817fefc0975d48"
     },
     {
       "path": "SOURCE_ARCHIVE_RECORD.md",
@@ -257,8 +257,8 @@
     },
     {
       "path": "work_packages/WP20.md",
-      "bytes": 2667,
-      "sha256": "dcd32086506154b8eea92c6214ac88be3548c4c9e30d40841135c05b69201001"
+      "bytes": 2816,
+      "sha256": "3c831f8d8a8a8ff8e2aed827a1c74b7f27a9ffd0726107b487f848c6967bd213"
     },
     {
       "path": "work_packages/WP21.md",
@@ -267,13 +267,13 @@
     },
     {
       "path": "work_packages/WP22.md",
-      "bytes": 2901,
-      "sha256": "9ac76bbf12dc801843a0d6bfdbc3ace1c924c1c30d0905df742263941cb6e2d3"
+      "bytes": 3056,
+      "sha256": "d05f01b97b18ac5b69a79b6d09c9ec4e7c7dcc92260df982cd81f35713d5bd1e"
     },
     {
       "path": "work_packages/WP23.md",
-      "bytes": 2899,
-      "sha256": "e04c3973e94de2cc538b0f815e675d06d06cdad209e5e4fedb412871d44fb5e7"
+      "bytes": 3139,
+      "sha256": "5357dfbdf334f187a9ec710a4aa9302c68aaa352f6d1a5f537f33e52154667e8"
     },
     {
       "path": "work_packages/WP24.md",
@@ -292,13 +292,13 @@
     },
     {
       "path": "work_packages/WP27.md",
-      "bytes": 2764,
-      "sha256": "46e5b29c443188806aceba086f3fc523f6d11785c9aa1f8807b7adc715eccdb6"
+      "bytes": 2962,
+      "sha256": "9558f1747be239ae5b3fca8473ea2ae5d084bd484fe19fda153e0ba8b6e13bf4"
     },
     {
       "path": "work_packages/WP28.md",
-      "bytes": 2830,
-      "sha256": "17df0f5beebbe479a3b16a4c577af78b2ea20349ad66d7497bf96ceb6ff53981"
+      "bytes": 3020,
+      "sha256": "7fd220a78dd8ce4d3e92b741273ecc69d0b5396f8c4fe77dceb843b059371daf"
     },
     {
       "path": "work_packages/WP29.md",
@@ -322,18 +322,18 @@
     },
     {
       "path": "work_packages/WP33.md",
-      "bytes": 2991,
-      "sha256": "e33480dfc34d94b705d5f77af7c86ae4e809be31efa3e11b1a8a698943d92c58"
+      "bytes": 3201,
+      "sha256": "fd57871356c733acdd8beaa94cc86da427b69e325c93bb87324968f2638611c1"
     },
     {
       "path": "work_packages/WP34.md",
-      "bytes": 3088,
-      "sha256": "1acd1b11b1363dd0022cc6ab9a2d1ed3477b978a6a8edbe6b9f761c3e8f95499"
+      "bytes": 3322,
+      "sha256": "6371e4c478edcd34501304007e53142ff8d01b7bf07fd4fe7e83062623f642e9"
     },
     {
       "path": "work_packages/index.json",
-      "bytes": 29487,
-      "sha256": "86b6c8d867809188b7207a424b731cb08034459bec7ab7a22c04efa0c4ac7df9"
+      "bytes": 29504,
+      "sha256": "6a41f93ae4a1fbf8fb44461332526c41e44c4cffc731b1448b98ad4a910689cd"
     }
   ]
 }

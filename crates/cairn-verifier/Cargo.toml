@@ -1,0 +1,15 @@
+[package]
+name = "cairn-verifier"
+description = "Independent mechanism promotion verification boundary for CAIRN"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+cairn-mechanism = { path = "../cairn-mechanism" }
+cairn-proof = { path = "../cairn-proof" }
+
+[lints]
+workspace = true

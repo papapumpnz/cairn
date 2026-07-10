@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "decision": "ADR-0007",
+  "date": "2026-07-11",
+  "claim": "architecture_boundary_only",
+  "general_intelligence_claim": false,
+  "arc_checkpoint": {
+    "corpus": "ARC-AGI-1 v1.0.2 training prefix",
+    "selected": 20,
+    "exact": 17,
+    "resource_limited": 3,
+    "adapter_semantics": "1.2.0"
+  },
+  "new_boundaries": [
+    "cairn-mechanism",
+    "cairn-consolidator",
+    "cairn-runtime",
+    "cairn-curriculum",
+    "cairn-verifier"
+  ],
+  "mechanical_learning_requirements": [
+    "target_absent_from_named_vocabulary",
+    "no_source_change",
+    "independent_experiences",
+    "explanatory_compression",
+    "held_out_verification",
+    "search_reduction",
+    "sample_reduction",
+    "no_false_acceptance_regression",
+    "actual_reuse",
+    "necessary_reuse"
+  ],
+  "tests": {
+    "workspace_all_targets_all_features": "pass",
+    "clippy_all_targets_all_features_warnings_denied": "pass",
+    "official_arc_first_ten": "10/10 exact",
+    "official_arc_first_twenty": "17/20 exact",
+    "handoff_manifest": "regenerated",
+    "schema_validation": "pass"
+  },
+  "open_decisive_gates": ["G0", "G1", "G2", "G3", "G4", "G5", "G6"]
+}

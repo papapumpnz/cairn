@@ -1,6 +1,6 @@
 # CAIRN general-learner requirements
 
-Status: normative redesign, adopted by ADR-0003
+Status: normative redesign, adopted by ADR-0003 and strengthened by ADR-0007
 
 ## 1. Honest claim boundary
 
@@ -64,6 +64,56 @@ action, action efficiency, repeated-episode improvement, option transfer, and
 recovery from incorrect world theories.
 
 ## 3. Mandatory continuation gates
+
+The decisive gates are now G0 through G6 below. Earlier GLL-1 through GLL-6
+reports remain component evidence and aliases for related concerns, but do not
+establish completion without mechanism provenance, measured reuse, support
+geometry, and learning-cost curves.
+
+### G0: omitted-mechanism invention
+
+The target mechanism is absent from named primitives and templates. Initial
+success must be below 20%; after experience it must exceed 70% without source
+changes. Invented definitions must be visible, executable, independently
+verified, and transfer to unseen cardinalities and layouts.
+
+### G1: actual reuse
+
+Every counted persistent mechanism records independent invocations, necessity
+under ablation, proof depth removed, candidate executions saved, and examples or
+actions saved. An unused stored function is not learned persistent knowledge.
+
+### G2: continual improvement
+
+On identical frozen tasks, semantic mechanism memory must produce at least 4x
+fewer candidate executions, 2x lower median CPU time, and 30% fewer
+demonstrations/interventions without accuracy loss; negative transfer stays
+below 2%.
+
+### G3: unseen composition
+
+Separately learned conditional skills must compose on undemonstrated composite
+problems with at least 80% exact completion. Plans explicitly invoke learned
+skills and ablating one produces the predicted failure.
+
+### G4: unknown causal worlds
+
+After bounded active exploration, next-state prediction reaches 95%, exploration
+uses at least 50% fewer actions than random, latent variables are intervention-
+testable, and mechanisms transfer after layout or action-law changes.
+
+### G5: cross-domain cognition
+
+One unchanged cognition runtime serves at least three adapters, contains no
+domain checks, and demonstrates measurable reuse of at least one learned
+mechanism across domains.
+
+### G6: developmental scaling
+
+Across an increasing curriculum, capability rises while marginal CPU,
+examples, and interventions per acquired mechanism fall. Reports include
+library reuse, program-depth compression, composition depth, support expansion,
+negative transfer, and catastrophic forgetting.
 
 ### GLL-1: omitted-concept invention
 

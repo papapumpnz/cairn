@@ -1,6 +1,10 @@
 # CAIRN work-package handoff index
 
-Each work package has one primary owner. Packages in the same lane may execute concurrently after dependencies are satisfied. One integration owner resolves public API conflicts. The dependency graph deliberately puts task, continual, and interactive learning on the path to integration; ARC is an adapter lane.
+Each work package has one primary owner. ADR-0007 supersedes the historical
+wave ordering below: trusted universal semantics are followed by blind
+invention, consolidation, interactive learning, skills, cross-domain adapters,
+and only then ARC adapters. The online runtime, consolidator, verifier, and
+curriculum runtime are separate authority boundaries.
 
 ## Dependency lanes
 
@@ -48,9 +52,9 @@ WP29 + WP26 -> WP31
 WP03 + WP04 + WP06 + WP23 + WP29 -> WP32
 
 Lane H: adapters, measurement, and integration
-WP02 + WP06 + WP29 -> WP22
 WP06 + WP23 + WP28 + WP29 -> WP33
-WP18 + WP19 + WP20 + WP21 + WP22 + WP23 + WP24 + WP28 + WP29 + WP32 + WP33 -> WP34
+WP18 + WP19 + WP20 + WP21 + WP23 + WP24 + WP28 + WP29 + WP32 + WP33 -> WP34
+WP34 + WP02 + WP06 + WP29 -> WP22
 ```
 
 ## Work package catalog
@@ -98,7 +102,22 @@ WP18 + WP19 + WP20 + WP21 + WP22 + WP23 + WP24 + WP28 + WP29 + WP32 + WP33 -> WP
 
 `work_packages/index.json` contains each package's dependencies, owned scope, objective, deliverables, and acceptance criteria. Coding agents should consume that file for orchestration and the corresponding Markdown package for the normative assignment.
 
-## Suggested parallel staffing
+## Revised developmental stages
+
+```text
+Stage 0: WP00-WP06 plus universal Mechanism IR and generic observation protocol
+Stage 1: WP09-WP21 blind invention on hidden-law suites
+Stage 2: WP23 consolidation, support geometry, promotion, and learned search prior
+Stage 3: WP26-WP27 interactive version spaces, interventions, goals, and latent state
+Stage 4: WP28 conditional skill induction and unseen composition
+Stage 5: WP29-WP32 cross-domain adapters and knowledge acquisition
+Stage 6: WP33 learning-curve evidence, WP34 shared runtime, then WP22 ARC adapters
+```
+
+An ARC result cannot move Stage 1-5 APIs. Existing ARC code remains quarantined
+and may run as a regression adapter while these stages are built.
+
+## Historical suggested parallel staffing
 
 Initial and foundation wave:
 

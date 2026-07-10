@@ -1,0 +1,200 @@
+{
+  "adapter_semantics": "1.2.0",
+  "rkl_semantics": "1.1.0",
+  "corpus": "datasets/arc-agi-1-v1.0.2/training",
+  "maximum_tasks": 20,
+  "maximum_cost": 9,
+  "maximum_candidates": 1000,
+  "selected_tasks": 20,
+  "parsed_tasks": 20,
+  "attempted_tasks": 17,
+  "exact_tasks": 17,
+  "incorrect_tasks": 0,
+  "unsupported_tasks": 0,
+  "no_theory_tasks": 0,
+  "resource_limited_tasks": 3,
+  "invalid_tasks": 0,
+  "execution_failures": 0,
+  "reports": [
+    {
+      "task": "007bbfb7",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 45,
+      "learned_expression": "TensorMask { background: 0 }",
+      "diagnostic": null
+    },
+    {
+      "task": "00d62c1b",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 736,
+      "learned_expression": "FillEnclosed { background: 0, fill: 4 }",
+      "diagnostic": null
+    },
+    {
+      "task": "017c7c7b",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 54,
+      "learned_expression": "PeriodicRows { added_rows: 3, from: 1, to: 2 }",
+      "diagnostic": null
+    },
+    {
+      "task": "025d127b",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 198,
+      "learned_expression": "BoundaryAnchoredShear { background: 0 }",
+      "diagnostic": null
+    },
+    {
+      "task": "045e512c",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 1323,
+      "learned_expression": "TemplateRayRepeat { background: 0 }",
+      "diagnostic": null
+    },
+    {
+      "task": "0520fde7",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 63,
+      "learned_expression": "PanelIntersection { background: 0, separator: 5, fill: 2, vertical_split: true }",
+      "diagnostic": null
+    },
+    {
+      "task": "05269061",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 147,
+      "learned_expression": "DiagonalPeriodic { background: 0 }",
+      "diagnostic": null
+    },
+    {
+      "task": "05f2a901",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 326,
+      "learned_expression": "Attract { background: 0, mover: 2, anchor: 8 }",
+      "diagnostic": null
+    },
+    {
+      "task": "06df4c85",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 1458,
+      "learned_expression": "PanelSpanCompletion { background: 0 }",
+      "diagnostic": null
+    },
+    {
+      "task": "08ed6ac7",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 162,
+      "learned_expression": "ComponentSizeRank { background: 0 }",
+      "diagnostic": null
+    },
+    {
+      "task": "09629e4f",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 1000 }))"
+    },
+    {
+      "task": "0962bcdd",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 1000 }))"
+    },
+    {
+      "task": "0a938d79",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 801,
+      "learned_expression": "MarkerRayBroadcast { background: 0 }",
+      "diagnostic": null
+    },
+    {
+      "task": "0b148d64",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 1106,
+      "learned_expression": "UniquePanel { background: 0 }",
+      "diagnostic": null
+    },
+    {
+      "task": "0ca9ddb6",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 243,
+      "learned_expression": "SymbolNeighborhood { background: 0, rules: [(1, 7, [(-1, 0), (0, -1), (0, 1), (1, 0)]), (2, 4, [(-1, -1), (-1, 1), (1, -1), (1, 1)])] }",
+      "diagnostic": null
+    },
+    {
+      "task": "0d3d703e",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 36,
+      "learned_expression": "CategoricalMap { mappings: [(1, 5), (2, 6), (3, 4), (4, 3), (5, 1), (6, 2), (8, 9), (9, 8)] }",
+      "diagnostic": null
+    },
+    {
+      "task": "0dfd9992",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 1323,
+      "learned_expression": "RobustPeriodicRepair { noise: 0 }",
+      "diagnostic": null
+    },
+    {
+      "task": "0e206a2e",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 1000 }))"
+    },
+    {
+      "task": "10fcaaa3",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 51,
+      "learned_expression": "TileDiagonalHalo { background: 0, halo: 8 }",
+      "diagnostic": null
+    },
+    {
+      "task": "11852cab",
+      "status": "exact",
+      "evaluated_tests": 1,
+      "exact_tests": 1,
+      "training_cells": 300,
+      "learned_expression": "RotationalCompletion { background: 0 }",
+      "diagnostic": null
+    }
+  ]
+}
