@@ -1,6 +1,6 @@
 # CAIRN experiment ladder
 
-The ladder is designed to test the central architecture before expensive full-suite runs. Thresholds are hypotheses to pre-register before implementation of each measured stage. A failed gate is recorded; it is not weakened retroactively.
+The ladder is designed to test the central architecture before expensive full-suite runs. Thresholds are hypotheses to pre-register before implementation of each measured stage. A failed gate is recorded; it is not weakened retroactively. Section order is reporting order, not permission to defer a learning loop: task learning, continual learning, and interactive causal learning begin as soon as their foundation contracts exist.
 
 ## 0. Dataset policy
 
@@ -19,6 +19,10 @@ The ladder is designed to test the central architecture before expensive full-su
 - ARC-AGI-3 hidden environments.
 
 No persistent module may be promoted from a quarantined task.
+
+Generated grid, gridworld, and vector-graphics suites each have frozen generator
+seeds, hidden structural combinations, and adapter-blind core metrics. ARC is one
+adapter evaluation and cannot be the source of a general-core requirement.
 
 ## 1. Measurement law
 
@@ -51,7 +55,53 @@ After a measured run:
 - no task-shaped patch before reporting;
 - all certificates replayed by the independent checker.
 
-## 2. Phase F: foundations
+## 2. General-learning continuation gates
+
+These gates are the claim boundary for CAIRN as a general learner. ARC scores do
+not substitute for any gate.
+
+### GLL-1 — omitted-concept invention
+
+Across multiple unrelated generated families, remove a required relation or
+constructor from the initial vocabulary. CAIRN must invent an executable
+definition and solve held-out changes in geometry, count, categorical values,
+and position. Passing one fixed family is insufficient.
+
+### GLL-2 — cross-task improvement
+
+On a frozen structurally related test set at the same CPU budget, compare memory
+enabled with memory disabled. Memory must reduce median search by at least 50%,
+reduce demonstrations required, preserve exact accuracy, and rebind transferred
+definitions across changed values, sizes, counts, and layouts. Unrelated tasks
+must not regress.
+
+### GLL-3 — skill composition
+
+Learn two mechanisms independently, then solve a held-out task requiring their
+composition without a newly coded composite operator. The certificate must show
+both learned mechanisms rebound and composed through ordinary theory machinery.
+
+### GLL-4 — unknown-world learning
+
+In procedurally generated environments with unseen transition laws, predict
+action outcomes, infer an executable goal, plan, improve action efficiency over
+episodes, and transfer a learned option to changed layouts.
+
+### GLL-5 — cross-domain representation
+
+Use the same evidence graph, theory representation, ontology invention,
+verifier, memory promotion, and planning machinery on grid transformations,
+interactive grid worlds, and vector graphics or diagram manipulation. Frontends
+may differ; cognition code and semantic contracts may not.
+
+### GLL-6 — ARC quarantine
+
+Every proposed core mechanism has an environment-neutral definition, an
+independent synthetic family, variation across claimed generalization axes, a
+non-ARC example where applicable, and an ablation. No core change is admitted
+solely because it solves an ARC task.
+
+## 3. Phase F: foundations
 
 ### F0 — CPU and transformer exclusion
 
@@ -63,7 +113,7 @@ Gate:
 - runtime attestation detects a planted loaded accelerator library;
 - clean workspace passes.
 
-### F1 — grid and relation kernels
+### F1 — finite-field and relation kernels
 
 Question: are low-level semantics correct and fast?
 
@@ -85,7 +135,7 @@ Gate:
 - bound checker rejects planted non-total definitions;
 - independent verifier agrees with optimized executor on at least one million random programs over small grids.
 
-## 3. Phase E: event induction
+## 4. Phase E: event induction
 
 ### E0 — correspondence family suite
 
@@ -130,7 +180,7 @@ Gate:
 
 Failure falsifies H2 or its implementation.
 
-## 4. Phase T: theory formation
+## 5. Phase T: theory formation
 
 ### T0 — contextual guard induction
 
@@ -201,7 +251,7 @@ Gate:
 
 Failure weakens H5.
 
-## 5. Phase A: ambiguity and generalization
+## 6. Phase A: ambiguity and generalization
 
 ### A0 — leave-one-demonstration-out prediction
 
@@ -230,10 +280,14 @@ Gate:
 
 - broad modules transfer at least 90%;
 - narrow modules explicitly retain uncertainty and do not overclaim unsupported dimensions;
-- disabling memory preserves correctness but increases cost;
+- disabling memory preserves correctness but increases median search by at least 2 times;
+- memory reduces demonstrations required on structurally related held-out tasks;
+- unrelated held-out tasks show no exact-accuracy regression;
 - memory causes zero unverified accepts.
 
-## 6. Phase R1: ARC-AGI-1 training
+This is the first GLL-2 measurement, not a late optimization after ARC.
+
+## 7. Phase R1: ARC-AGI-1 adapter evaluation
 
 ### R1.0 — frozen 60-task diagnostic
 
@@ -297,7 +351,7 @@ Kill criterion:
 
 - two consecutive general iterations add fewer than 10 tasks and do not shift taxonomy.
 
-## 7. Phase R2: ARC-AGI-2 training
+## 8. Phase R2: ARC-AGI-2 adapter evaluation
 
 ARC-AGI-2 training is used for mechanism development, not public evaluation tuning.
 
@@ -328,7 +382,7 @@ Continue toward evaluation only if:
 - held-out training folds show less than 5-point degradation;
 - no evidence of task-family lookup.
 
-## 8. Gated evaluations
+## 9. Gated ARC evaluations
 
 ### G1 — ARC-AGI-1 evaluation
 
@@ -362,7 +416,11 @@ These bars do not imply expected scores.
 
 Only after the public protocol, software, and resource budget are frozen. Official evaluation procedures take precedence.
 
-## 9. Phase I: interactive intelligence
+## 10. Phase I: interactive causal learning
+
+Phase I starts after F2 and the generic observation/action contracts; it does
+not wait for R1 or R2. Its controlled suites are co-developed with static theory
+induction so action-conditioned counterexamples shape the common representation.
 
 ### I0 — controlled transition induction
 
@@ -392,6 +450,10 @@ Gate:
 - option success at least 90% where initiation condition holds;
 - false initiation below 5%.
 
+Add a composition suite in which containment and ordering (or two unrelated
+mechanisms of equivalent difficulty) are learned separately and later required
+together. Passing this suite is GLL-3.
+
 ### I3 — ARC-AGI-3 public development environments
 
 Report completion, action efficiency, theory quality, and failure taxonomy. No environment-specific source code is allowed.
@@ -402,7 +464,25 @@ Continuation gate:
 - complete at least half with one general configuration;
 - action count improves across repeated levels as theories and options are learned online.
 
-## 10. Swarm experiments
+## 11. Cross-domain experiment
+
+### D0 — shared-core three-domain run
+
+Run frozen grid-transformation, interactive-gridworld, and vector-graphics
+families through their adapters and one cognition runtime.
+
+Gate:
+
+- all domains emit the same generic evidence, theory, verification, memory, and planning artifact schemas;
+- omitted-concept invention succeeds in at least two unrelated families per domain;
+- one promoted mechanism transfers across two adapters where its semantics apply;
+- removing any adapter leaves core crates byte-for-byte unchanged;
+- domain-specific labels or task identifiers are absent from core semantic hashes.
+
+Passing D0 is GLL-5. A domain-specific frontend success without common reasoning
+does not count.
+
+## 12. Swarm experiments
 
 ### S0 — local speed scaling
 
@@ -433,7 +513,7 @@ Gate:
 - node loss recovers without semantic corruption;
 - network overhead below 15% on a four-node task-sharded workload.
 
-## 11. Required ablations
+## 13. Required ablations
 
 Every major benchmark report includes, where applicable:
 
@@ -449,11 +529,28 @@ uniform scheduler versus learned scheduler
 single process versus swarm
 MDL only versus full falsification ranking
 pass@1 versus pass@2
+same frozen set and CPU budget with memory enabled versus disabled
+active intervention selection versus random probing
+learned skill composition versus a newly coded composite (which is forbidden from production)
+shared cognition runtime versus any domain-specific reasoning branch
 ```
 
-## 12. Final pass definition
+## 14. Final pass and claim definition
 
-Static pass:
+General-learning pass:
+
+```text
+GLL-1 through GLL-6 all pass on frozen evidence packs
+all three learning loops show positive held-out results
+the same cognition runtime operates across three required domains
+every accepted prediction or plan remains verifier-controlled
+```
+
+Until then, CAIRN is described as a hypothesis for a learning architecture. A
+successful component may be described precisely; the system may not be called a
+generally learning AI.
+
+ARC adapter pass:
 
 ```text
 at least 85% exact pass@2 on a clean ARC-AGI-2 private evaluation
@@ -463,7 +560,7 @@ reproducible resource report
 open, replayable method under the applicable competition rules
 ```
 
-Interactive pass:
+Interactive benchmark pass:
 
 ```text
 complete the official environment set

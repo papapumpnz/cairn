@@ -1,6 +1,6 @@
-# CAIRN sub-agent handoff index
+# CAIRN work-package handoff index
 
-Each work package is intended for one primary coding sub-agent. Packages in the same lane may execute concurrently after dependencies are satisfied. One integration agent owns public API conflict resolution.
+Each work package has one primary owner. Packages in the same lane may execute concurrently after dependencies are satisfied. One integration owner resolves public API conflicts. The dependency graph deliberately puts task, continual, and interactive learning on the path to integration; ARC is an adapter lane.
 
 ## Dependency lanes
 
@@ -30,26 +30,26 @@ WP06 + WP18 -> WP19
 WP12 + WP13 + WP19 -> WP20
 WP18 + WP19 + WP20 -> WP21
 
-Lane D: ARC and measurement
-WP02 + WP06 -> WP22
-WP06 + WP21 + WP22 -> WP33
-WP22 + WP33 -> WP34
-
-Lane E: memory and swarm
-WP01 + WP06 + WP20 -> WP23
+Lane D: continual learning and swarm
+WP01 + WP04 + WP06 -> WP23
 WP01 + WP06 + WP18 -> WP24
 WP24 -> WP25
 
 Lane F: interactive intelligence
-WP03 + WP07 + WP22 -> WP26
-WP19 + WP26 -> WP27
-WP18 + WP27 -> WP28
+WP03 + WP04 -> WP29
+WP03 + WP07 + WP29 -> WP26
+WP05 + WP13 + WP26 -> WP27
+WP05 + WP27 -> WP28
 
-Lane G: modality extension
-WP03 + WP04 + WP06 -> WP29
+Lane G: modalities and knowledge
 WP29 -> WP30
 WP29 + WP26 -> WP31
-WP29 + WP23 -> WP32
+WP03 + WP04 + WP06 + WP23 + WP29 -> WP32
+
+Lane H: adapters, measurement, and integration
+WP02 + WP06 + WP29 -> WP22
+WP06 + WP23 + WP28 + WP29 -> WP33
+WP18 + WP19 + WP20 + WP21 + WP22 + WP23 + WP24 + WP28 + WP29 + WP32 + WP33 -> WP34
 ```
 
 ## Work package catalog
@@ -78,19 +78,19 @@ WP29 + WP23 -> WP32
 | WP19 | CEGIS | Exact refutation and failure-derived constraints |
 | WP20 | Invention | Dynamic predicates, roles, constructors, recursion |
 | WP21 | Arbitration | Falsification, ranking, ambiguity, pass@2 |
-| WP22 | ARC static | ARC-AGI-1/2 frontend and task runner |
-| WP23 | Learning | Mechanism memory, promotion, deprecation |
+| WP22 | ARC adapter | Quarantined ARC-AGI-1/2 translation and task runner |
+| WP23 | Continual learning | Measured mechanism transfer, promotion, deprecation |
 | WP24 | Parallel systems | Local multi-process cognitive swarm |
 | WP25 | Distributed systems | Networked swarm protocol and integrity |
-| WP26 | Temporal perception | Interactive states, tracks, event history, ARC-AGI-3 adapter |
+| WP26 | Temporal perception | Generic interactive evidence, tracks, and adapter SDK |
 | WP27 | Causal learning | World theory, hidden state, intervention design, goal hypotheses |
-| WP28 | Planning | A*, AO*, bounded MCTS, option induction |
-| WP29 | Extensibility | Modality frontend SDK and graphics frontend |
+| WP28 | Planning and composition | A*, AO*, bounded MCTS, composable skill induction |
+| WP29 | Cross-domain boundary | Early modality SDK and vector-graphics frontend |
 | WP30 | Vision | CPU vision frontend spike |
 | WP31 | Audio/video | Temporal media frontend spikes |
-| WP32 | Text/knowledge | Transformer-free parser and knowledge-graph frontend spike |
-| WP33 | Measurement | Benchmark harness, evidence packs, gated evaluation |
-| WP34 | Integration | End-to-end solver, profiling, release configuration |
+| WP32 | Knowledge learning | Proof-backed claim store and transformer-free text frontend |
+| WP33 | Measurement | Three-loop benchmark harness and GLL evidence packs |
+| WP34 | Integration | Three-domain general-learning runtime and release configuration |
 
 
 ## Machine-readable coordination
@@ -99,7 +99,7 @@ WP29 + WP23 -> WP32
 
 ## Suggested parallel staffing
 
-Initial wave:
+Initial and foundation wave:
 
 ```text
 Agent 1: WP00
@@ -107,43 +107,43 @@ Agent 2: WP01
 Agent 3: WP02
 Agent 4: WP04
 Agent 5: synthetic-suite generator for WP09/WP10 tests
-Agent 6: benchmark and CI scaffolding for WP33 without dataset access
+Agent 6: generic benchmark and GLL evidence-pack scaffolding without dataset access
 ```
 
-Second wave after public interfaces freeze:
+Second wave after foundation interfaces freeze:
 
 ```text
-WP03, WP05, WP07, WP13, WP22
+WP03, WP05, WP07, WP13, WP23, WP29
 ```
 
 Third wave:
 
 ```text
-WP06, WP08, WP09, WP12, WP24
+WP06, WP08, WP09, WP12, WP24, WP26
 ```
 
 Fourth wave:
 
 ```text
-WP10, WP11, WP14, WP15, WP17
+WP10, WP11, WP14, WP15, WP17, WP27
 ```
 
 Fifth wave:
 
 ```text
-WP16, WP18, WP19, WP20
+WP16, WP18, WP19, WP20, WP28
 ```
 
 Sixth wave:
 
 ```text
-WP21, WP23, WP26, WP33, WP34
+WP21, WP22, WP30, WP31, WP32, WP33
 ```
 
-Optional extension wave only after static core gates:
+Integration wave:
 
 ```text
-WP25, WP27, WP28, WP29, WP30, WP31, WP32
+WP25, WP34
 ```
 
 ## Handoff rule

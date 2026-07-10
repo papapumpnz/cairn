@@ -19,28 +19,50 @@
     "cost"
   ],
   "properties": {
-    "schema_version": { "const": "1.0" },
-    "semantics_version": { "type": "string", "minLength": 1 },
-    "theory_id": { "$ref": "#/$defs/hash" },
-    "observation_signature": { "type": "string", "minLength": 1 },
+    "schema_version": {
+      "const": "1.0"
+    },
+    "semantics_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "theory_id": {
+      "$ref": "#/$defs/hash"
+    },
+    "observation_signature": {
+      "type": "string",
+      "minLength": 1
+    },
     "roles": {
       "type": "array",
-      "items": { "$ref": "#/$defs/role" }
+      "items": {
+        "$ref": "#/$defs/role"
+      }
     },
     "definitions": {
       "type": "array",
-      "items": { "$ref": "#/$defs/definition" }
+      "items": {
+        "$ref": "#/$defs/definition"
+      }
     },
     "rules": {
       "type": "array",
-      "items": { "$ref": "#/$defs/rule" },
+      "items": {
+        "$ref": "#/$defs/rule"
+      },
       "minItems": 1
     },
-    "schedule": { "$ref": "#/$defs/schedule" },
-    "renderer": { "$ref": "#/$defs/renderer" },
+    "schedule": {
+      "$ref": "#/$defs/schedule"
+    },
+    "renderer": {
+      "$ref": "#/$defs/renderer"
+    },
     "proof_roots": {
       "type": "array",
-      "items": { "$ref": "#/$defs/hash" },
+      "items": {
+        "$ref": "#/$defs/hash"
+      },
       "minItems": 1,
       "uniqueItems": true
     },
@@ -60,8 +82,12 @@
       },
       "uniqueItems": true
     },
-    "cost": { "$ref": "#/$defs/cost" },
-    "falsification": { "$ref": "#/$defs/falsification" }
+    "cost": {
+      "$ref": "#/$defs/cost"
+    },
+    "falsification": {
+      "$ref": "#/$defs/falsification"
+    }
   },
   "$defs": {
     "hash": {
@@ -71,7 +97,11 @@
     "expr": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["op", "type", "args"],
+      "required": [
+        "op",
+        "type",
+        "args"
+      ],
       "properties": {
         "op": {
           "type": "string",
@@ -81,14 +111,14 @@
           "enum": [
             "Bool",
             "Int",
-            "Color",
+            "Atom",
             "Coord",
             "Vector",
             "CellSet",
             "Entity",
             "EntitySet",
             "Relation",
-            "Grid",
+            "FiniteField",
             "Canvas",
             "Transform",
             "Direction",
@@ -98,16 +128,25 @@
             "Unit"
           ]
         },
-        "args": { "type": "array" },
+        "args": {
+          "type": "array"
+        },
         "bounds": {
           "type": "object",
           "additionalProperties": {
-            "type": ["integer", "number", "string", "boolean"]
+            "type": [
+              "integer",
+              "number",
+              "string",
+              "boolean"
+            ]
           }
         },
         "provenance": {
           "type": "array",
-          "items": { "$ref": "#/$defs/hash" },
+          "items": {
+            "$ref": "#/$defs/hash"
+          },
           "uniqueItems": true
         }
       }
@@ -115,21 +154,38 @@
     "role": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "type", "binder"],
+      "required": [
+        "name",
+        "type",
+        "binder"
+      ],
       "properties": {
         "name": {
           "type": "string",
           "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
         },
-        "type": { "type": "string" },
-        "binder": { "$ref": "#/$defs/expr" },
-        "required": { "type": "boolean", "default": true }
+        "type": {
+          "type": "string"
+        },
+        "binder": {
+          "$ref": "#/$defs/expr"
+        },
+        "required": {
+          "type": "boolean",
+          "default": true
+        }
       }
     },
     "definition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "parameters", "return_type", "body", "admission"],
+      "required": [
+        "name",
+        "parameters",
+        "return_type",
+        "body",
+        "admission"
+      ],
       "properties": {
         "name": {
           "type": "string",
@@ -140,17 +196,33 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["name", "type"],
+            "required": [
+              "name",
+              "type"
+            ],
             "properties": {
-              "name": { "type": "string" },
-              "type": { "type": "string" }
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
             }
           }
         },
-        "return_type": { "type": "string" },
-        "body": { "$ref": "#/$defs/expr" },
-        "recursive": { "type": "boolean", "default": false },
-        "progress_measure": { "$ref": "#/$defs/expr" },
+        "return_type": {
+          "type": "string"
+        },
+        "body": {
+          "$ref": "#/$defs/expr"
+        },
+        "recursive": {
+          "type": "boolean",
+          "default": false
+        },
+        "progress_measure": {
+          "$ref": "#/$defs/expr"
+        },
         "admission": {
           "type": "object",
           "additionalProperties": false,
@@ -164,14 +236,31 @@
           ],
           "properties": {
             "scope": {
-              "enum": ["task-local", "quarantined-candidate", "promoted"]
+              "enum": [
+                "task-local",
+                "quarantined-candidate",
+                "promoted"
+              ]
             },
-            "exact_on_evidence": { "const": true },
-            "total": { "const": true },
-            "grounded": { "const": true },
-            "core_reduction": { "type": "integer", "minimum": 1 },
-            "description_gain": { "type": "number" },
-            "support_geometry_artifact": { "$ref": "#/$defs/hash" }
+            "exact_on_evidence": {
+              "const": true
+            },
+            "total": {
+              "const": true
+            },
+            "grounded": {
+              "const": true
+            },
+            "core_reduction": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description_gain": {
+              "type": "number"
+            },
+            "support_geometry_artifact": {
+              "$ref": "#/$defs/hash"
+            }
           }
         }
       }
@@ -179,7 +268,13 @@
     "rule": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["rule_id", "quantifiers", "guard", "effects", "priority"],
+      "required": [
+        "rule_id",
+        "quantifiers",
+        "guard",
+        "effects",
+        "priority"
+      ],
       "properties": {
         "rule_id": {
           "type": "string",
@@ -190,23 +285,39 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["var", "domain"],
+            "required": [
+              "var",
+              "domain"
+            ],
             "properties": {
-              "var": { "type": "string" },
-              "domain": { "$ref": "#/$defs/expr" }
+              "var": {
+                "type": "string"
+              },
+              "domain": {
+                "$ref": "#/$defs/expr"
+              }
             }
           }
         },
-        "guard": { "$ref": "#/$defs/expr" },
+        "guard": {
+          "$ref": "#/$defs/expr"
+        },
         "effects": {
           "type": "array",
-          "items": { "$ref": "#/$defs/expr" },
+          "items": {
+            "$ref": "#/$defs/expr"
+          },
           "minItems": 1
         },
-        "priority": { "type": "integer", "minimum": 0 },
+        "priority": {
+          "type": "integer",
+          "minimum": 0
+        },
         "dependencies": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "uniqueItems": true
         }
       }
@@ -216,31 +327,56 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind"],
-          "properties": { "kind": { "const": "parallel" } }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["kind", "order"],
+          "required": [
+            "kind"
+          ],
           "properties": {
-            "kind": { "const": "sequence" },
-            "order": { "type": "array", "items": { "type": "string" } }
+            "kind": {
+              "const": "parallel"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "edges"],
+          "required": [
+            "kind",
+            "order"
+          ],
           "properties": {
-            "kind": { "const": "dependency-dag" },
+            "kind": {
+              "const": "sequence"
+            },
+            "order": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "edges"
+          ],
+          "properties": {
+            "kind": {
+              "const": "dependency-dag"
+            },
             "edges": {
               "type": "array",
               "items": {
                 "type": "array",
                 "prefixItems": [
-                  { "type": "string" },
-                  { "type": "string" }
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  }
                 ],
                 "minItems": 2,
                 "maxItems": 2
@@ -251,21 +387,48 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "order"],
+          "required": [
+            "kind",
+            "order"
+          ],
           "properties": {
-            "kind": { "const": "decision-list" },
-            "order": { "type": "array", "items": { "type": "string" } }
+            "kind": {
+              "const": "decision-list"
+            },
+            "order": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "rule_ids", "max_steps", "progress_measure"],
+          "required": [
+            "kind",
+            "rule_ids",
+            "max_steps",
+            "progress_measure"
+          ],
           "properties": {
-            "kind": { "const": "bounded-fixpoint" },
-            "rule_ids": { "type": "array", "items": { "type": "string" } },
-            "max_steps": { "type": "integer", "minimum": 1 },
-            "progress_measure": { "$ref": "#/$defs/expr" }
+            "kind": {
+              "const": "bounded-fixpoint"
+            },
+            "rule_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "max_steps": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "progress_measure": {
+              "$ref": "#/$defs/expr"
+            }
           }
         }
       ]
@@ -273,15 +436,36 @@
     "renderer": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["canvas", "paint_order", "conflict_policy", "crop"],
+      "required": [
+        "canvas",
+        "paint_order",
+        "conflict_policy",
+        "crop"
+      ],
       "properties": {
-        "canvas": { "$ref": "#/$defs/expr" },
-        "paint_order": { "type": "array", "items": { "type": "string" } },
-        "conflict_policy": {
-          "enum": ["reject", "same-color-idempotent", "priority", "last-write"]
+        "canvas": {
+          "$ref": "#/$defs/expr"
         },
-        "crop": { "$ref": "#/$defs/expr" },
-        "background": { "$ref": "#/$defs/expr" }
+        "paint_order": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "conflict_policy": {
+          "enum": [
+            "reject",
+            "same-color-idempotent",
+            "priority",
+            "last-write"
+          ]
+        },
+        "crop": {
+          "$ref": "#/$defs/expr"
+        },
+        "background": {
+          "$ref": "#/$defs/expr"
+        }
       }
     },
     "cost": {
@@ -294,21 +478,53 @@
         "execution_cost"
       ],
       "properties": {
-        "description_bits": { "type": "number", "minimum": 0 },
-        "unjustified_constants": { "type": "integer", "minimum": 0 },
-        "unexercised_axes": { "type": "integer", "minimum": 0 },
-        "execution_cost": { "type": "integer", "minimum": 0 }
+        "description_bits": {
+          "type": "number",
+          "minimum": 0
+        },
+        "unjustified_constants": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unexercised_axes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "execution_cost": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "falsification": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "leave_one_out": { "type": "number", "minimum": 0, "maximum": 1 },
-        "equivariance_rederivation": { "type": "number", "minimum": 0, "maximum": 1 },
-        "irrelevance_stability": { "type": "number", "minimum": 0, "maximum": 1 },
-        "decomposition_consistency": { "type": "number", "minimum": 0, "maximum": 1 },
-        "counterfactual_discrimination": { "type": "number", "minimum": 0, "maximum": 1 }
+        "leave_one_out": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "equivariance_rederivation": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "irrelevance_stability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "decomposition_consistency": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "counterfactual_discrimination": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
       }
     }
   }

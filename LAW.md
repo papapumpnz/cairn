@@ -37,6 +37,20 @@ Every performance claim preserves its committed configuration, code revision,
 machine record, raw cases, replay status, comparable baseline, and negative
 results.
 
+## Learning law
+
+Task learning, continual learning, and interactive causal learning are
+mandatory co-developed loops. ARC is one adapter and cannot define core
+semantics or the project schedule.
+
+A general-learning claim requires omitted-concept invention, fixed-budget
+memory-on versus memory-off improvement, composition of separately learned
+skills, unknown-world learning, and one cognition runtime across at least three
+domains. Until those gates pass, describe implemented results narrowly.
+
+Persistent memory proposes mechanisms only. Knowledge claims retain source,
+time, confidence, contradictions, and provenance. Neither memory nor knowledge
+retrieval may become an acceptance oracle.
+
 The normative detail remains in [AGENTS.md](AGENTS.md) and the versioned
 architecture handoff under `docs/CAIRN_handoff/`.
-

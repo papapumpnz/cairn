@@ -5,6 +5,25 @@ for schema in schemas/*.json docs/CAIRN_handoff/schemas/*.json; do
   jq -e 'type == "object" and has("$schema")' "$schema" >/dev/null
 done
 
+schema_python=""
+for candidate in python3 python3.11 /usr/bin/python3.11; do
+  if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c 'import jsonschema' >/dev/null 2>&1; then
+    schema_python="$candidate"
+    break
+  fi
+done
+if [[ -n "$schema_python" ]]; then
+  "$schema_python" - <<'PY'
+import json
+from pathlib import Path
+from jsonschema import Draft202012Validator
+
+for pattern in ("schemas/*.json", "docs/CAIRN_handoff/schemas/*.json"):
+    for path in sorted(Path().glob(pattern)):
+        Draft202012Validator.check_schema(json.loads(path.read_text()))
+PY
+fi
+
 attestation="$(mktemp)"
 check_report="$(mktemp)"
 trap 'rm -f "$attestation" "$check_report"' EXIT

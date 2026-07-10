@@ -61,35 +61,51 @@ Required invariants:
 - budget records actual consumed work, not requested work;
 - verifier artifacts identify the exact input and executable semantics version.
 
-## 3. Observations and grids
+## 3. Learning problems and observations
 
 ```rust
-pub struct Grid {
-    pub width: u16,
-    pub height: u16,
-    pub cells: PackedCells,
+pub struct Observation {
+    pub id: ObservationId,
+    pub modality: ModalityId,
+    pub logical_time: Option<u64>,
+    pub source: SourceReference,
+    pub payload: CanonicalValue,
+    pub certainty: ObservationCertainty,
 }
 
-pub struct GridPair {
-    pub input: Grid,
-    pub output: Grid,
+pub struct Demonstration {
+    pub context: Vec<ObservationId>,
+    pub intervention: Option<Intervention>,
+    pub outcome: Vec<ObservationId>,
 }
 
-pub struct StaticTask {
+pub struct LearningProblem {
     pub id: TaskId,
-    pub train: Vec<GridPair>,
-    pub test: Vec<Grid>,
-    pub attempts: u8,
+    pub observations: Vec<Observation>,
+    pub demonstrations: Vec<Demonstration>,
+    pub requested_predictions: Vec<PredictionRequest>,
+    pub action_space: Option<ActionSpace>,
+    pub attempt_limit: u8,
 }
 ```
 
-Grid constraints for ARC frontends:
+`Observation.payload` is schema-dispatched by `modality`; core cognition consumes
+normalized evidence and source references rather than branching on a frontend.
+Frontends may attach exact or uncertain observations, but uncertainty must remain
+explicit through derivation and verification.
 
-- colors normalized to integer channel values without assigning semantics;
+An ARC adapter may define `Grid`, `GridPair`, and `ArcTask` in `cairn-arc12`.
+Those types are not core contracts. Its normalization rules are:
+
+- categorical cell values normalized to integer atoms without assigning semantics;
 - exact dimensions preserved;
 - serialization row-major and endian-independent;
 - empty dimensions rejected;
 - parser verifies all rows have equal width.
+
+Gridworld, vector-graphics, audio-event, video-event, and text/knowledge adapters
+use the same `LearningProblem` boundary. Adapter metadata cannot affect theory
+semantics unless represented as evidence with provenance.
 
 ## 4. Evidence graph
 
@@ -98,7 +114,7 @@ pub enum NodeKind {
     Cell,
     Coordinate,
     Scalar,
-    Color,
+    Atom,
     CellSet,
     Entity,
     EntitySet,
@@ -129,7 +145,7 @@ pub struct RelationRecord {
 }
 ```
 
-`EvidenceWeight` is exact for deterministic facts and log-likelihood-like for uncertain frontends. Static ARC core facts use exact weights only.
+`EvidenceWeight` is exact for deterministic facts and log-likelihood-like for uncertain frontends. Exact adapter facts use exact weights only.
 
 ## 5. Derivations
 
@@ -259,7 +275,7 @@ Alignment score is a structured vector. It must retain relation-preservation, ca
 pub enum Expr {
     Bool(bool),
     Int(i32),
-    Color(u16),
+    Atom(u16),
     Coord(Coord2),
     Var(VarId),
     Tuple(Vec<Expr>),
@@ -345,7 +361,7 @@ pub struct TheoryCandidate {
     pub exact_replay: Option<TrainingReplayCertificate>,
     pub falsification: Option<FalsificationReport>,
     pub cost: TheoryCost,
-    pub predicted_outputs: Option<Vec<Grid>>,
+    pub predicted_outputs: Option<Vec<PredictedObservation>>,
 }
 
 pub struct TheoryBelief {
@@ -457,10 +473,11 @@ Universal equalities require algebraic proof. Task-local observational equality 
 
 ```rust
 pub trait TheoryExecutor {
-    fn execute_static(
+    fn execute_prediction(
         &self,
         theory: &Theory,
-        input: &Grid,
+        problem: &LearningProblem,
+        request: &PredictionRequest,
         limits: ExecLimits,
     ) -> Result<ExecutionTrace, ExecError>;
 
@@ -474,21 +491,21 @@ pub trait TheoryExecutor {
 }
 
 pub trait IndependentVerifier {
-    fn verify_training(
+    fn verify_demonstrations(
         &self,
-        task: &StaticTask,
+        problem: &LearningProblem,
         theory: &Theory,
     ) -> Result<TrainingReplayCertificate, VerifyError>;
 
-    fn verify_answer(
+    fn verify_prediction(
         &self,
-        task: &StaticTask,
-        certificate: &StaticAnswerCertificate,
+        problem: &LearningProblem,
+        certificate: &PredictionCertificate,
     ) -> Result<(), VerifyError>;
 }
 ```
 
-The verifier must use a separately implemented reference execution path for critical effects and renderer semantics.
+The verifier must use a separately implemented reference execution path for critical effects and observation-renderer semantics. An adapter may additionally verify lossless lowering and domain-specific output encoding; it may not replace core replay.
 
 ## 17. Swarm job interface
 
@@ -529,6 +546,10 @@ pub trait MechanismStore {
 
 Promotion is a separate executable and evidence pipeline. The online solver may create task-local definitions but cannot mark them persistent by itself.
 
+Memory-enabled and memory-disabled runs use the same frozen problems, verifier,
+CPU budget, and answer policy. The store is successful only when it improves
+future sample or search efficiency without reducing exact accuracy.
+
 ## 19. Planner interfaces
 
 ```rust
@@ -558,7 +579,37 @@ pub trait Planner {
 }
 ```
 
-## 20. Metrics contract
+## 20. Proof-backed knowledge
+
+```rust
+pub struct KnowledgeClaim {
+    pub subject: EntityRef,
+    pub predicate: RelationId,
+    pub object: CanonicalValue,
+    pub valid_time: TemporalExtent,
+    pub confidence: EvidenceWeight,
+    pub sources: Vec<SourceReference>,
+    pub derivation: DerivationId,
+}
+
+pub struct KnowledgeConflict {
+    pub claims: Vec<KnowledgeClaimId>,
+    pub conflict_kind: ConflictKind,
+    pub resolution: Option<ResolutionProposal>,
+}
+
+pub trait KnowledgeStore {
+    fn resolve_entity(&self, proposal: EntityResolution) -> Vec<EntityCandidate>;
+    fn query(&self, query: KnowledgeQuery, limit: usize) -> Vec<KnowledgeClaimId>;
+    fn submit(&mut self, claim: KnowledgeClaim) -> Result<KnowledgeClaimId, StoreError>;
+    fn conflicts(&self, claim: KnowledgeClaimId) -> Vec<KnowledgeConflict>;
+}
+```
+
+Claims remain typed, temporal, contradictory when evidence conflicts, and linked
+to their source observations. Retrieval is never proof that a claim is true.
+
+## 21. Metrics contract
 
 Every task result records at minimum:
 
@@ -578,9 +629,17 @@ e-graph nodes and merges
 theories executed
 counterexamples learned
 definitions invented
+demonstrations consumed
+interventions attempted
+transition predictions and errors
+skills learned, reused, and composed
+memory proposals, rebindings, and verifier rejects
+knowledge claims, source coverage, and unresolved contradictions
 falsification tests
 terminal taxonomy
 certificate hash
 ```
 
-This metrics schema is mandatory before any full benchmark sweep.
+This metrics schema is mandatory before any full benchmark sweep. Reports must
+separate task learning, continual learning, and interactive causal learning so
+an improvement in one loop cannot conceal the absence of another.

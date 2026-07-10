@@ -45,7 +45,7 @@ fn cost_expr(expression: &Expr) -> Result<Cost, CostError> {
         description_units: 1,
         literal_constants: u64::from(matches!(
             expression,
-            Expr::Int(_) | Expr::Color(_) | Expr::Coord2 { .. }
+            Expr::Int(_) | Expr::Atom(_) | Expr::Coord2 { .. }
         )),
         maximum_execution_steps: 1,
     };
@@ -108,7 +108,7 @@ fn cost_expr(expression: &Expr) -> Result<Cost, CostError> {
         }
         Expr::Bool(_)
         | Expr::Int(_)
-        | Expr::Color(_)
+        | Expr::Atom(_)
         | Expr::Coord2 { .. }
         | Expr::Var(_)
         | Expr::EmptySet { .. } => {}

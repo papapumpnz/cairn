@@ -18,9 +18,15 @@
     "status"
   ],
   "properties": {
-    "schema_version": { "const": "1.0" },
-    "job_id": { "$ref": "#/$defs/id" },
-    "parent_job_id": { "$ref": "#/$defs/id" },
+    "schema_version": {
+      "const": "1.0"
+    },
+    "job_id": {
+      "$ref": "#/$defs/id"
+    },
+    "parent_job_id": {
+      "$ref": "#/$defs/id"
+    },
     "job_kind": {
       "enum": [
         "evidence-expand",
@@ -39,38 +45,74 @@
         "invent",
         "falsify",
         "rank",
+        "memory-propose",
+        "memory-transfer-test",
+        "transition-induce",
+        "intervention-design",
+        "goal-induce",
+        "skill-induce",
+        "skill-compose",
         "plan",
+        "knowledge-resolve",
+        "knowledge-extract",
+        "knowledge-conflict",
+        "knowledge-compile-schema",
         "frontend-normalize",
         "benchmark"
       ]
     },
-    "priority": { "type": "integer", "minimum": 0, "maximum": 1000000 },
-    "created_utc": { "type": "string", "format": "date-time" },
-    "deadline_utc": { "type": "string", "format": "date-time" },
-    "semantics_version": { "type": "string", "minLength": 1 },
+    "priority": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000000
+    },
+    "created_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deadline_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "semantics_version": {
+      "type": "string",
+      "minLength": 1
+    },
     "input_artifacts": {
       "type": "array",
-      "items": { "$ref": "#/$defs/hash" },
+      "items": {
+        "$ref": "#/$defs/hash"
+      },
       "minItems": 1,
       "uniqueItems": true
     },
     "expected_output_types": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "uniqueItems": true
     },
-    "work_budget": { "$ref": "#/$defs/work_budget" },
+    "work_budget": {
+      "$ref": "#/$defs/work_budget"
+    },
     "capability_requirements": {
       "type": "array",
       "items": {
         "enum": [
-          "grid-kernel",
+          "finite-field-kernel",
           "reg-query",
           "rkl-execute",
           "sat",
           "egraph",
           "analogy",
           "invention",
+          "continual-memory",
+          "temporal-evidence",
+          "world-learning",
+          "intervention",
+          "skill-composition",
+          "knowledge",
           "verification",
           "planning",
           "vision-frontend",
@@ -81,10 +123,21 @@
       },
       "uniqueItems": true
     },
-    "shard": { "$ref": "#/$defs/shard" },
-    "dedup_key": { "type": "string", "minLength": 1, "maxLength": 256 },
-    "novelty_key": { "type": "string", "maxLength": 256 },
-    "lease": { "$ref": "#/$defs/lease" },
+    "shard": {
+      "$ref": "#/$defs/shard"
+    },
+    "dedup_key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "novelty_key": {
+      "type": "string",
+      "maxLength": 256
+    },
+    "lease": {
+      "$ref": "#/$defs/lease"
+    },
     "status": {
       "enum": [
         "queued",
@@ -99,10 +152,14 @@
     },
     "result_artifacts": {
       "type": "array",
-      "items": { "$ref": "#/$defs/hash" },
+      "items": {
+        "$ref": "#/$defs/hash"
+      },
       "uniqueItems": true
     },
-    "terminal_error": { "$ref": "#/$defs/error" }
+    "terminal_error": {
+      "$ref": "#/$defs/error"
+    }
   },
   "$defs": {
     "id": {
@@ -116,19 +173,42 @@
     "work_budget": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["work_units", "wall_ms", "memory_bytes"],
+      "required": [
+        "work_units",
+        "wall_ms",
+        "memory_bytes"
+      ],
       "properties": {
-        "work_units": { "type": "integer", "minimum": 1 },
-        "wall_ms": { "type": "integer", "minimum": 1 },
-        "memory_bytes": { "type": "integer", "minimum": 1048576 },
-        "candidate_limit": { "type": "integer", "minimum": 1 },
-        "solver_conflict_limit": { "type": "integer", "minimum": 1 }
+        "work_units": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "wall_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "memory_bytes": {
+          "type": "integer",
+          "minimum": 1048576
+        },
+        "candidate_limit": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "solver_conflict_limit": {
+          "type": "integer",
+          "minimum": 1
+        }
       }
     },
     "shard": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["axis", "index", "count"],
+      "required": [
+        "axis",
+        "index",
+        "count"
+      ],
       "properties": {
         "axis": {
           "enum": [
@@ -141,26 +221,55 @@
             "action-branch"
           ]
         },
-        "index": { "type": "integer", "minimum": 0 },
-        "count": { "type": "integer", "minimum": 1 },
-        "seed": { "type": "integer", "minimum": 0 }
+        "index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "lease": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["worker_id", "lease_token", "expires_utc", "heartbeat_seq"],
+      "required": [
+        "worker_id",
+        "lease_token",
+        "expires_utc",
+        "heartbeat_seq"
+      ],
       "properties": {
-        "worker_id": { "type": "string", "minLength": 1 },
-        "lease_token": { "type": "string", "minLength": 16 },
-        "expires_utc": { "type": "string", "format": "date-time" },
-        "heartbeat_seq": { "type": "integer", "minimum": 0 }
+        "worker_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lease_token": {
+          "type": "string",
+          "minLength": 16
+        },
+        "expires_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "heartbeat_seq": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "error": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "message"],
+      "required": [
+        "kind",
+        "message"
+      ],
       "properties": {
         "kind": {
           "enum": [
@@ -173,8 +282,14 @@
             "internal-defect"
           ]
         },
-        "message": { "type": "string", "minLength": 1, "maxLength": 4096 },
-        "detail_artifact": { "$ref": "#/$defs/hash" }
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "detail_artifact": {
+          "$ref": "#/$defs/hash"
+        }
       }
     }
   }

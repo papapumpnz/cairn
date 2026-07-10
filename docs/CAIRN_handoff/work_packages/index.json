@@ -302,16 +302,17 @@
     },
     {
       "id": "WP22",
-      "title": "ARC-AGI-1/2 frontend and static task runner",
+      "title": "Quarantined ARC-AGI-1/2 adapter and task runner",
       "path": "WP22.md",
       "dependencies": [
         "WP02",
-        "WP06"
+        "WP06",
+        "WP29"
       ],
-      "owned_scope": "cairn-arc12",
-      "objective": "Parse official task format, enforce split capabilities, run static tasks, and emit standard answer and evidence artifacts.",
-      "deliverables": "Strict JSON parser, task canonicalization, training/public-eval capability separation, answer writer, suite runner, and task visualization for development only.",
-      "acceptance_criteria": "All official public task files parse; malformed corpus fixtures rejected precisely; ordinary development binary cannot enumerate evaluation roots; one-task end-to-end dummy solver certificate verifies; runner overhead below 5 ms per task excluding solve."
+      "owned_scope": "adapters/arc12 and cairn-arc12",
+      "objective": "Losslessly translate official ARC records into generic learning problems without introducing ARC semantics into cognition crates.",
+      "deliverables": "Strict JSON parser, adapter lowering and round-trip proofs, split capability separation, answer writer, suite runner, and development-only visualization.",
+      "acceptance_criteria": "All official public task files parse; malformed fixtures are rejected precisely; cognition crates remain ARC-vocabulary-free; adapter round-trip is exact; ordinary development binaries cannot enumerate evaluation roots; runner overhead is below 5 ms per task excluding solve."
     },
     {
       "id": "WP23",
@@ -319,13 +320,13 @@
       "path": "WP23.md",
       "dependencies": [
         "WP01",
-        "WP06",
-        "WP20"
+        "WP04",
+        "WP06"
       ],
       "owned_scope": "cairn-memory",
-      "objective": "Persist proof-backed causal definitions without repeating SCEM's surface-content transfer failure.",
-      "deliverables": "Mechanism module store, support geometry, proposal retrieval, offline promotion runner, memory-off ablation, and deprecation workflow.",
-      "acceptance_criteria": "A2 gates pass; zero unverified accepts; broad modules transfer at least 90% on suite; narrow modules do not claim support beyond evidence; retrieval median below 1 ms for 100,000 modules in stress index; full lineage available."
+      "objective": "Make experience measurably reduce future demonstrations or CPU search while correctness remains verifier-controlled.",
+      "deliverables": "Mechanism store, support geometry, task-local and later ontology-definition adapters, proposal retrieval, offline promotion, fixed-budget memory-off ablation, and deprecation workflow.",
+      "acceptance_criteria": "GLL-2 passes: at least 50% lower median search and fewer demonstrations on a frozen related test set, no exact-accuracy regression on related or unrelated sets, transferred modules rebind across values, sizes, counts, and layouts, and zero unverified accepts."
     },
     {
       "id": "WP24",
@@ -355,16 +356,16 @@
     },
     {
       "id": "WP26",
-      "title": "Temporal REG, entity tracking, and ARC-AGI-3 adapter",
+      "title": "Generic temporal evidence, entity tracking, and interactive adapter SDK",
       "path": "WP26.md",
       "dependencies": [
         "WP03",
         "WP07",
-        "WP22"
+        "WP29"
       ],
-      "owned_scope": "cairn-arc3` observation adapter and temporal modules",
-      "objective": "Normalize interactive frames, actions, and episode signals into compressed temporal evidence.",
-      "deliverables": "Temporal observations, candidate tracks, frame-change events, viewport/camera hypotheses, history summaries, and replayable episode store.",
+      "owned_scope": "cairn-temporal and adapters/interactive",
+      "objective": "Normalize generic observation-action-outcome histories into compressed temporal evidence without depending on ARC adapters.",
+      "deliverables": "Temporal observations, candidate tracks, change events, action records, viewport hypotheses, history summaries, replayable episode store, and ARC-AGI-3 as a separate adapter.",
       "acceptance_criteria": "Correct event/track in top three for at least 95% controlled suite; working-memory size grows sublinearly and remains below configured cap for 10,000 steps; raw episode replay exact; common update below 100 ms."
     },
     {
@@ -372,26 +373,27 @@
       "title": "World-theory induction, hidden state, goal hypotheses, and intervention design",
       "path": "WP27.md",
       "dependencies": [
-        "WP19",
+        "WP05",
+        "WP13",
         "WP26"
       ],
       "owned_scope": "world-model modules in `cairn-theory` and `cairn-plan",
-      "objective": "Learn action-conditioned causal dynamics and choose informative, goal-relevant experiments.",
+      "objective": "Learn previously unseen action-conditioned dynamics and choose informative, goal-relevant experiments from generic temporal evidence.",
       "deliverables": "World theories, latent state schemas, executable goal hypotheses, belief updates, expected-information intervention proposals.",
-      "acceptance_criteria": "I0 and I1 gates; active policy at least 30% fewer actions than random on controlled suite; correct transition prediction at least 95%; goal top-three at least 90%; no arbitrary per-step latent labels."
+      "acceptance_criteria": "GLL-4, I0, and I1 pass; active policy uses at least 30% fewer actions than random; transition prediction is at least 95%; executable goal is top-three at least 90%; efficiency improves over episodes; learned options transfer to changed layouts; no arbitrary per-step latent labels."
     },
     {
       "id": "WP28",
       "title": "Belief-aware planning and option induction",
       "path": "WP28.md",
       "dependencies": [
-        "WP18",
+        "WP05",
         "WP27"
       ],
       "owned_scope": "cairn-plan",
-      "objective": "Plan efficiently through learned theories and compress repeated successful behavior into verified options.",
+      "objective": "Plan through learned theories, compose independently learned mechanisms, and compress repeated successful behavior into verified options.",
       "deliverables": "Deterministic A*, contingent AO*, bounded MCTS, plan certificates, option theories, and planner selection policy.",
-      "acceptance_criteria": "I2 gates; options reduce expansions at least 5 times on held-out layouts; deterministic planner returns optimal path on exhaustive small worlds; ordinary action decision below 500 ms where plan depth permits; plan replay exact."
+      "acceptance_criteria": "GLL-3 and I2 pass; independently learned mechanisms compose without a coded composite operator; options reduce expansions at least 5 times on held-out layouts; deterministic small-world plans are optimal; plan replay is exact."
     },
     {
       "id": "WP29",
@@ -399,11 +401,10 @@
       "path": "WP29.md",
       "dependencies": [
         "WP03",
-        "WP04",
-        "WP06"
+        "WP04"
       ],
       "owned_scope": "cairn-frontend-sdk`, `frontends/graphics",
-      "objective": "Define the extension boundary and prove it on an exact, non-grid visual modality.",
+      "objective": "Define the generic observation extension boundary early and prove it on an exact non-grid visual modality.",
       "deliverables": "Frontend trait, uncertainty conventions, source-reference schema, verifier hook, and graphics-to-REG adapter.",
       "acceptance_criteria": "Supported graphics subset round-trips exactly; transformation tasks can be represented and verified through core Theory IR; new frontend compiles without modifying core crates; adapter median below 50 ms for moderate scenes."
     },
@@ -434,34 +435,38 @@
     },
     {
       "id": "WP32",
-      "title": "Transformer-free text and knowledge frontend spike",
+      "title": "Proof-backed knowledge subsystem and transformer-free text frontend",
       "path": "WP32.md",
       "dependencies": [
+        "WP03",
+        "WP04",
+        "WP06",
         "WP23",
         "WP29"
       ],
-      "owned_scope": "frontends/text",
-      "objective": "Provide a measured path for converting constrained text and documents into typed propositions and procedures without a transformer.",
-      "deliverables": "Tokenizer/morphology, chart parser, grammar and semantic frames, entity linking, proposition graph, source citations, and optional compact non-transformer ranker.",
-      "acceptance_criteria": "Meet pre-registered controlled-language exact semantic parse bar; every extracted fact has source span; contradictions coexist with provenance; no transformer dependency; benchmark result states unsupported natural-language scope explicitly."
+      "owned_scope": "cairn-knowledge and frontends/text",
+      "objective": "Acquire typed, temporal, contradictory, source-linked declarative knowledge and executable schemas, with constrained text as one frontend.",
+      "deliverables": "Claim store, temporal validity, provenance, entity-resolution proposals, contradiction artifacts, causal and taxonomic indexes, executable schema promotion, tokenizer, chart parser, semantic frames, and source citations.",
+      "acceptance_criteria": "Every claim has replayable sources and temporal scope; contradictions coexist; entity merges are reversible proposals; executable schemas pass verifier and promotion gates; controlled-language parse bar is pre-registered and met or honestly reported; no transformer dependency."
     },
     {
       "id": "WP33",
-      "title": "Benchmark harness, evidence packs, and gated evaluation",
+      "title": "General-learning benchmark harness, evidence packs, and gated evaluation",
       "path": "WP33.md",
       "dependencies": [
         "WP06",
-        "WP21",
-        "WP22"
+        "WP23",
+        "WP28",
+        "WP29"
       ],
       "owned_scope": "cairn-bench`, `cairn-eval`, experiment schemas",
-      "objective": "Make every architecture claim reproducible, quarantined, and attributable.",
-      "deliverables": "Task runner, JSONL metrics, report validator, confidence intervals, ablation runner, pre-registration templates, sealed eval workflow, and dashboard data.",
-      "acceptance_criteria": "All report self-tests pass; one dummy suite reproduces byte-identical summary; verifier required for solved count; evaluation cannot run without sanction; standard evidence pack generated automatically; overhead below 2% of solve time."
+      "objective": "Make all three learning loops and every architecture claim reproducible, quarantined, comparable, and attributable.",
+      "deliverables": "Generic problem runner, GLL-1 through GLL-6 suites, JSONL metrics, memory/action ablations, report validator, confidence intervals, preregistration templates, sealed adapter evaluation workflow, and dashboard data.",
+      "acceptance_criteria": "All report self-tests pass; frozen memory-on/off and active/random comparisons enforce equal budgets; one three-domain dummy suite reproduces byte-identical summaries; verifier is required for success; standard evidence packs are automatic; overhead is below 2%."
     },
     {
       "id": "WP34",
-      "title": "End-to-end integration, profiling, and release solver",
+      "title": "End-to-end general-learning integration, profiling, and release runtime",
       "path": "WP34.md",
       "dependencies": [
         "WP18",
@@ -469,13 +474,17 @@
         "WP20",
         "WP21",
         "WP22",
+        "WP23",
         "WP24",
+        "WP28",
+        "WP29",
+        "WP32",
         "WP33"
       ],
       "owned_scope": "top-level `cairn` binary, integration configuration, release profiles",
-      "objective": "Integrate the static architecture into one anytime solver, profile the critical path, and run the pre-registered diagnostic ladder.",
-      "deliverables": "Single-node and swarm solver binaries, staged budgets, checkpoint/resume, failure taxonomy, profiling reports, and X-style benchmark artifacts.",
-      "acceptance_criteria": "Complete F through T gates required for integration; R1.0 initial gate or honest negative report; median and p95 resource targets reported; no unclassified failure; all answers independently verified; release binary passes attestation."
+      "objective": "Integrate one cognition runtime across static induction, continual learning, interactive causal learning, knowledge use, and three adapters.",
+      "deliverables": "Single-node and swarm runtimes, staged budgets, checkpoint/resume, three-loop metrics, failure taxonomy, profiling reports, three-domain evidence packs, and optional ARC adapter reports.",
+      "acceptance_criteria": "GLL-1 through GLL-6 pass or an honest narrowed-scope report is published; one core revision runs grid transformation, gridworld, and vector graphics; all predictions and plans are independently verified; resource targets are reported; release binary passes attestation."
     }
   ]
 }

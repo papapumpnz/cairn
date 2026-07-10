@@ -88,6 +88,53 @@ fn proof_annotations_do_not_enter_semantic_identity() {
 }
 
 #[test]
+fn categorical_atoms_are_distinct_from_integers() {
+    let atom = checker()
+        .check(&Expr::Atom(7), &TypeEnvironment::new())
+        .expect("atom");
+    let integer = checker()
+        .check(&Expr::Int(7), &TypeEnvironment::new())
+        .expect("integer");
+    assert_eq!(atom.ty(), &Type::Atom);
+    assert_ne!(
+        atom.encode_canonical().expect("atom bytes"),
+        integer.encode_canonical().expect("integer bytes")
+    );
+}
+
+#[test]
+fn finite_fields_require_axes_and_element_bounds() {
+    for invalid in [
+        Type::FiniteField {
+            axes: 0,
+            maximum_elements: 16,
+        },
+        Type::FiniteField {
+            axes: 2,
+            maximum_elements: 0,
+        },
+    ] {
+        let mut environment = TypeEnvironment::new();
+        environment.insert(VarName("field".to_owned()), invalid);
+        assert!(matches!(
+            checker().check(&Expr::Var(VarName("field".to_owned())), &environment),
+            Err(error) if error.kind == CheckErrorKind::EmptyBound
+        ));
+    }
+
+    let valid = Type::FiniteField {
+        axes: 3,
+        maximum_elements: 4_096,
+    };
+    let mut environment = TypeEnvironment::new();
+    environment.insert(VarName("field".to_owned()), valid.clone());
+    let typed = checker()
+        .check(&Expr::Var(VarName("field".to_owned())), &environment)
+        .expect("bounded finite field");
+    assert_eq!(typed.ty(), &valid);
+}
+
+#[test]
 fn inferred_integer_bounds_cover_exhaustive_small_domain() {
     let mut environment = TypeEnvironment::new();
     environment.insert(

@@ -4,7 +4,7 @@ This file governs every coding, research, benchmark, integration, and swarm agen
 
 CAIRN means **Causal Analogical Induction over Relational Networks**. The system is a CPU-only, transformer-free architecture that infers executable causal rewrite theories from relational evidence, verifies them independently, and uses them to predict or plan.
 
-The objective is not to produce an ARC-specific trick collection. The objective is to build a general, falsifiable reasoning system that can solve static abstract tasks and later extend to interactive worlds and additional modalities.
+The objective is not to produce an ARC-specific trick collection. The objective is to build and falsify a general learning architecture through task learning, continual learning, and interactive causal learning developed together from the beginning. ARC is one quarantined adapter, not the developmental centre.
 
 ## 1. Authority and precedence
 
@@ -17,10 +17,11 @@ Read the following before changing code:
 5. `05_CAIRN_SWARM_PROTOCOL.md`
 6. `06_CAIRN_AGENT_OPERATING_LAW.md`
 7. `07_CAIRN_RISKS_AND_KILL_CRITERIA.md`
-8. `HANDOFF_INDEX.md`
-9. `work_packages/index.json`
-10. The assigned `work_packages/WPxx.md`
-11. Every direct dependency handoff and tagged public interface
+8. `08_GENERAL_LEARNER_REQUIREMENTS.md`
+9. `HANDOFF_INDEX.md`
+10. `work_packages/index.json`
+11. The assigned `work_packages/WPxx.md`
+12. Every direct dependency handoff and tagged public interface
 
 When instructions conflict, use this precedence:
 
@@ -44,9 +45,11 @@ Every production mechanism must answer all of the following:
 What observation class triggers it?
 What task-independent semantics does it implement?
 What synthetic family exercises it?
+Which non-ARC domain exercises it where applicable?
 What negative cases constrain it?
 Which failure-taxonomy bucket should change?
 Which ablation establishes causal contribution?
+Which learning loop becomes measurably better?
 ```
 
 A mechanism without defensible answers remains experimental and cannot enter the verified solve path.
@@ -169,6 +172,32 @@ All substantive work moves through immutable, content-addressed artifacts. Jobs 
 Static solving is anytime and may return no more than two semantically distinct answer modes.
 
 Two syntactically different theories that produce the same semantic prediction mode do not count as diverse attempts.
+
+### 3.11 General-learning boundary
+
+The three mandatory learning loops are:
+
+```text
+task learning
+continual learning
+interactive causal learning
+```
+
+They are co-equal release requirements. Interactive, memory, knowledge, and
+non-ARC frontend work may not be deferred until a static ARC solver is mature.
+
+General core crates use environment-neutral concepts such as `Observation`,
+`EntityHypothesis`, `Relation`, `Event`, `Theory`, `Transition`, `Goal`,
+`Intervention`, `Skill`, `MemoryModule`, `KnowledgeClaim`, and
+`VerificationResult`.
+
+Benchmark-shaped concepts such as ARC task, training pair, test grid, ARC
+colour, ARC operation, corpus split, and answer formatting belong only in the
+corresponding adapter or quarantined benchmark package.
+
+Do not claim general learning until all gates in
+`08_GENERAL_LEARNER_REQUIREMENTS.md` pass. An ARC score alone cannot satisfy a
+general-learning gate.
 
 ## 4. Prohibited shortcuts and leakage
 
@@ -398,7 +427,7 @@ Hash maps may be used internally for performance, but their iteration order cann
 
 ### 9.5 Exact arithmetic and floating point
 
-Grid semantics, bindings, bounds, proof identities, canonical hashes, verifier decisions, and exact static reasoning must not depend on non-canonical floating-point behavior.
+Observation semantics, bindings, bounds, proof identities, canonical hashes, verifier decisions, and exact reasoning must not depend on non-canonical floating-point behavior.
 
 Floating point may be used for uncertain frontend weights, heuristic ordering, telemetry, or statistical reports when:
 

@@ -103,8 +103,8 @@ fn expression_value(
     match expression {
         Expr::Bool(value) => Ok(tagged("bool", vec![CanonicalValue::Bool(*value)])),
         Expr::Int(value) => Ok(tagged("int", vec![signed(*value)])),
-        Expr::Color(value) => Ok(tagged(
-            "color",
+        Expr::Atom(value) => Ok(tagged(
+            "atom",
             vec![CanonicalValue::Unsigned(u64::from(*value))],
         )),
         Expr::Coord2 { row, column } => Ok(tagged(
@@ -283,7 +283,7 @@ fn type_value(ty: &Type) -> CanonicalValue {
     match ty {
         Type::Bool => tagged("bool_type", Vec::new()),
         Type::Int(range) => tagged("int_type", vec![signed(range.lower), signed(range.upper)]),
-        Type::Color => tagged("color_type", Vec::new()),
+        Type::Atom => tagged("atom_type", Vec::new()),
         Type::Coord2 => tagged("coord2_type", Vec::new()),
         Type::Vector2 => tagged("vector2_type", Vec::new()),
         Type::Axis => tagged("axis_type", Vec::new()),
@@ -295,14 +295,14 @@ fn type_value(ty: &Type) -> CanonicalValue {
         Type::Symbol => tagged("symbol_type", Vec::new()),
         Type::Action => tagged("action_type", Vec::new()),
         Type::State => tagged("state_type", Vec::new()),
-        Type::Grid {
-            maximum_width,
-            maximum_height,
+        Type::FiniteField {
+            axes,
+            maximum_elements,
         } => tagged(
-            "grid_type",
+            "finite_field_type",
             vec![
-                CanonicalValue::Unsigned(u64::from(*maximum_width)),
-                CanonicalValue::Unsigned(u64::from(*maximum_height)),
+                CanonicalValue::Unsigned(u64::from(*axes)),
+                CanonicalValue::Unsigned(*maximum_elements),
             ],
         ),
         Type::Tuple(values) => tagged(

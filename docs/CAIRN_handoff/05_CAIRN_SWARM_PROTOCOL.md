@@ -13,6 +13,8 @@ The protocol coordinates specialized CPU agents. It is content-addressed, immuta
 - Semantic determinism is independent of arrival order.
 - The coordinator is replaceable and contains no ARC rules.
 - A swarm can add a new capability by publishing a new artifact kind or producer capability through a versioned extension.
+- Roles operate on generic observations, theories, transitions, goals, skills, and claims; benchmark adapter records never enter job semantics.
+- Parallel search is not evidence of continual learning. Memory benefit is measured separately on frozen future tasks.
 
 ## 2. Node roles
 
@@ -83,6 +85,15 @@ plan.ao
 plan.mcts
 compile.bytecode
 memory.curate
+memory.transfer_test
+knowledge.resolve_entity
+knowledge.extract_claim
+knowledge.detect_conflict
+knowledge.compile_schema
+skill.induce
+skill.compose
+verify.transition
+verify.knowledge_provenance
 ```
 
 ## 4. Job lifecycle
@@ -125,6 +136,16 @@ Produce an optimized implementation plus an equivalence certificate against refe
 ### Memory jobs
 
 Evaluate transfer, promotion, deprecation, and counterexample impact.
+
+### Interaction jobs
+
+Propose transition theories, discriminating interventions, executable goals,
+plans, and reusable skills from observation-action-outcome histories.
+
+### Knowledge jobs
+
+Resolve entities, extract typed claims, retain contradictions, link sources, and
+compile proof-backed domain schemas. Extractors cannot certify their own claims.
 
 ## 6. Priority vector
 
@@ -189,6 +210,12 @@ Union by mismatch and semantic blocked-choice signature.
 ### Beliefs
 
 Recomputed centrally from evidence terms. Agents do not send authoritative normalized posterior probabilities.
+
+### Knowledge claims
+
+Deduplicate only when typed assertion, temporal extent, and source derivation are
+identical. Conflicting claims coexist and produce a conflict artifact; merge
+order cannot erase provenance.
 
 ## 9. Task sharding
 

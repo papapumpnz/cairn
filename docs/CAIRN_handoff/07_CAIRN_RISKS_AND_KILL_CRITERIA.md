@@ -1,5 +1,31 @@
 # CAIRN risks and kill criteria
 
+## 0. ARC optimization displaces general learning
+
+Signal:
+
+- memory, interactive learning, or graphics repeatedly deferred behind ARC work;
+- cognition crates acquire grid, color, training-pair, or ARC-operation types;
+- architecture changes are justified only by ARC task counts;
+- project reports imply general learning from static synthesis results.
+
+Mitigations:
+
+- mandatory three-loop milestones;
+- adapter-only ARC contracts;
+- GLL-1 through GLL-6 evidence packs;
+- architecture review for core vocabulary and dependency changes.
+
+Kill criterion:
+
+- two consecutive milestones improve ARC coverage while producing no measured
+  continual or interactive learning result. Freeze ARC development until both
+  missing loops have a falsifiable implementation and baseline.
+
+Consequence:
+
+- describe the artifact as an ARC program synthesizer, not a learning system.
+
 ## 1. Event covers do not reduce search enough
 
 Signal:
@@ -178,7 +204,10 @@ Mitigations:
 
 Kill criterion:
 
-- two successive promotion cohorts add zero held-out solves and less than 10% speed benefit. Freeze semantic memory growth and retain procedural compilation only.
+- after one general retrieval/promotion revision, memory fails to reduce median
+  search by 50% or demonstrations required on the frozen related set, or causes
+  any exact-accuracy regression on unrelated tasks. Do not claim GLL-2; freeze
+  semantic promotion if two successive cohorts fail.
 
 ## 10. Swarm scales traffic rather than intelligence
 
@@ -238,7 +267,50 @@ Kill criterion:
 
 - I0 active policy does not beat random probing by 20% or I1 cannot infer goals above 60%. Do not claim ARC-AGI-3 capability.
 
-## 13. CPU performance is incompatible with target accuracy
+## 13. Rewrite theories fail outside sparse grids
+
+Signal:
+
+- vector scenes require domain-specific executor branches;
+- action-conditioned worlds cannot reuse theory or verification artifacts;
+- event decomposition depends on pixel-difference assumptions;
+- common mechanisms cannot rebind across adapters.
+
+Mitigations:
+
+- generic observation and transition contracts;
+- relation/effect semantics independent of rendering;
+- three-domain omitted-concept suites;
+- explicit uncertainty and temporal evidence.
+
+Kill criterion:
+
+- D0 fails after one environment-neutral theory revision and two domains still
+  require distinct reasoning engines. Reject the claim of a common cognitive
+  core and narrow the stated scope.
+
+## 14. Knowledge acquisition becomes untraceable extraction
+
+Signal:
+
+- claims lose source spans or temporal validity;
+- entity merges silently overwrite alternatives;
+- contradictions are resolved by confidence alone;
+- retrieval enters verifier acceptance as truth.
+
+Mitigations:
+
+- immutable source observations;
+- typed claims and reversible entity-resolution proposals;
+- first-class conflict artifacts;
+- proof-backed executable schemas.
+
+Kill criterion:
+
+- any released answer depends on a retrieved claim whose source and derivation
+  cannot be replayed. Invalidate the result and disable knowledge promotion.
+
+## 15. CPU performance is incompatible with target accuracy
 
 Signal:
 
@@ -258,7 +330,7 @@ Kill criterion:
 
 - mature 60-task diagnostic remains below 30 solves at 120 s despite correctness of component gates. The search architecture is not viable under the hard compute constraint.
 
-## 14. Overall architecture kill criterion
+## 16. Overall architecture and claim criterion
 
 Stop CAIRN as the primary path when all are true:
 
@@ -271,3 +343,8 @@ no dominant implementation defect explains the result
 ```
 
 A negative result should preserve reusable assets: RKL, proof checker, REG, event diagnostics, and benchmark infrastructure.
+
+Independently of the ARC stopping rule, CAIRN is not a demonstrated general
+learner until GLL-1 through GLL-6 pass. Failure of a gate narrows the claim and
+redirects development to the named learning loop; it is never compensated by a
+higher benchmark score in another domain.

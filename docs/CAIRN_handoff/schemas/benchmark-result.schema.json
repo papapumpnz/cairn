@@ -17,13 +17,25 @@
     "finished_utc",
     "cases",
     "aggregate",
+    "learning_loops",
+    "claim_scope",
     "integrity"
   ],
   "properties": {
-    "schema_version": { "const": "1.0" },
-    "run_id": { "type": "string", "minLength": 8 },
-    "benchmark": { "type": "string", "minLength": 1 },
-    "benchmark_version": { "type": "string" },
+    "schema_version": {
+      "const": "2.0"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "benchmark": {
+      "type": "string",
+      "minLength": 1
+    },
+    "benchmark_version": {
+      "type": "string"
+    },
     "split_class": {
       "enum": [
         "synthetic",
@@ -31,19 +43,86 @@
         "validation",
         "public-evaluation",
         "private-evaluation",
-        "interactive"
+        "interactive",
+        "continual",
+        "cross-domain",
+        "knowledge"
       ]
     },
-    "split_manifest_hash": { "$ref": "#/$defs/hash" },
-    "solver_commit": { "type": "string", "pattern": "^[0-9a-f]{7,64}$" },
-    "semantics_version": { "type": "string", "minLength": 1 },
-    "config_hash": { "$ref": "#/$defs/hash" },
-    "environment": { "$ref": "#/$defs/environment" },
-    "started_utc": { "type": "string", "format": "date-time" },
-    "finished_utc": { "type": "string", "format": "date-time" },
-    "cases": { "type": "array", "items": { "$ref": "#/$defs/case" } },
-    "aggregate": { "$ref": "#/$defs/aggregate" },
-    "integrity": { "$ref": "#/$defs/integrity" }
+    "claim_scope": {
+      "enum": [
+        "component",
+        "task-learning",
+        "continual-learning",
+        "interactive-learning",
+        "adapter-benchmark",
+        "general-learning-gates"
+      ]
+    },
+    "split_manifest_hash": {
+      "$ref": "#/$defs/hash"
+    },
+    "solver_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,64}$"
+    },
+    "semantics_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "config_hash": {
+      "$ref": "#/$defs/hash"
+    },
+    "environment": {
+      "$ref": "#/$defs/environment"
+    },
+    "started_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finished_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/case"
+      }
+    },
+    "aggregate": {
+      "$ref": "#/$defs/aggregate"
+    },
+    "learning_loops": {
+      "$ref": "#/$defs/learning_loops"
+    },
+    "general_learning_gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "gll_1": {
+          "$ref": "#/$defs/gate_status"
+        },
+        "gll_2": {
+          "$ref": "#/$defs/gate_status"
+        },
+        "gll_3": {
+          "$ref": "#/$defs/gate_status"
+        },
+        "gll_4": {
+          "$ref": "#/$defs/gate_status"
+        },
+        "gll_5": {
+          "$ref": "#/$defs/gate_status"
+        },
+        "gll_6": {
+          "$ref": "#/$defs/gate_status"
+        }
+      }
+    },
+    "integrity": {
+      "$ref": "#/$defs/integrity"
+    }
   },
   "$defs": {
     "hash": {
@@ -65,20 +144,43 @@
         "remote_inference"
       ],
       "properties": {
-        "cpu_only": { "const": true },
-        "cpu_model": { "type": "string" },
-        "physical_cores": { "type": "integer", "minimum": 1 },
-        "logical_workers": { "type": "integer", "minimum": 1 },
-        "ram_bytes": { "type": "integer", "minimum": 1 },
-        "os": { "type": "string" },
-        "compiler": { "type": "string" },
+        "cpu_only": {
+          "const": true
+        },
+        "cpu_model": {
+          "type": "string"
+        },
+        "physical_cores": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "logical_workers": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "ram_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "os": {
+          "type": "string"
+        },
+        "compiler": {
+          "type": "string"
+        },
         "cpu_features": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "uniqueItems": true
         },
-        "gpu_runtime_loaded": { "const": false },
-        "remote_inference": { "const": false }
+        "gpu_runtime_loaded": {
+          "const": false
+        },
+        "remote_inference": {
+          "const": false
+        }
       }
     },
     "attempt": {
@@ -94,13 +196,30 @@
         "score"
       ],
       "properties": {
-        "attempt_index": { "type": "integer", "minimum": 0, "maximum": 1 },
-        "output_hash": { "$ref": "#/$defs/hash" },
-        "verified": { "type": "boolean" },
-        "theory_artifact": { "$ref": "#/$defs/hash" },
-        "certificate_artifact": { "$ref": "#/$defs/hash" },
-        "semantic_mode": { "type": "string", "minLength": 1 },
-        "score": { "type": "number" }
+        "attempt_index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "output_hash": {
+          "$ref": "#/$defs/hash"
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "theory_artifact": {
+          "$ref": "#/$defs/hash"
+        },
+        "certificate_artifact": {
+          "$ref": "#/$defs/hash"
+        },
+        "semantic_mode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "score": {
+          "type": "number"
+        }
       }
     },
     "case": {
@@ -116,7 +235,9 @@
         "failure_class"
       ],
       "properties": {
-        "case_key_hash": { "$ref": "#/$defs/hash" },
+        "case_key_hash": {
+          "$ref": "#/$defs/hash"
+        },
         "status": {
           "enum": [
             "solved",
@@ -128,14 +249,22 @@
             "invalid"
           ]
         },
-        "solved": { "type": "boolean" },
+        "solved": {
+          "type": "boolean"
+        },
         "attempts": {
           "type": "array",
-          "items": { "$ref": "#/$defs/attempt" },
+          "items": {
+            "$ref": "#/$defs/attempt"
+          },
           "maxItems": 2
         },
-        "timing": { "$ref": "#/$defs/timing" },
-        "search": { "$ref": "#/$defs/search" },
+        "timing": {
+          "$ref": "#/$defs/timing"
+        },
+        "search": {
+          "$ref": "#/$defs/search"
+        },
         "failure_class": {
           "enum": [
             "none",
@@ -155,17 +284,32 @@
             "internal"
           ]
         },
-        "trace_artifact": { "$ref": "#/$defs/hash" }
+        "trace_artifact": {
+          "$ref": "#/$defs/hash"
+        }
       }
     },
     "timing": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["wall_ns", "cpu_ns", "peak_rss_bytes"],
+      "required": [
+        "wall_ns",
+        "cpu_ns",
+        "peak_rss_bytes"
+      ],
       "properties": {
-        "wall_ns": { "type": "integer", "minimum": 0 },
-        "cpu_ns": { "type": "integer", "minimum": 0 },
-        "peak_rss_bytes": { "type": "integer", "minimum": 0 }
+        "wall_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cpu_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "peak_rss_bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "search": {
@@ -179,15 +323,135 @@
         "solver_conflicts"
       ],
       "properties": {
-        "work_units": { "type": "integer", "minimum": 0 },
-        "entities_generated": { "type": "integer", "minimum": 0 },
-        "event_hypotheses": { "type": "integer", "minimum": 0 },
-        "event_covers": { "type": "integer", "minimum": 0 },
-        "alignment_modes": { "type": "integer", "minimum": 0 },
-        "executed_theories": { "type": "integer", "minimum": 0 },
-        "cegis_rounds": { "type": "integer", "minimum": 0 },
-        "invention_rounds": { "type": "integer", "minimum": 0 },
-        "solver_conflicts": { "type": "integer", "minimum": 0 }
+        "work_units": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "entities_generated": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "event_hypotheses": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "event_covers": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "alignment_modes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "executed_theories": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cegis_rounds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invention_rounds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "solver_conflicts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "demonstrations_consumed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "interventions_attempted": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "transition_predictions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "skills_composed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "memory_proposals": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "memory_rebindings": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "knowledge_claims_used": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "learning_loops": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task",
+        "continual",
+        "interactive"
+      ],
+      "properties": {
+        "task": {
+          "$ref": "#/$defs/loop_measurement"
+        },
+        "continual": {
+          "$ref": "#/$defs/loop_measurement"
+        },
+        "interactive": {
+          "$ref": "#/$defs/loop_measurement"
+        }
+      }
+    },
+    "loop_measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "measured",
+        "metrics_artifact"
+      ],
+      "properties": {
+        "measured": {
+          "type": "boolean"
+        },
+        "metrics_artifact": {
+          "$ref": "#/$defs/hash"
+        },
+        "baseline_artifact": {
+          "$ref": "#/$defs/hash"
+        },
+        "frozen_suite_hash": {
+          "$ref": "#/$defs/hash"
+        },
+        "equal_budget_confirmed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "gate_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "evidence_artifact"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "pass",
+            "fail",
+            "not-run"
+          ]
+        },
+        "evidence_artifact": {
+          "$ref": "#/$defs/hash"
+        }
       }
     },
     "aggregate": {
@@ -204,17 +468,46 @@
         "peak_rss_bytes"
       ],
       "properties": {
-        "case_count": { "type": "integer", "minimum": 0 },
-        "solved_count": { "type": "integer", "minimum": 0 },
-        "pass_at_1": { "type": "number", "minimum": 0, "maximum": 1 },
-        "pass_at_2": { "type": "number", "minimum": 0, "maximum": 1 },
-        "median_wall_ns": { "type": "integer", "minimum": 0 },
-        "p95_wall_ns": { "type": "integer", "minimum": 0 },
-        "total_cpu_ns": { "type": "integer", "minimum": 0 },
-        "peak_rss_bytes": { "type": "integer", "minimum": 0 },
+        "case_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "solved_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pass_at_1": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "pass_at_2": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "median_wall_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "p95_wall_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_cpu_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "peak_rss_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
         "failure_histogram": {
           "type": "object",
-          "additionalProperties": { "type": "integer", "minimum": 0 }
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
         }
       }
     },
@@ -228,12 +521,25 @@
         "raw_records_hash"
       ],
       "properties": {
-        "all_claimed_solves_verified": { "const": true },
-        "evaluation_quarantine_passed": { "const": true },
-        "cpu_policy_passed": { "const": true },
-        "raw_records_hash": { "$ref": "#/$defs/hash" },
-        "verifier_commit": { "type": "string", "pattern": "^[0-9a-f]{7,64}$" },
-        "attestation_artifact": { "$ref": "#/$defs/hash" }
+        "all_claimed_solves_verified": {
+          "const": true
+        },
+        "evaluation_quarantine_passed": {
+          "const": true
+        },
+        "cpu_policy_passed": {
+          "const": true
+        },
+        "raw_records_hash": {
+          "$ref": "#/$defs/hash"
+        },
+        "verifier_commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{7,64}$"
+        },
+        "attestation_artifact": {
+          "$ref": "#/$defs/hash"
+        }
       }
     }
   }

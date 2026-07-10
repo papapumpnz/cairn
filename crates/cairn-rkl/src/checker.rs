@@ -131,7 +131,7 @@ impl TypeChecker {
         match expression {
             Expr::Bool(_) => Ok((Type::Bool, BTreeSet::new())),
             Expr::Int(value) => Ok((Type::Int(IntRange::exact(*value)), BTreeSet::new())),
-            Expr::Color(_) => Ok((Type::Color, BTreeSet::new())),
+            Expr::Atom(_) => Ok((Type::Atom, BTreeSet::new())),
             Expr::Coord2 { .. } => Ok((Type::Coord2, BTreeSet::new())),
             Expr::Var(name) => {
                 let ty = environment.get(name).cloned().ok_or_else(|| {
@@ -638,10 +638,10 @@ fn validate_type(ty: &Type, path: &ExprPath) -> Result<(), CheckError> {
         {
             Err(CheckError::new(path.clone(), CheckErrorKind::EmptyBound))
         }
-        Type::Grid {
-            maximum_width,
-            maximum_height,
-        } if *maximum_width == 0 || *maximum_height == 0 => {
+        Type::FiniteField {
+            axes,
+            maximum_elements,
+        } if *axes == 0 || *maximum_elements == 0 => {
             Err(CheckError::new(path.clone(), CheckErrorKind::EmptyBound))
         }
         Type::Tuple(values) => {
@@ -714,7 +714,7 @@ fn contains_call(expression: &Expr, name: &str) -> bool {
         }
         Expr::Bool(_)
         | Expr::Int(_)
-        | Expr::Color(_)
+        | Expr::Atom(_)
         | Expr::Coord2 { .. }
         | Expr::Var(_)
         | Expr::EmptySet { .. } => false,

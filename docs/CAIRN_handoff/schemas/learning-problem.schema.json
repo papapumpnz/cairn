@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cairn.local/schemas/learning-problem.schema.json",
+  "title": "CAIRN generic learning problem",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "problem_id",
+    "observations",
+    "demonstrations",
+    "requested_predictions",
+    "attempt_limit"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "problem_id": {
+      "$ref": "#/$defs/hash"
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/observation"
+      },
+      "minItems": 1
+    },
+    "demonstrations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/demonstration"
+      }
+    },
+    "requested_predictions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/prediction_request"
+      }
+    },
+    "action_space": {
+      "$ref": "#/$defs/action_space"
+    },
+    "attempt_limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 255
+    }
+  },
+  "$defs": {
+    "hash": {
+      "type": "string",
+      "pattern": "^blake3:[0-9a-f]{64}$"
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "modality",
+        "source",
+        "certainty",
+        "payload"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/hash"
+        },
+        "modality": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]{1,63}$"
+        },
+        "logical_time": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "certainty": {
+          "enum": [
+            "exact",
+            "uncertain"
+          ]
+        },
+        "payload": true
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact",
+        "locator"
+      ],
+      "properties": {
+        "artifact": {
+          "$ref": "#/$defs/hash"
+        },
+        "locator": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "observed_utc": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "demonstration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "context",
+        "outcome"
+      ],
+      "properties": {
+        "context": {
+          "$ref": "#/$defs/observation_ids"
+        },
+        "intervention": {
+          "$ref": "#/$defs/intervention"
+        },
+        "outcome": {
+          "$ref": "#/$defs/observation_ids"
+        }
+      }
+    },
+    "prediction_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_id",
+        "context",
+        "target"
+      ],
+      "properties": {
+        "request_id": {
+          "$ref": "#/$defs/hash"
+        },
+        "context": {
+          "$ref": "#/$defs/observation_ids"
+        },
+        "intervention": {
+          "$ref": "#/$defs/intervention"
+        },
+        "target": {
+          "enum": [
+            "observation",
+            "transition",
+            "goal",
+            "plan",
+            "claim"
+          ]
+        }
+      }
+    },
+    "observation_ids": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/hash"
+      },
+      "uniqueItems": true
+    },
+    "intervention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "arguments"
+      ],
+      "properties": {
+        "action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "arguments": {
+          "type": "array"
+        }
+      }
+    },
+    "action_space": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actions"
+      ],
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

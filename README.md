@@ -1,12 +1,17 @@
 # CAIRN
 
 CAIRN (Causal Analogical Induction over Relational Networks) is a planned
-CPU-only, transformer-free system for inducing executable causal rewrite
-theories from relational evidence.
+CPU-only, transformer-free general learning architecture for inducing executable
+causal rewrite theories, retaining verified mechanisms, learning unknown worlds,
+and composing skills from relational evidence.
+
+ARC is one quarantined evaluation adapter. It is not the project's developmental
+centre or sufficient evidence of general learning.
 
 ## Current implementation status
 
-The repository has completed WP00 and is implementing WP01. Implemented today:
+The repository has completed WP00 and WP01 and has a committed WP04 reference
+checkpoint. Implemented today:
 
 - a pinned Rust workspace;
 - the repository operating law and architecture-layer manifest;
@@ -21,9 +26,15 @@ The repository has completed WP00 and is implementing WP01. Implemented today:
   identity independent of producer/time metadata;
 - crash-safe append-only content-addressed storage with thread/process
   idempotency, corruption checks, and recovery.
+- a first bounded RKL type/range checker and alpha-canonical expression form,
+  with 100,000 generated-term checks at the current checkpoint.
 
-Grid, RKL, verifier, synthesis, learning, and reasoning components remain design
-targets; they are not claimed as implemented.
+Entity/event induction, verification, ontology invention, continual memory,
+interactive world learning, planning, cross-domain integration, and knowledge
+learning remain targets; they are not claimed as achieved.
+
+The normative target and claim boundary are in
+[`08_GENERAL_LEARNER_REQUIREMENTS.md`](docs/CAIRN_handoff/08_GENERAL_LEARNER_REQUIREMENTS.md).
 
 ## Developer checks
 

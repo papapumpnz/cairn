@@ -28,7 +28,8 @@ impl IntRange {
 pub enum Type {
     Bool,
     Int(IntRange),
-    Color,
+    /// An uninterpreted finite categorical value supplied by an adapter.
+    Atom,
     Coord2,
     Vector2,
     Axis,
@@ -44,9 +45,10 @@ pub enum Type {
     Symbol,
     Action,
     State,
-    Grid {
-        maximum_width: u16,
-        maximum_height: u16,
+    /// A bounded finite observation field. Axis meaning belongs to its adapter.
+    FiniteField {
+        axes: u8,
+        maximum_elements: u64,
     },
     Tuple(Vec<Self>),
     Option(Box<Self>),
@@ -149,7 +151,7 @@ impl BinaryOp {
 pub enum Expr {
     Bool(bool),
     Int(i64),
-    Color(u16),
+    Atom(u16),
     Coord2 {
         row: i32,
         column: i32,
@@ -316,7 +318,7 @@ pub enum Schedule {
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum ConflictPolicy {
     Reject,
-    SameColorIdempotent,
+    SameValueIdempotent,
     Priority,
     LastWrite,
 }

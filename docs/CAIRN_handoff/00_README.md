@@ -17,19 +17,28 @@ The architecture is a ground-up replacement for SCEM and MOSAIC. It retains thei
 5. `05_CAIRN_SWARM_PROTOCOL.md` — local and distributed agent design.
 6. `06_CAIRN_AGENT_OPERATING_LAW.md` — non-negotiable engineering rules.
 7. `07_CAIRN_RISKS_AND_KILL_CRITERIA.md` — falsification plan.
-8. `HANDOFF_INDEX.md` — work-package ownership and dependency graph.
-9. `work_packages/` — one self-contained assignment per coding sub-agent.
-10. `schemas/`, `templates/`, and `examples/` — artifact contracts and worked traces.
-11. `BIBLIOGRAPHY.md` — official benchmark sources and primary research basis.
-12. `SOURCE_ARCHIVE_RECORD.md` — hashes and review scope for the supplied attempts.
-13. `VALIDATION_REPORT.md` — specification-package consistency checks.
-14. `manifest.json` — file inventory and integrity hashes for this bundle.
+8. `08_GENERAL_LEARNER_REQUIREMENTS.md` — mandatory learning loops, gates, core/adapter boundary, and honest claim rule.
+9. `HANDOFF_INDEX.md` — work-package ownership and dependency graph.
+10. `work_packages/` — one self-contained assignment per coding sub-agent.
+11. `schemas/`, `templates/`, and `examples/` — artifact contracts and worked traces.
+12. `BIBLIOGRAPHY.md` — official benchmark sources and primary research basis.
+13. `SOURCE_ARCHIVE_RECORD.md` — hashes and review scope for the supplied attempts.
+14. `VALIDATION_REPORT.md` — specification-package consistency checks.
+15. `manifest.json` — file inventory and integrity hashes for this bundle.
 
 ## North-star acceptance objective
 
-The eventual benchmark objective is at least 85% pass@2 on a clean ARC-AGI-2 private evaluation while remaining CPU-only and transformer-free. This is an objective, not a claimed result. Intermediate gates are deliberately severe enough to invalidate the architecture early if its central mechanisms do not work.
+The north star is a verifier-controlled system that learns new task theories,
+improves later learning from proof-backed experience, discovers unknown
+action-conditioned worlds, composes skills, and reuses one cognitive core across
+at least three domains while remaining CPU-only and transformer-free.
 
-For ARC-AGI-3 and later interactive suites, the same core must learn transition and goal theories online, plan under uncertainty, and be scored on action efficiency rather than merely completing a known game.
+The eventual objective of at least 85% pass@2 on a clean ARC-AGI-2 private
+evaluation remains one benchmark objective, not the project definition and not a
+claimed result. It cannot substitute for the general-learning gates.
+
+Interactive learning, continual memory, and non-ARC vector-graphics integration
+are developed alongside static induction rather than after it.
 
 ## Ground-up distinction
 

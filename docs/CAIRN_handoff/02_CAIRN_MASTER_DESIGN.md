@@ -10,7 +10,7 @@ Status: implementable research design; no benchmark result is claimed by this do
 
 CAIRN is a CPU-only, transformer-free architecture whose central inference object is a **causal rewrite theory**, not an action sequence, a fixed ARC program, or a vector prediction.
 
-For a static ARC task, the system must explain all demonstrations with a compact set of quantified graph-rewrite rules. It discovers the rules by aligning observed input-output events, solving unknown predicates and constructors, executing the resulting theory, and using exact mismatches as counterexamples. Perception is induced jointly with the theory: an object, motif, panel, or symbol exists in the working model only because its definition helps explain the observed transformation.
+For a static induction problem, the system must explain demonstrations with a compact set of quantified graph-rewrite rules. It discovers the rules by aligning observed events, solving unknown predicates and constructors, executing the resulting theory, and using exact mismatches as counterexamples. Perception is induced jointly with the theory: an entity, motif, region, symbol, or track exists in the working model only because its definition helps explain observations. ARC grid pairs are one adapter representation of this generic problem.
 
 For an interactive task, the same theory language models state transitions, observations, action effects, hidden variables, and goals. The system maintains a posterior over possible world theories, chooses interventions by expected information gain plus goal value, and plans through the surviving theories.
 
@@ -36,6 +36,23 @@ MOSAIC: enumerate a fixed high-level DSL over precomputed parse worlds
 ```
 
 CAIRN instead uses a small universal relational kernel and induces high-level semantics as task-local, proof-carrying definitions.
+
+### 0.1 General-learning claim boundary
+
+CAIRN is not considered a general learner merely because it can represent or
+search for programs. General learning requires measured evidence from three
+co-developed loops:
+
+```text
+task learning: infer a previously unstored theory
+continual learning: verified experience improves later learning
+interactive causal learning: learn unknown dynamics, goals, and skills online
+```
+
+ARC is one quarantined adapter and benchmark. It may exercise exact induction,
+but it does not define core APIs, development order, or the general-learning
+claim. The six mandatory gates are specified in
+`08_GENERAL_LEARNER_REQUIREMENTS.md`.
 
 ## 1. Requirements
 
@@ -77,6 +94,19 @@ The interactive solver must add:
 - long-horizon planning;
 - option or skill induction with learned termination conditions;
 - memory compression and retrieval.
+
+The continual learner must add:
+
+- proof-backed mechanism promotion and deprecation;
+- explicit support geometry and unsupported-axis uncertainty;
+- fixed-budget memory-on versus memory-off improvement;
+- skill and mechanism composition without coded composite operators;
+- negative-memory reuse without making valid candidates unreachable;
+- knowledge claims with source, time, contradictions, and provenance.
+
+The same cognition runtime must operate on finite-field transformations,
+interactive worlds, and vector graphics or diagrams before a general-learning
+claim is permitted.
 
 ### 1.3 Performance requirements
 
@@ -355,7 +385,7 @@ High-level operations such as “copy each enclosed object to its matching panel
 ```text
 Bool
 Int[lo, hi]
-Color
+Atom
 Coord2
 Vector2
 Axis
@@ -367,7 +397,7 @@ EntitySet
 Symbol
 Action
 State
-Grid
+FiniteField<axes, max-elements>
 Relation<A...>
 Option<T>
 List<T, max>
@@ -375,7 +405,10 @@ Map<K, V, max>
 Operator<A, B>
 ```
 
-Ranges and collection bounds are explicit. Static ARC programs are total under grid-derived bounds. Interactive programs consume a fuel budget and expose any nontermination as verification failure.
+Ranges and collection bounds are explicit. Finite-field axis meanings and atom
+interpretations belong to adapters, not RKL. Static programs are total under
+observation-derived bounds. Interactive programs consume a fuel budget and
+expose any nontermination as verification failure.
 
 ### 6.3 Expression forms
 
@@ -794,7 +827,7 @@ CAIRN represents a visual symbol as an entity signature plus relational context.
 
 ```rust
 pub enum SymbolMeaning {
-    Color(ColorExpr),
+    Atom(AtomExpr),
     Direction(DirectionExpr),
     Transform(TransformExpr),
     Predicate(PredicateExpr),
@@ -1156,15 +1189,19 @@ Two theories that differ internally but produce the same test grid count as one 
 ### 14.1 Input contract
 
 ```rust
-pub struct StaticTask {
+pub struct ArcStaticTask {
     pub id: TaskId,
-    pub train: Vec<GridPair>,
-    pub test: Vec<Grid>,
+    pub train: Vec<ArcGridPair>,
+    pub test: Vec<ArcGrid>,
     pub max_attempts_per_test: u8,
 }
 ```
 
-The solver sees all training pairs and all test inputs in the task. It may induce one shared theory with test-specific bindings, or a theory that branches on input context. It may not inspect expected test outputs.
+This is an ARC-adapter contract, lowered losslessly into generic
+`LearningProblem`, `Observation`, and `PredictionRequest` values before cognition.
+The solver sees all training pairs and all test inputs in the task. It may induce
+one shared theory with test-specific bindings, or a theory that branches on input
+context. It may not inspect expected test outputs.
 
 ### 14.2 Staged anytime schedule
 
@@ -1248,13 +1285,13 @@ Always construct positive and hard-negative object sets. Selectors are learned a
 ### 14.4 Output certificate
 
 ```rust
-pub struct StaticAnswerCertificate {
+pub struct ArcStaticAnswerCertificate {
     pub task_hash: Hash,
     pub theory_hash: Hash,
     pub theory: Theory,
     pub training_replays: Vec<PairReplayCertificate>,
     pub test_bindings: Vec<TestBindingCertificate>,
-    pub predictions: Vec<Vec<Grid>>,
+    pub predictions: Vec<Vec<ArcGrid>>,
     pub falsification_report: FalsificationReport,
     pub resource_report: ResourceReport,
 }
@@ -1785,13 +1822,16 @@ cairn/
     cairn-falsify
     cairn-belief
     cairn-memory
+    cairn-knowledge
     cairn-swarm
     cairn-plan
-    cairn-arc12
-    cairn-arc3
     cairn-frontend-sdk
     cairn-bench
     cairn-eval
+  adapters/
+    arc12
+    arc3
+    gridworld
   frontends/
     graphics
     vision
@@ -1811,6 +1851,12 @@ Crates lower in this list may depend only on explicitly declared layers. In part
 - memory does not enter verifier acceptance logic;
 - swarm transport does not enter theory semantics;
 - benchmark and evaluation crates do not enter production inference crates.
+- adapters translate benchmark/modality records into generic observations and
+  requested predictions; adapter types never enter cognition crates;
+- temporal evidence, memory, planning, and graphics are core development lanes,
+  not post-ARC extensions;
+- knowledge retrieval may propose claims or schemas but cannot enter verifier
+  acceptance without source and executable proof obligations.
 
 ## 22. Integration with legacy assets
 
@@ -1890,12 +1936,25 @@ The architecture is supported only if experiments show all of these:
 - multi-rule scheduling solves interacting-rule tasks;
 - the same theory engine learns useful ARC-AGI-3 transition models and reduces action count versus reactive baselines;
 - swarm agents add both speed and unique solves.
+- omitted predicates and constructors are invented across unrelated families;
+- memory reduces median search work by at least 50% at fixed CPU budget without
+  reducing exact accuracy;
+- independently learned mechanisms compose on a held-out problem without a new
+  composite primitive;
+- unknown transition laws and goals are learned online with improving action
+  efficiency and option transfer;
+- one evidence/theory/invention/verifier/memory/planning core works across
+  finite-field transformations, interactive worlds, and vector graphics.
 
 ### 24.2 Benchmark north stars
 
+- General learning: pass GLL-1 through GLL-6 before using the phrase generally
+  learning system.
 - ARC-AGI-1: exceed strong classical symbolic baselines with CPU-only pass@2.
 - ARC-AGI-2: staged climb toward the 85% clean private-evaluation target.
 - ARC-AGI-3: complete novel environments with action efficiency approaching human baselines, without environment-specific harness logic.
+- Vector graphics/diagrams: learn and verify held-out transformations through
+  the same cognition runtime without graphics-specific core effects.
 
 ### 24.3 No guarantee by design document
 
@@ -1903,4 +1962,13 @@ A design can be falsifiable and implementable; it cannot honestly certify a futu
 
 ## 25. One-paragraph implementation brief
 
-Build a typed relational evidence engine and universal bounded rewrite kernel first. From each demonstration, generate alternative source-target event covers. Align their relational roles across examples, anti-unify them into multi-rule theory sketches, and use incremental constraints to synthesize selectors, constructors, symbol meanings, rule dependencies, and output rendering. Execute every theory exactly; convert mismatches and unsatisfied cores into semantic pruning constraints. When existing predicates or constructors cannot realize a sketch, synthesize new task-local RKL definitions from positive-negative contrast or unmatched target structure, canonicalize them in a typed e-graph, and retry. Rank exact theories by leave-one-example-out prediction, falsification survival, causal compression, grounded description length, and execution cost; emit up to two distinct output modes. Extend the identical representation to action-conditioned temporal theories, belief-aware intervention, and planning. Coordinate the process through proof-carrying swarm artifacts, while enforcing CPU-only execution, deterministic replay, and evaluation quarantine.
+Build a typed relational evidence engine, universal bounded rewrite kernel,
+independent verifier, temporal observation path, memory boundary, and frontend SDK
+as co-developed foundations. Infer theories from observations, execute and refute
+them, invent missing task-local definitions, and preserve multiple explanatory
+modes. In parallel, learn action-conditioned worlds and goals, promote only
+proof-backed mechanisms through fixed-budget transfer tests, and validate the
+same cognition contracts on finite-field, interactive, and vector-graphics
+domains. ARC remains an adapter and quarantined benchmark. Coordinate work
+through proof-carrying artifacts while enforcing CPU-only execution,
+deterministic replay, source-linked knowledge, and independent acceptance.
