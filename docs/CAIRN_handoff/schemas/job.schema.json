@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cairn.local/schemas/job.schema.json",
+  "title": "CAIRN swarm job",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "job_id",
+    "job_kind",
+    "priority",
+    "created_utc",
+    "semantics_version",
+    "input_artifacts",
+    "work_budget",
+    "capability_requirements",
+    "dedup_key",
+    "status"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "job_id": { "$ref": "#/$defs/id" },
+    "parent_job_id": { "$ref": "#/$defs/id" },
+    "job_kind": {
+      "enum": [
+        "evidence-expand",
+        "event-generate",
+        "event-cover",
+        "align",
+        "anti-unify",
+        "guard-synthesize",
+        "constructor-synthesize",
+        "symbol-interpret",
+        "schedule-synthesize",
+        "theory-weave",
+        "execute",
+        "verify",
+        "cegis-refine",
+        "invent",
+        "falsify",
+        "rank",
+        "plan",
+        "frontend-normalize",
+        "benchmark"
+      ]
+    },
+    "priority": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+    "created_utc": { "type": "string", "format": "date-time" },
+    "deadline_utc": { "type": "string", "format": "date-time" },
+    "semantics_version": { "type": "string", "minLength": 1 },
+    "input_artifacts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/hash" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "expected_output_types": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "work_budget": { "$ref": "#/$defs/work_budget" },
+    "capability_requirements": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "grid-kernel",
+          "reg-query",
+          "rkl-execute",
+          "sat",
+          "egraph",
+          "analogy",
+          "invention",
+          "verification",
+          "planning",
+          "vision-frontend",
+          "audio-frontend",
+          "video-frontend",
+          "text-frontend"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "shard": { "$ref": "#/$defs/shard" },
+    "dedup_key": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "novelty_key": { "type": "string", "maxLength": 256 },
+    "lease": { "$ref": "#/$defs/lease" },
+    "status": {
+      "enum": [
+        "queued",
+        "leased",
+        "running",
+        "completed",
+        "failed",
+        "cancelled",
+        "capacity-stop",
+        "timeout"
+      ]
+    },
+    "result_artifacts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/hash" },
+      "uniqueItems": true
+    },
+    "terminal_error": { "$ref": "#/$defs/error" }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{7,127}$"
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^blake3:[0-9a-f]{64}$"
+    },
+    "work_budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["work_units", "wall_ms", "memory_bytes"],
+      "properties": {
+        "work_units": { "type": "integer", "minimum": 1 },
+        "wall_ms": { "type": "integer", "minimum": 1 },
+        "memory_bytes": { "type": "integer", "minimum": 1048576 },
+        "candidate_limit": { "type": "integer", "minimum": 1 },
+        "solver_conflict_limit": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "shard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["axis", "index", "count"],
+      "properties": {
+        "axis": {
+          "enum": [
+            "evidence-mode",
+            "event-family",
+            "alignment-mode",
+            "theory-shape",
+            "invention-family",
+            "posterior-mode",
+            "action-branch"
+          ]
+        },
+        "index": { "type": "integer", "minimum": 0 },
+        "count": { "type": "integer", "minimum": 1 },
+        "seed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "lease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["worker_id", "lease_token", "expires_utc", "heartbeat_seq"],
+      "properties": {
+        "worker_id": { "type": "string", "minLength": 1 },
+        "lease_token": { "type": "string", "minLength": 16 },
+        "expires_utc": { "type": "string", "format": "date-time" },
+        "heartbeat_seq": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "message"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "invalid-input",
+            "unsupported-semantics",
+            "capacity-cap",
+            "timeout",
+            "verification-failed",
+            "dependency-failed",
+            "internal-defect"
+          ]
+        },
+        "message": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "detail_artifact": { "$ref": "#/$defs/hash" }
+      }
+    }
+  }
+}

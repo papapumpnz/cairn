@@ -1,0 +1,329 @@
+{
+  "schema_version": "1.0",
+  "bundle": "CAIRN_ARCHITECTURE_HANDOFF",
+  "architecture": "CAIRN — Causal Analogical Induction over Relational Networks",
+  "generated_utc": "2026-07-10T04:19:32Z",
+  "hash_algorithm": "SHA-256",
+  "manifest_excludes": [
+    "manifest.json",
+    "manifest.sha256"
+  ],
+  "file_count": 60,
+  "total_bytes": 320860,
+  "source_archives": [
+    {
+      "name": "mosasic_experiments.zip",
+      "sha256": "6fa6b89f57c5726dc3da81ab96747c0520745341d66ea8ad7e059466113eb8e2"
+    },
+    {
+      "name": "mosaic_docs.zip",
+      "sha256": "1b5a65ed98a3e5f3931871bb7ab345f32021df098c858a2f2f438becc20c47d8"
+    },
+    {
+      "name": "scem_experiments_docs.zip",
+      "sha256": "b4187a8306a4ff64267921ca66c1fbcaaefee47298a6628c3a627471b235d3e2"
+    }
+  ],
+  "files": [
+    {
+      "path": "00_README.md",
+      "bytes": 3097,
+      "sha256": "785404ef508a8127915ef8d9ca63342d93c921eac79751ae56c6fea0b914fcd4"
+    },
+    {
+      "path": "01_REVIEW_FINDINGS.md",
+      "bytes": 8227,
+      "sha256": "59e9cdf1c75fae4a046a1162c008b0a8e4e10f8ce1124b87f34dce9eecb87286"
+    },
+    {
+      "path": "02_CAIRN_MASTER_DESIGN.md",
+      "bytes": 66174,
+      "sha256": "82141318c1e4fc708f733d338272bba0af46e319fc2213a8098234611c07b887"
+    },
+    {
+      "path": "03_CAIRN_INTERFACES.md",
+      "bytes": 13928,
+      "sha256": "3952f14afd7f6e25daf29a5a37089875db5ae817c80c557bcac43f235139e243"
+    },
+    {
+      "path": "04_CAIRN_EXPERIMENT_LADDER.md",
+      "bytes": 13896,
+      "sha256": "d9159aafa9e15b31b6d2dcb366bb24c60ee213f6c9e23c4b4cefdd7cf61a1a3a"
+    },
+    {
+      "path": "05_CAIRN_SWARM_PROTOCOL.md",
+      "bytes": 6998,
+      "sha256": "f67f26817622180a22185c87218ac79c60b26012c798972d4c3892eb83586cab"
+    },
+    {
+      "path": "06_CAIRN_AGENT_OPERATING_LAW.md",
+      "bytes": 4738,
+      "sha256": "e503b69a599f7dc0e813933ba97e715eff14c5d43cdc0b90f917563bdc2addeb"
+    },
+    {
+      "path": "07_CAIRN_RISKS_AND_KILL_CRITERIA.md",
+      "bytes": 7298,
+      "sha256": "9b4f65b9b1ebd6a6fb4d8d7b3034cd5593950bd3aec6c8e35b13f631afe77787"
+    },
+    {
+      "path": "BIBLIOGRAPHY.md",
+      "bytes": 5622,
+      "sha256": "bf958a42fc0ab004ed996a58a3e12d934e5638511d1f5ef2f297ccebf88a4a76"
+    },
+    {
+      "path": "HANDOFF_INDEX.md",
+      "bytes": 4909,
+      "sha256": "cb3bb39533bda0f786bd2c142f1b99aac03b47d208bb9243198a4e5e66772d1c"
+    },
+    {
+      "path": "SOURCE_ARCHIVE_RECORD.md",
+      "bytes": 1744,
+      "sha256": "ef05f1b71a5ef6b228af42690c2b12b02306d5913fa4d69f86f9223a8d99be3d"
+    },
+    {
+      "path": "VALIDATION_REPORT.md",
+      "bytes": 1546,
+      "sha256": "07ee9421346ef956670128af11fe6d220e8417cb8f2bfa735391db8093f4c8b5"
+    },
+    {
+      "path": "examples/INTERACTIVE_SOLVE_TRACE.md",
+      "bytes": 8938,
+      "sha256": "df6b69e7556efc669b3eac1132ed37f0f3942a588cdb79f8bf49c6005125e4aa"
+    },
+    {
+      "path": "examples/STATIC_SOLVE_TRACE.md",
+      "bytes": 13544,
+      "sha256": "6e9c71354fb4714ce0535feb954aad196c388f2ff6b21529913ac2c56b6e0e6a"
+    },
+    {
+      "path": "examples/THEORY_EXAMPLES.md",
+      "bytes": 7698,
+      "sha256": "b8387faefdf48a7aeafc7a81c160ece8342469a9d57f185eebda0e047e8f07cf"
+    },
+    {
+      "path": "schemas/artifact-envelope.schema.json",
+      "bytes": 4253,
+      "sha256": "d301ce795c29b98d8a8980e9f38cd88982d9f80cf59c6713a9ffc0e2417015aa"
+    },
+    {
+      "path": "schemas/benchmark-result.schema.json",
+      "bytes": 7476,
+      "sha256": "53a63e2cd54620a3c69db44b256517bcee104963222cd149cf8b5b7bd92e796f"
+    },
+    {
+      "path": "schemas/job.schema.json",
+      "bytes": 5002,
+      "sha256": "da8dcab3b9f731e014966998e8aefffcc23894b1d3f73395070a02026c1cb7ba"
+    },
+    {
+      "path": "schemas/theory-ir.schema.json",
+      "bytes": 9377,
+      "sha256": "e7f3309c14f17362767bba141567684a60887793a49be30d3b275a465193975b"
+    },
+    {
+      "path": "templates/AGENT_ASSIGNMENT_PROMPT.md",
+      "bytes": 1784,
+      "sha256": "8f9c6f06168dc6aebdd5994c5440c2b52c42cb7f061f0d2b4749e3fd8d5dafd1"
+    },
+    {
+      "path": "templates/ARCHITECTURE_DECISION_RECORD.md",
+      "bytes": 762,
+      "sha256": "8e61b99e488f644d8c5c4957c3fc3016cd269f1c1fd1e8e4f096ede568370cfa"
+    },
+    {
+      "path": "templates/HYPOTHESIS_EXPERIMENT.md",
+      "bytes": 1560,
+      "sha256": "1121d117154db24ad3ff651f56cfaca5b8d86ae3d8dac637eb9e86378b2ea956"
+    },
+    {
+      "path": "templates/WORK_PACKAGE_HANDOFF.md",
+      "bytes": 2005,
+      "sha256": "f60d14bf46edf41584fc77f6b1d1df1d357609fbeca89ee30721051a1264ae43"
+    },
+    {
+      "path": "templates/cairn.example.toml",
+      "bytes": 1896,
+      "sha256": "988ed3664e171ed402f14f35da5f4a43fab5c650a56ef2916d1fcf39112a559f"
+    },
+    {
+      "path": "work_packages/WP00.md",
+      "bytes": 3142,
+      "sha256": "ed10fa8ba4f53c1709786b8b626a5b426a555310c8b85b039202320bab032b55"
+    },
+    {
+      "path": "work_packages/WP01.md",
+      "bytes": 2909,
+      "sha256": "494ed3e3414a3dad664939840f17c8906aa32218a0eb8a83c595918864455325"
+    },
+    {
+      "path": "work_packages/WP02.md",
+      "bytes": 2732,
+      "sha256": "6b1ca2c4b9184dbe83123fe73877e4580c20d94d35d1db33c17d1e0539c2f9e1"
+    },
+    {
+      "path": "work_packages/WP03.md",
+      "bytes": 2723,
+      "sha256": "8115ccc8f97ac646cbf6ce4d0574bf179adbc07ce20e0b72e977aa6867a66d24"
+    },
+    {
+      "path": "work_packages/WP04.md",
+      "bytes": 2695,
+      "sha256": "d40470f3c23f77707d43b16658880d0e023ceb9c5def8fd80e814cf938dd99d1"
+    },
+    {
+      "path": "work_packages/WP05.md",
+      "bytes": 2675,
+      "sha256": "c313784dbac6c5cece0956fd608ca45d5ad068e025ee4d6b8a0c4250ea40dc21"
+    },
+    {
+      "path": "work_packages/WP06.md",
+      "bytes": 2690,
+      "sha256": "6a45c692981d0b7cb97ee2dadb6e7c411e7f1872b24ea15d5a18ad1a875c9c93"
+    },
+    {
+      "path": "work_packages/WP07.md",
+      "bytes": 2573,
+      "sha256": "96ff83032ed1ea4719d1c344d1b68d1da5671c90aadb305c3a377ba7023beb21"
+    },
+    {
+      "path": "work_packages/WP08.md",
+      "bytes": 2475,
+      "sha256": "c35732fed74e4984d6de7b8de9dfeb9861721ed6ef8139f31120e2ec5ac736cb"
+    },
+    {
+      "path": "work_packages/WP09.md",
+      "bytes": 2644,
+      "sha256": "7d3441995de7ad2c2c39bb63c6b602757ead5d009cfafeb4e07a8836d36c799b"
+    },
+    {
+      "path": "work_packages/WP10.md",
+      "bytes": 2625,
+      "sha256": "14cbc4477151bd8d8cdfbd637b956bc3bc4b1f0d4bb80c27b1e46804856ce63d"
+    },
+    {
+      "path": "work_packages/WP11.md",
+      "bytes": 2604,
+      "sha256": "02384d81f9c25d0142fa004d21a0210e36cb4eec90cdfbdd6e2602825ec47086"
+    },
+    {
+      "path": "work_packages/WP12.md",
+      "bytes": 2579,
+      "sha256": "5b7c942cb3e8e6c065626ad13a3506a9a73fadad42567dd81088a70077a878af"
+    },
+    {
+      "path": "work_packages/WP13.md",
+      "bytes": 2667,
+      "sha256": "4fd907f109e2ba611f91f7d32871c6e3ddc03645d61a1597509a0ea1086daa2f"
+    },
+    {
+      "path": "work_packages/WP14.md",
+      "bytes": 2543,
+      "sha256": "88a3daba36d8586dc6f56ff781afe2ad8b1455ffc8a7b859569f712f9e25d0f9"
+    },
+    {
+      "path": "work_packages/WP15.md",
+      "bytes": 2777,
+      "sha256": "79d0514463a7247c96aabececdb4b7867f4785c50346e0e19100eb86f6b19a91"
+    },
+    {
+      "path": "work_packages/WP16.md",
+      "bytes": 2565,
+      "sha256": "938ef24a65db34fbbd8595dd8c6219aee320cf6f2ac06b5319056793dadf5ae8"
+    },
+    {
+      "path": "work_packages/WP17.md",
+      "bytes": 2580,
+      "sha256": "1188e3eb24fdd0731647cdbd3fd0a2dac3d410e182ec852d04e6a129373865f4"
+    },
+    {
+      "path": "work_packages/WP18.md",
+      "bytes": 2586,
+      "sha256": "6d5f8338e827059cc6fafd33427f2062b72bcd41672da3dc3e578e002dfea53b"
+    },
+    {
+      "path": "work_packages/WP19.md",
+      "bytes": 2613,
+      "sha256": "43d9403a17e385050363d6e597ab08817a5d73dd9411809e83a6c9703834c3a4"
+    },
+    {
+      "path": "work_packages/WP20.md",
+      "bytes": 2639,
+      "sha256": "98d2f17278313febdd6f45ad8513273daac647e95afd47f6b519399673537a01"
+    },
+    {
+      "path": "work_packages/WP21.md",
+      "bytes": 2548,
+      "sha256": "a52c95f40061891ff3b87517c9f71559a25e7a647cc46d9d6c68213d99ee484e"
+    },
+    {
+      "path": "work_packages/WP22.md",
+      "bytes": 2504,
+      "sha256": "37dde828683e3b9b545982d9ae31d02e97ea52e0d0c82a35c32a0fc781268c4d"
+    },
+    {
+      "path": "work_packages/WP23.md",
+      "bytes": 2570,
+      "sha256": "776f846f0a1db8aa515ceccdd50b223d8dc8b896904e5b8dbb77c886c8f38eed"
+    },
+    {
+      "path": "work_packages/WP24.md",
+      "bytes": 2433,
+      "sha256": "1d6330ed1198cd7195b1481d1e2ea4d0af19f067dc3a948533df79199a6eb25f"
+    },
+    {
+      "path": "work_packages/WP25.md",
+      "bytes": 2395,
+      "sha256": "2d9fd1dd047202659f96de5d69a675508b3d3a1fd51294ea0c4a15133f4ba4b2"
+    },
+    {
+      "path": "work_packages/WP26.md",
+      "bytes": 2467,
+      "sha256": "3b277bc6f7e68efa6a9b9713150835c15d4a34202ac58e879a6534ece438feaf"
+    },
+    {
+      "path": "work_packages/WP27.md",
+      "bytes": 2624,
+      "sha256": "8b5baab6b5dbc5bfea2d586318e77d7dd76e06b0ebeab12fcff79ca5a289b1fb"
+    },
+    {
+      "path": "work_packages/WP28.md",
+      "bytes": 2455,
+      "sha256": "eb08fdc8a160684205359aa06c794e617f546c52bcba2457ec6b13618c44018e"
+    },
+    {
+      "path": "work_packages/WP29.md",
+      "bytes": 2299,
+      "sha256": "9114f78fc50ac60e45f2e1c19c78d4dbab724d014c8978dcd66d32138665ac92"
+    },
+    {
+      "path": "work_packages/WP30.md",
+      "bytes": 2317,
+      "sha256": "9e3a57fbe18694c76c858602fc0a2e707f9fd01da28d428c331da6615579629c"
+    },
+    {
+      "path": "work_packages/WP31.md",
+      "bytes": 2153,
+      "sha256": "601294345dac0b781042a34feb7b1eb75d02e74435c37f9e22676270071882c2"
+    },
+    {
+      "path": "work_packages/WP32.md",
+      "bytes": 2484,
+      "sha256": "861f9f469b751882792c8a3dcfb0b8357190614c82069406faf89266dbb22342"
+    },
+    {
+      "path": "work_packages/WP33.md",
+      "bytes": 2523,
+      "sha256": "ef5e43d687ad800ac399fe5e214d17a223b8cce0ce204ac6d7c3ebefe9dd75ff"
+    },
+    {
+      "path": "work_packages/WP34.md",
+      "bytes": 2624,
+      "sha256": "6df35ab7f9277067aca56af33f29fea50e914d1e666fc828e54d55f7dc147c44"
+    },
+    {
+      "path": "work_packages/index.json",
+      "bytes": 27956,
+      "sha256": "b862e4343708eadc24b795534859b8f9fed02b12e1882b702c48a061bf3f169f"
+    }
+  ]
+}

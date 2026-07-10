@@ -1,0 +1,481 @@
+{
+  "schema_version": "1.0",
+  "work_package_count": 35,
+  "packages": [
+    {
+      "id": "WP00",
+      "title": "Repository, operating law, constraint checker, and CI",
+      "path": "WP00.md",
+      "dependencies": [],
+      "owned_scope": "workspace root, `cairn-check`, CI configuration, `LAW.md`, architecture-decision-record template",
+      "objective": "Create the enforceable project boundary before any inference code exists.",
+      "deliverables": "A compilable Rust workspace, machine-enforced policy checks, CI jobs, reproducible toolchain pinning, and self-tests that prove each prohibition fires.",
+      "acceptance_criteria": "Clean workspace passes; all planted violations fail with stable machine-readable codes; checker runtime below 5 s on the repository; runtime attestation schema validates; CI runs formatting, clippy with warnings denied, unit tests, policy check, and artifact-schema validation."
+    },
+    {
+      "id": "WP01",
+      "title": "Canonical serialization, content-addressed storage, and artifact envelopes",
+      "path": "WP01.md",
+      "dependencies": [
+        "WP00"
+      ],
+      "owned_scope": "cairn-core`, `cairn-cas`, shared hash and artifact schemas",
+      "objective": "Provide immutable, replayable, cross-process artifacts with stable semantic identity.",
+      "deliverables": "Canonical CBOR encoder/decoder, BLAKE3 IDs, append-only CAS, artifact validation, schema/version negotiation, and crash-safe local storage.",
+      "acceptance_criteria": "Identical semantic values produce identical bytes and IDs across repeat runs; 10 million small artifact round trips without mismatch; concurrent idempotent writes; recovery after forced process termination; cached 1 MB blob read throughput above 1 GB/s on baseline storage or documented machine-normalized equivalent."
+    },
+    {
+      "id": "WP02",
+      "title": "Packed grid representation and CPU geometry kernels",
+      "path": "WP02.md",
+      "dependencies": [
+        "WP00"
+      ],
+      "owned_scope": "cairn-grid",
+      "objective": "Deliver the exact high-throughput finite-grid substrate used by all static and frame-based frontends.",
+      "deliverables": "Packed color grids, bitplanes, cell sets, transforms, connected components, geometry, rasterization, overlay, and naive references.",
+      "acceptance_criteria": "All reference comparisons pass; component labeling median below 3 microseconds on representative 30 by 30 grids; common bitset operations above 20 million operations per core per second; no unsafe outside `simd` and packed-copy modules; benchmark variance recorded."
+    },
+    {
+      "id": "WP03",
+      "title": "Relational Evidence Graph and query indexes",
+      "path": "WP03.md",
+      "dependencies": [
+        "WP01",
+        "WP02"
+      ],
+      "owned_scope": "cairn-reg",
+      "objective": "Implement the typed attributed hypergraph that holds observations, entities, relations, events, roles, and derivations efficiently.",
+      "deliverables": "Arena-based REG, specialized relation indexes, snapshots, deterministic query engine, and artifact serialization.",
+      "acceptance_criteria": "At least 10 million indexed binary-relation probes per second on baseline CPU; common two-join query under 50 microseconds on ARC-sized graphs; memory below 20 MB for a deliberately overcomplete 30 by 30 evidence graph; all graph artifacts round-trip canonically."
+    },
+    {
+      "id": "WP04",
+      "title": "Relational Kernel Language types, AST, bounds, and canonical form",
+      "path": "WP04.md",
+      "dependencies": [
+        "WP01"
+      ],
+      "owned_scope": "cairn-rkl",
+      "objective": "Define a small universal bounded relational language with explicit types and totality rules.",
+      "deliverables": "Typed AST, parser for debug fixtures, type checker, range and collection-bound inference, alpha-normalization, semantic hash input, and cost model hooks.",
+      "acceptance_criteria": "100,000 random well-typed terms canonicalize and typecheck deterministically; all generated values fall inside inferred bounds; alpha-equivalent theories hash identically; checker errors carry precise source path and expected/actual types."
+    },
+    {
+      "id": "WP05",
+      "title": "Reference and optimized RKL execution",
+      "path": "WP05.md",
+      "dependencies": [
+        "WP02",
+        "WP03",
+        "WP04"
+      ],
+      "owned_scope": "cairn-bytecode` plus reference interpreter module in `cairn-rkl",
+      "objective": "Execute any valid bounded theory exactly, safely, and fast enough for millions of candidate evaluations.",
+      "deliverables": "Slow reference interpreter, typed bytecode compiler, optimized executor, execution traces, fuel accounting, and semantic equivalence tests.",
+      "acceptance_criteria": "Zero differential mismatches; optimized simple theory execution below 50 microseconds on 30 by 30 grids; compiled candidate reused without allocation in hot loop; trace-off mode has measured overhead below 10% over raw kernels; all errors stable and typed."
+    },
+    {
+      "id": "WP06",
+      "title": "Proof DAGs, replay certificates, and independent verifier",
+      "path": "WP06.md",
+      "dependencies": [
+        "WP01",
+        "WP02",
+        "WP03",
+        "WP04",
+        "WP05"
+      ],
+      "owned_scope": "cairn-proof",
+      "objective": "Create the trust boundary that independently establishes exact execution and artifact lineage.",
+      "deliverables": "Proof data model, training replay certificates, answer certificates, cross-implementation checker, corruption diagnostics, and compact proof hashes.",
+      "acceptance_criteria": "Verifier catches all planted corruptions; verifier agrees with reference interpreter on one million random cases; certificate replay uses no synthesis or memory crates; typical static certificate below 1 MB; verification median below 20 ms per task."
+    },
+    {
+      "id": "WP07",
+      "title": "Demand-driven entity algebra",
+      "path": "WP07.md",
+      "dependencies": [
+        "WP02",
+        "WP03",
+        "WP04"
+      ],
+      "owned_scope": "cairn-entity",
+      "objective": "Generate and cache only entity definitions relevant to an active explanation hole.",
+      "deliverables": "Entity expression evaluator, denotation cache, demand API, cost tiers, equivalence signatures, and provenance.",
+      "acceptance_criteria": "At least one useful entity definition for 99.5% of nonempty ARC training grids; demand-driven mode materializes at least 60% fewer entities than a frozen all-config parse lattice on the comparison suite; median below 20 ms per grid; exact provenance for every entity."
+    },
+    {
+      "id": "WP08",
+      "title": "Structure evidence detectors",
+      "path": "WP08.md",
+      "dependencies": [
+        "WP02",
+        "WP03",
+        "WP07"
+      ],
+      "owned_scope": "detector modules in `cairn-entity` and `cairn-reg",
+      "objective": "Supply cheap, task-independent evidence for panels, separators, repetition, symmetry, topology, and candidate symbols.",
+      "deliverables": "Evidence facts with confidence, derivations, detector benchmarks, and manual-audit fixtures.",
+      "acceptance_criteria": "Zero false exact facts on the committed exact-detector suite; heuristic detector precision and recall reported separately; total detector median below 30 ms per ARC task; each result has a reproducible derivation and supporting cell set."
+    },
+    {
+      "id": "WP09",
+      "title": "Event and source-target correspondence hypothesis generation",
+      "path": "WP09.md",
+      "dependencies": [
+        "WP02",
+        "WP03",
+        "WP07",
+        "WP08"
+      ],
+      "owned_scope": "cairn-events",
+      "objective": "Generate a compact topologically diverse set of causal event hypotheses from an input-output pair.",
+      "deliverables": "Preserve, update, move, transform, recolor, copy, create, delete, split, merge, aggregate, distribute, panel, and symbol-control event hypotheses.",
+      "acceptance_criteria": "Correct event kind and source-target set in top five on at least 98% of single-event synthetic cases; top twenty on at least 95% of two-event component cases; median below 20 ms per simple pair and p95 below 100 ms; emitted event count cap reasons reported."
+    },
+    {
+      "id": "WP10",
+      "title": "Exact pair event-cover optimization",
+      "path": "WP10.md",
+      "dependencies": [
+        "WP09",
+        "WP13"
+      ],
+      "owned_scope": "cairn-cover",
+      "objective": "Select top structurally distinct event sets that exactly explain a demonstration pair.",
+      "deliverables": "Exact covers, replay plans, unmatched explanation cores, cover diversity signatures, and optimization metrics.",
+      "acceptance_criteria": "Exact cover in top eight for at least 95% of two-event synthetic suite; 100% replay correctness; p95 below 200 ms on ARC training pairs in the component benchmark; top-k covers structurally distinct; unsat cores correctly classify at least 90% of controlled omissions."
+    },
+    {
+      "id": "WP11",
+      "title": "Cross-pair analogical alignment and anti-unification",
+      "path": "WP11.md",
+      "dependencies": [
+        "WP03",
+        "WP10"
+      ],
+      "owned_scope": "cairn-analogy",
+      "objective": "Map causal roles and relations across demonstrations and produce typed rule sketches.",
+      "deliverables": "Role mappings, event clusters, preserved-relation scores, alignment modes, and anti-unified sketches.",
+      "acceptance_criteria": "Correct abstract role alignment in top three for at least 95% of synthetic suite; at least 90% on multirule suite; relation preservation beats appearance-only baseline by at least 15 points; median below 100 ms for small tasks and p95 below 1 s."
+    },
+    {
+      "id": "WP12",
+      "title": "Typed e-graph and goal-directed equality saturation",
+      "path": "WP12.md",
+      "dependencies": [
+        "WP04",
+        "WP05"
+      ],
+      "owned_scope": "cairn-egraph",
+      "objective": "Compact equivalent predicates, features, coordinate expressions, and constructors while preserving proof scope.",
+      "deliverables": "Typed e-classes, e-class analyses, scoped observational equivalence, goal-directed saturation, and k-best extraction.",
+      "acceptance_criteria": "At least 10 times syntactic deduplication on generated equivalent-expression suites; k-best extraction exact against brute force for small classes; 100,000-node stress within declared memory; goal-directed run below 100 ms for typical guard holes; no cross-task observational equality leakage."
+    },
+    {
+      "id": "WP13",
+      "title": "Incremental finite-domain SAT and MaxSAT backend",
+      "path": "WP13.md",
+      "dependencies": [
+        "WP00",
+        "WP01",
+        "WP04"
+      ],
+      "owned_scope": "cairn-constraints",
+      "objective": "Provide deterministic incremental solving, model blocking, optimization, and unsat explanation behind a stable trait.",
+      "deliverables": "Backend abstraction, first production SAT backend, weighted or lexicographic optimization, assumption scopes, metrics, and core extraction.",
+      "acceptance_criteria": "All brute-force comparisons pass; solve 100,000-variable sparse synthetic problem within measured target chosen in pre-registration; incremental re-solve at least 5 times faster than rebuild on CEGIS fixture; deterministic selected model under CAIRN canonical tie-breaking."
+    },
+    {
+      "id": "WP14",
+      "title": "Contextual guard and selector induction",
+      "path": "WP14.md",
+      "dependencies": [
+        "WP11",
+        "WP12",
+        "WP13"
+      ],
+      "owned_scope": "cairn-guards",
+      "objective": "Learn minimal relational clauses that select transformed bindings and reject hard negatives.",
+      "deliverables": "Guard hypotheses, decision lists when required, separation reports, and failure constraints.",
+      "acceptance_criteria": "At least 95% held-out selector accuracy on T0 suite; exact demonstration positives and negatives; full system at least 3 times fewer guard candidates than naive enumeration; emitted guard has replayable binding explanation."
+    },
+    {
+      "id": "WP15",
+      "title": "Constructor and coordinate-expression synthesis",
+      "path": "WP15.md",
+      "dependencies": [
+        "WP09",
+        "WP12",
+        "WP13"
+      ],
+      "owned_scope": "cairn-construct",
+      "objective": "Synthesize exact variable-arity output structures, placement, shape, color, and canvas-relative geometry from provenance evidence.",
+      "deliverables": "Constructor expressions, anchor and coordinate formulas, color functions, group mappings, and construction proofs.",
+      "acceptance_criteria": "At least 95% held-out exact output on T1 variable-arity suite; at least 85% on multicolor construction suite; every emitted cell has source or bounded constructor provenance; p95 below 5 s for invention-tier cases and below 500 ms for base-tier cases."
+    },
+    {
+      "id": "WP16",
+      "title": "Operator-valued symbol interpretation",
+      "path": "WP16.md",
+      "dependencies": [
+        "WP11",
+        "WP14",
+        "WP15"
+      ],
+      "owned_scope": "cairn-symbols",
+      "objective": "Infer when visual tokens act as instructions and bind them to values, predicates, operators, constructors, roles, or schedule choices.",
+      "deliverables": "Symbol-control hypotheses, mapping constraints, operator-valued bindings, and negative-control diagnostics.",
+      "acceptance_criteria": "At least 90% held-out exact task solve on T3 suite; at least 80% operator-valued cases; unrelated-symbol false control below 2%; leave-one-out mapping report; runtime below 2 s median on suite."
+    },
+    {
+      "id": "WP17",
+      "title": "Rule schedule, dependency DAG, canvas, and renderer synthesis",
+      "path": "WP17.md",
+      "dependencies": [
+        "WP10",
+        "WP13",
+        "WP15"
+      ],
+      "owned_scope": "cairn-schedule",
+      "objective": "Infer how multiple rules interact and how their effects become the exact output canvas.",
+      "deliverables": "Parallel/sequence/decision/fixpoint schedules, dependency DAGs, canvas expressions, layer order, and conflict proofs.",
+      "acceptance_criteria": "At least 90% semantic schedule recovery on T2; at least 85% exact interacting-rule solves; 100% bound proofs for fixpoints; renderer reproduces all selected event covers; p95 below 2 s on synthetic suite."
+    },
+    {
+      "id": "WP18",
+      "title": "Theory weaver and semantic frontier",
+      "path": "WP18.md",
+      "dependencies": [
+        "WP11",
+        "WP14",
+        "WP15",
+        "WP16",
+        "WP17"
+      ],
+      "owned_scope": "cairn-theory",
+      "objective": "Assemble aligned events, guards, constructors, symbols, schedules, and renderers into complete multi-rule theory candidates.",
+      "deliverables": "Theory sketches, joint constraint problems, complete candidates, semantic mode hashes, and anytime frontier state.",
+      "acceptance_criteria": "On T0\u2013T3 combined suite, complete correct theory in top fifty executed candidates for at least 90% of solved cases; no duplicate semantic theory execution above 1%; checkpoint/resume byte-identical results; memory caps produce typed terminal state."
+    },
+    {
+      "id": "WP19",
+      "title": "Counterexample-guided refinement and learning from failures",
+      "path": "WP19.md",
+      "dependencies": [
+        "WP06",
+        "WP18"
+      ],
+      "owned_scope": "cairn-cegis",
+      "objective": "Turn exact execution failures into semantic pruning constraints and focused follow-up jobs.",
+      "deliverables": "Structured counterexamples, minimized explanation cores, pruning clauses, refinement jobs, and unrealizability certificates.",
+      "acceptance_criteria": "T5 shows at least 3 times fewer complete candidate executions and 2 times lower p95 than rejection-only; no valid theory pruned on exhaustive small suites; core classification at least 90% on controlled omissions."
+    },
+    {
+      "id": "WP20",
+      "title": "Dynamic predicate, role, constructor, and recursive-definition invention",
+      "path": "WP20.md",
+      "dependencies": [
+        "WP12",
+        "WP13",
+        "WP19"
+      ],
+      "owned_scope": "cairn-invent",
+      "objective": "Expand the task-local practical language from explanation cores while remaining grounded in RKL.",
+      "deliverables": "Definition proposals, totality proofs, separation/compression reports, task-local admission, and promotion candidates.",
+      "acceptance_criteria": "T4 gate: at least 70% of omitted-vocabulary cases solved, negative false positives below 2%, every accepted definition exact and total, median invention below 10 s, no task IDs or opaque native semantics."
+    },
+    {
+      "id": "WP21",
+      "title": "Falsification, theory ranking, ambiguity management, and pass@2",
+      "path": "WP21.md",
+      "dependencies": [
+        "WP18",
+        "WP19",
+        "WP20"
+      ],
+      "owned_scope": "cairn-falsify`, `cairn-belief",
+      "objective": "Rank exact theories by internal predictive evidence and emit two credible distinct output modes.",
+      "deliverables": "Leave-one-out reports, equivariance results, perturbation stability, semantic modes, belief weights, and attempt selection.",
+      "acceptance_criteria": "A0 at least 8-point ambiguous-task improvement over MDL-only; A1 pass@2 at least 10 points over best single mode in controlled suite; duplicate second outputs below 1%; exact training fit never relaxed."
+    },
+    {
+      "id": "WP22",
+      "title": "ARC-AGI-1/2 frontend and static task runner",
+      "path": "WP22.md",
+      "dependencies": [
+        "WP02",
+        "WP06"
+      ],
+      "owned_scope": "cairn-arc12",
+      "objective": "Parse official task format, enforce split capabilities, run static tasks, and emit standard answer and evidence artifacts.",
+      "deliverables": "Strict JSON parser, task canonicalization, training/public-eval capability separation, answer writer, suite runner, and task visualization for development only.",
+      "acceptance_criteria": "All official public task files parse; malformed corpus fixtures rejected precisely; ordinary development binary cannot enumerate evaluation roots; one-task end-to-end dummy solver certificate verifies; runner overhead below 5 ms per task excluding solve."
+    },
+    {
+      "id": "WP23",
+      "title": "Mechanism memory, promotion, uncertainty, and deprecation",
+      "path": "WP23.md",
+      "dependencies": [
+        "WP01",
+        "WP06",
+        "WP20"
+      ],
+      "owned_scope": "cairn-memory",
+      "objective": "Persist proof-backed causal definitions without repeating SCEM's surface-content transfer failure.",
+      "deliverables": "Mechanism module store, support geometry, proposal retrieval, offline promotion runner, memory-off ablation, and deprecation workflow.",
+      "acceptance_criteria": "A2 gates pass; zero unverified accepts; broad modules transfer at least 90% on suite; narrow modules do not claim support beyond evidence; retrieval median below 1 ms for 100,000 modules in stress index; full lineage available."
+    },
+    {
+      "id": "WP24",
+      "title": "Local multi-process cognitive swarm",
+      "path": "WP24.md",
+      "dependencies": [
+        "WP01",
+        "WP06",
+        "WP18"
+      ],
+      "owned_scope": "cairn-swarm` local runtime",
+      "objective": "Run heterogeneous agents concurrently on one CPU machine with deterministic artifact merging and exact accounting.",
+      "deliverables": "Coordinator, resource broker, worker runtime, leases, journals, local transport, crash recovery, and scaling benchmark.",
+      "acceptance_criteria": "S0 speed gates; semantic results identical across worker counts; zero lost accepted artifacts after crash recovery; coordinator overhead below 5% on four-worker search-heavy suite; each role CPU reported."
+    },
+    {
+      "id": "WP25",
+      "title": "Distributed swarm transport and integrity",
+      "path": "WP25.md",
+      "dependencies": [
+        "WP24"
+      ],
+      "owned_scope": "network transport module in `cairn-swarm",
+      "objective": "Extend the artifact/job protocol across CPU nodes without trusting remote producers.",
+      "deliverables": "Versioned framed transport, authenticated optional identities, resumable blob fetch, backpressure, node-loss recovery, and corruption tests.",
+      "acceptance_criteria": "S2 gates; four-node task-sharded overhead below 15%; corrupted artifacts rejected; no semantic difference from local run; node loss completes remaining tasks; transport can be disabled without core changes."
+    },
+    {
+      "id": "WP26",
+      "title": "Temporal REG, entity tracking, and ARC-AGI-3 adapter",
+      "path": "WP26.md",
+      "dependencies": [
+        "WP03",
+        "WP07",
+        "WP22"
+      ],
+      "owned_scope": "cairn-arc3` observation adapter and temporal modules",
+      "objective": "Normalize interactive frames, actions, and episode signals into compressed temporal evidence.",
+      "deliverables": "Temporal observations, candidate tracks, frame-change events, viewport/camera hypotheses, history summaries, and replayable episode store.",
+      "acceptance_criteria": "Correct event/track in top three for at least 95% controlled suite; working-memory size grows sublinearly and remains below configured cap for 10,000 steps; raw episode replay exact; common update below 100 ms."
+    },
+    {
+      "id": "WP27",
+      "title": "World-theory induction, hidden state, goal hypotheses, and intervention design",
+      "path": "WP27.md",
+      "dependencies": [
+        "WP19",
+        "WP26"
+      ],
+      "owned_scope": "world-model modules in `cairn-theory` and `cairn-plan",
+      "objective": "Learn action-conditioned causal dynamics and choose informative, goal-relevant experiments.",
+      "deliverables": "World theories, latent state schemas, executable goal hypotheses, belief updates, expected-information intervention proposals.",
+      "acceptance_criteria": "I0 and I1 gates; active policy at least 30% fewer actions than random on controlled suite; correct transition prediction at least 95%; goal top-three at least 90%; no arbitrary per-step latent labels."
+    },
+    {
+      "id": "WP28",
+      "title": "Belief-aware planning and option induction",
+      "path": "WP28.md",
+      "dependencies": [
+        "WP18",
+        "WP27"
+      ],
+      "owned_scope": "cairn-plan",
+      "objective": "Plan efficiently through learned theories and compress repeated successful behavior into verified options.",
+      "deliverables": "Deterministic A*, contingent AO*, bounded MCTS, plan certificates, option theories, and planner selection policy.",
+      "acceptance_criteria": "I2 gates; options reduce expansions at least 5 times on held-out layouts; deterministic planner returns optimal path on exhaustive small worlds; ordinary action decision below 500 ms where plan depth permits; plan replay exact."
+    },
+    {
+      "id": "WP29",
+      "title": "Modality frontend SDK and vector-graphics frontend",
+      "path": "WP29.md",
+      "dependencies": [
+        "WP03",
+        "WP04",
+        "WP06"
+      ],
+      "owned_scope": "cairn-frontend-sdk`, `frontends/graphics",
+      "objective": "Define the extension boundary and prove it on an exact, non-grid visual modality.",
+      "deliverables": "Frontend trait, uncertainty conventions, source-reference schema, verifier hook, and graphics-to-REG adapter.",
+      "acceptance_criteria": "Supported graphics subset round-trips exactly; transformation tasks can be represented and verified through core Theory IR; new frontend compiles without modifying core crates; adapter median below 50 ms for moderate scenes."
+    },
+    {
+      "id": "WP30",
+      "title": "CPU vision frontend spike",
+      "path": "WP30.md",
+      "dependencies": [
+        "WP29"
+      ],
+      "owned_scope": "frontends/vision",
+      "objective": "Measure whether classical and compact non-transformer CPU perception can supply useful uncertain REG evidence from natural images.",
+      "deliverables": "Image loader, edges/regions/contours/keypoints, candidate scene graph, uncertainty calibration, and benchmark report.",
+      "acceptance_criteria": "Pre-registered benchmark metrics met or an honest negative report; no GPU library loaded; inference fits declared CPU latency and memory; uncertain detections never treated as exact facts by verifier."
+    },
+    {
+      "id": "WP31",
+      "title": "CPU audio and video frontend spikes",
+      "path": "WP31.md",
+      "dependencies": [
+        "WP26",
+        "WP29"
+      ],
+      "owned_scope": "frontends/audio`, `frontends/video",
+      "objective": "Test temporal modality normalization into entities, events, tracks, and relations.",
+      "deliverables": "Audio event graph, video tracking adapter, temporal uncertainty, and measured limits.",
+      "acceptance_criteria": "Meet separately pre-registered event and tracking metrics; no unbounded active history; CPU-only attestation; one end-to-end transformation or planning demo per modality with replayable evidence."
+    },
+    {
+      "id": "WP32",
+      "title": "Transformer-free text and knowledge frontend spike",
+      "path": "WP32.md",
+      "dependencies": [
+        "WP23",
+        "WP29"
+      ],
+      "owned_scope": "frontends/text",
+      "objective": "Provide a measured path for converting constrained text and documents into typed propositions and procedures without a transformer.",
+      "deliverables": "Tokenizer/morphology, chart parser, grammar and semantic frames, entity linking, proposition graph, source citations, and optional compact non-transformer ranker.",
+      "acceptance_criteria": "Meet pre-registered controlled-language exact semantic parse bar; every extracted fact has source span; contradictions coexist with provenance; no transformer dependency; benchmark result states unsupported natural-language scope explicitly."
+    },
+    {
+      "id": "WP33",
+      "title": "Benchmark harness, evidence packs, and gated evaluation",
+      "path": "WP33.md",
+      "dependencies": [
+        "WP06",
+        "WP21",
+        "WP22"
+      ],
+      "owned_scope": "cairn-bench`, `cairn-eval`, experiment schemas",
+      "objective": "Make every architecture claim reproducible, quarantined, and attributable.",
+      "deliverables": "Task runner, JSONL metrics, report validator, confidence intervals, ablation runner, pre-registration templates, sealed eval workflow, and dashboard data.",
+      "acceptance_criteria": "All report self-tests pass; one dummy suite reproduces byte-identical summary; verifier required for solved count; evaluation cannot run without sanction; standard evidence pack generated automatically; overhead below 2% of solve time."
+    },
+    {
+      "id": "WP34",
+      "title": "End-to-end integration, profiling, and release solver",
+      "path": "WP34.md",
+      "dependencies": [
+        "WP18",
+        "WP19",
+        "WP20",
+        "WP21",
+        "WP22",
+        "WP24",
+        "WP33"
+      ],
+      "owned_scope": "top-level `cairn` binary, integration configuration, release profiles",
+      "objective": "Integrate the static architecture into one anytime solver, profile the critical path, and run the pre-registered diagnostic ladder.",
+      "deliverables": "Single-node and swarm solver binaries, staged budgets, checkpoint/resume, failure taxonomy, profiling reports, and X-style benchmark artifacts.",
+      "acceptance_criteria": "Complete F through T gates required for integration; R1.0 initial gate or honest negative report; median and p95 resource targets reported; no unclassified failure; all answers independently verified; release binary passes attestation."
+    }
+  ]
+}

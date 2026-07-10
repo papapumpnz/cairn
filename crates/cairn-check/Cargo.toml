@@ -1,0 +1,32 @@
+[package]
+name = "cairn-check"
+description = "Enforces CAIRN repository policy and emits runtime attestations"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+default-run = "cairn-check"
+
+[lib]
+name = "cairn_check"
+
+[[bin]]
+name = "cairn-check"
+path = "src/bin/cairn-check.rs"
+
+[[bin]]
+name = "cairn-attest"
+path = "src/bin/cairn-attest.rs"
+
+[dependencies]
+blake3 = { version = "=1.5.5", default-features = false, features = ["std"] }
+cargo_metadata = { version = "=0.19.1", default-features = false }
+# Resolution pin: newer indexmap releases require a newer compiler than the
+# repository's pinned Rust 1.83 toolchain.
+indexmap = { version = "=2.7.1", default-features = false }
+serde = { version = "=1.0.217", default-features = false, features = ["derive", "std"] }
+serde_json = { version = "=1.0.133", default-features = false, features = ["std"] }
+toml = { version = "=0.8.19", default-features = false, features = ["parse"] }
+
+[lints]
+workspace = true

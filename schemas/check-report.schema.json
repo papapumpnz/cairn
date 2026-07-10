@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cairn.invalid/schemas/check-report.schema.json",
+  "title": "CAIRN repository policy report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "root", "scanned_files", "duration_ms", "violations"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "root": { "type": "string", "minLength": 1 },
+    "scanned_files": { "type": "integer", "minimum": 1 },
+    "duration_ms": { "type": "integer", "minimum": 0 },
+    "violations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "path", "line", "message"],
+        "properties": {
+          "code": {
+            "enum": [
+              "ACCELERATOR_DEPENDENCY",
+              "ACCELERATOR_FEATURE",
+              "ACCELERATOR_SOURCE",
+              "NATIVE_ACCELERATOR_LINK",
+              "TRANSFORMER_DEPENDENCY",
+              "TRANSFORMER_SOURCE",
+              "REMOTE_MODEL_API",
+              "ARC_TASK_ID_LITERAL",
+              "EVALUATION_PATH",
+              "FORBIDDEN_DEPENDENCY_DIRECTION",
+              "UNDECLARED_WORKSPACE_CRATE",
+              "UNSAFE_OUTSIDE_ALLOWLIST",
+              "PROTOCOL_DOWNGRADE",
+              "INVALID_POLICY_MANIFEST",
+              "METADATA_UNAVAILABLE"
+            ]
+          },
+          "path": { "type": "string", "minLength": 1 },
+          "line": { "type": ["integer", "null"], "minimum": 1 },
+          "message": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

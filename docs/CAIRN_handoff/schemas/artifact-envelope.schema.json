@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cairn.local/schemas/artifact-envelope.schema.json",
+  "title": "CAIRN content-addressed artifact envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_type",
+    "semantics_version",
+    "artifact_id",
+    "created_utc",
+    "producer",
+    "config_hash",
+    "payload_hash",
+    "payload_encoding",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "artifact_type": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]{1,63}$"
+    },
+    "semantics_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$"
+    },
+    "artifact_id": { "$ref": "#/$defs/blake3" },
+    "created_utc": { "type": "string", "format": "date-time" },
+    "producer": { "$ref": "#/$defs/producer" },
+    "config_hash": { "$ref": "#/$defs/blake3" },
+    "parent_ids": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/blake3" },
+      "uniqueItems": true,
+      "default": []
+    },
+    "task_scope": { "$ref": "#/$defs/task_scope" },
+    "resource_attestation": { "$ref": "#/$defs/resource_attestation" },
+    "payload_hash": { "$ref": "#/$defs/blake3" },
+    "payload_encoding": {
+      "enum": ["canonical-cbor", "json", "jsonl", "raw", "zstd-cbor"]
+    },
+    "payload": {
+      "description": "Inline value for a small artifact or a CAS locator for a large artifact"
+    },
+    "signature": { "$ref": "#/$defs/signature" },
+    "annotations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["string", "number", "integer", "boolean", "null"]
+      }
+    }
+  },
+  "$defs": {
+    "blake3": {
+      "type": "string",
+      "pattern": "^blake3:[0-9a-f]{64}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component", "version", "commit", "host_run_id"],
+      "properties": {
+        "component": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "version": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{7,64}$" },
+        "host_run_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "agent_id": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "task_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["benchmark", "split_class", "case_key_hash"],
+      "properties": {
+        "benchmark": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "split_class": {
+          "enum": [
+            "synthetic",
+            "development",
+            "validation",
+            "public-evaluation",
+            "private-evaluation",
+            "interactive",
+            "nonbenchmark"
+          ]
+        },
+        "case_key_hash": { "$ref": "#/$defs/blake3" },
+        "content_exposure": {
+          "enum": ["none", "input-only", "train-pairs", "full-development", "sealed"]
+        }
+      }
+    },
+    "resource_attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cpu_only",
+        "remote_inference",
+        "gpu_runtime_loaded",
+        "logical_workers",
+        "peak_rss_bytes"
+      ],
+      "properties": {
+        "cpu_only": { "const": true },
+        "remote_inference": { "const": false },
+        "gpu_runtime_loaded": { "const": false },
+        "logical_workers": { "type": "integer", "minimum": 1 },
+        "peak_rss_bytes": { "type": "integer", "minimum": 0 },
+        "cpu_model_hash": { "$ref": "#/$defs/sha256" },
+        "cpu_feature_set": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "key_id", "value"],
+      "properties": {
+        "algorithm": { "const": "ed25519" },
+        "key_id": { "type": "string", "minLength": 1 },
+        "value": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" }
+      }
+    }
+  }
+}

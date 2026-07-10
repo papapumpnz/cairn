@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cairn.invalid/schemas/runtime-attestation.schema.json",
+  "title": "CAIRN runtime attestation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "observed_unix_seconds",
+    "operating_system",
+    "logical_cpu_count",
+    "process",
+    "loaded_native_libraries",
+    "prohibited_runtime_findings",
+    "network",
+    "accelerator_environment",
+    "build"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "observed_unix_seconds": { "type": "integer", "minimum": 0 },
+    "operating_system": { "type": "string", "minLength": 1 },
+    "kernel_release": { "type": ["string", "null"] },
+    "cpu_model": { "type": ["string", "null"] },
+    "physical_cpu_count": { "type": ["integer", "null"], "minimum": 1 },
+    "logical_cpu_count": { "type": "integer", "minimum": 1 },
+    "memory_total_bytes": { "type": ["integer", "null"], "minimum": 0 },
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pid", "parent_pid", "executable", "tree"],
+      "properties": {
+        "pid": { "type": "integer", "minimum": 1 },
+        "parent_pid": { "type": ["integer", "null"], "minimum": 0 },
+        "executable": { "type": ["string", "null"] },
+        "tree": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["pid", "parent_pid", "name", "executable"],
+            "properties": {
+              "pid": { "type": "integer", "minimum": 1 },
+              "parent_pid": { "type": ["integer", "null"], "minimum": 0 },
+              "name": { "type": ["string", "null"] },
+              "executable": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "loaded_native_libraries": { "type": "array", "items": { "type": "string" } },
+    "prohibited_runtime_findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "evidence"],
+        "properties": {
+          "code": { "enum": ["ACCELERATOR_LIBRARY_LOADED"] },
+          "evidence": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tcp_socket_entries", "udp_socket_entries", "interfaces"],
+      "properties": {
+        "tcp_socket_entries": { "type": ["integer", "null"], "minimum": 0 },
+        "udp_socket_entries": { "type": ["integer", "null"], "minimum": 0 },
+        "interfaces": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "accelerator_environment": { "type": "object", "additionalProperties": { "type": "string" } },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["git_commit", "cargo_lock_blake3", "rustc_version"],
+      "properties": {
+        "git_commit": { "type": ["string", "null"] },
+        "cargo_lock_blake3": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "rustc_version": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

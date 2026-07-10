@@ -1,0 +1,87 @@
+[identity]
+semantics_version = "0.1.0-dev"
+configuration_name = "cpu-baseline-8c"
+master_seed = 170141183460469231731687303715884105727
+
+[hardware]
+cpu_only = true
+physical_core_limit = 8
+logical_worker_limit = 8
+ram_limit_bytes = 17179869184
+allow_gpu_runtime = false
+allow_remote_inference = false
+
+[determinism]
+deterministic = true
+fixed_hash_seed = true
+record_cpu_features = true
+checkpoint_interval_work_units = 250000
+
+[static_solver]
+wall_limit_ms = 120000
+soft_target_median_ms = 8000
+soft_target_p95_ms = 60000
+max_world_modes = 64
+max_event_hypotheses_per_pair = 100000
+max_event_covers_per_pair = 256
+max_alignment_modes = 128
+max_theory_modes = 10000
+max_egraph_nodes = 1000000
+max_constraint_variables = 2000000
+max_constraint_clauses = 20000000
+max_invention_rounds = 6
+max_cegis_rounds = 10000
+attempts = 2
+
+[search_quanta]
+evidence = 10000
+event = 50000
+alignment = 25000
+theory = 50000
+invention = 10000
+falsification = 10000
+
+[scoring]
+mdl_weight = 1.0
+unjustified_constant_penalty = 8.0
+unexercised_axis_penalty = 6.0
+alignment_systematicity_weight = 4.0
+leave_one_out_weight = 12.0
+equivariance_weight = 3.0
+counterfactual_discrimination_weight = 2.0
+
+[swarm]
+enabled = true
+mode = "local-process"
+worker_count = 8
+artifact_store = "./artifacts/cas"
+lease_ms = 1000
+heartbeat_ms = 250
+max_message_bytes = 1048576
+semantic_dedup = true
+
+[memory]
+enabled = true
+proposal_only = true
+promotion_min_tasks = 8
+promotion_min_families = 3
+promotion_min_rebinding_rate = 0.95
+promotion_max_false_positive_rate = 0.02
+
+[interactive]
+enabled = false
+belief_modes = 128
+planning_wall_limit_ms = 500
+max_astar_nodes = 100000
+max_mcts_rollouts = 10000
+information_gain_weight = 1.0
+goal_value_weight = 1.0
+action_cost_weight = 0.1
+irreversible_risk_weight = 2.0
+
+[logging]
+level = "info"
+emit_jsonl = true
+emit_proof_dag = true
+emit_search_trace = false
+redact_evaluation_content = true

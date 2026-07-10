@@ -1,0 +1,24 @@
+schema_version = 1
+
+# Layers are ordered from least to most privileged. A crate may depend on its
+# own layer or an earlier layer, except where `allowed_dependencies` narrows it.
+layers = [
+  "governance",
+  "substrate",
+  "evidence",
+  "language",
+  "execution",
+  "verification",
+  "synthesis",
+  "memory",
+  "swarm",
+  "frontend",
+  "benchmark",
+  "evaluation",
+  "integration",
+]
+
+[crates.cairn-check]
+layer = "governance"
+allow_unsafe_modules = []
+
