@@ -308,3 +308,14 @@ shortest plans.
 
 This satisfies G4 on the frozen initial suites. G5-G6 remain open. See
 docs/experiments/G4_ACTIVE_CAUSAL_WORLD_PASS.md.
+
+## 13. ADR-0007 checkpoint: initial G5 pass
+
+One unchanged CognitionRuntime now serves independent vector-scene,
+interactive-gridworld, and sequence-relation adapters. A mechanism learned from
+vector tasks rebound and predicted held-out observations exactly in all three
+domains, reducing 36,180 fresh candidates to three verified memory proposals.
+An automated audit finds no adapter or domain labels in runtime semantics.
+
+This satisfies G5 on the frozen initial suite. G6 remains open. See
+docs/experiments/G5_CROSS_DOMAIN_COGNITION_PASS.md.

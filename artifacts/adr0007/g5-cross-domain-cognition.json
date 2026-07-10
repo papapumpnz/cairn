@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "gate": "G5",
+  "date": "2026-07-11",
+  "status": "pass_on_frozen_initial_suite",
+  "general_intelligence_claim": false,
+  "adapters": [
+    "cairn-vector",
+    "cairn-gridworld",
+    "cairn-sequence"
+  ],
+  "cognition_runtime_revisions": 1,
+  "held_out_domains_exact": 3,
+  "held_out_domains_total": 3,
+  "shared_mechanism_reuses": 3,
+  "fresh_candidate_executions": 36180,
+  "memory_candidate_executions": 3,
+  "domain_checks_in_runtime": 0,
+  "persistent_promotion": true,
+  "open_gates": ["G6"]
+}

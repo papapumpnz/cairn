@@ -19,5 +19,5 @@
   "latent_predictions_exact": 12600,
   "latent_predictions_total": 12600,
   "latent_shortest_plans": 100,
-  "open_gates": ["G5", "G6"]
+  "open_gates": ["G6"]
 }

@@ -1,6 +1,9 @@
 [workspace]
 members = [
   "adapters/cairn-arc",
+  "adapters/cairn-gridworld",
+  "adapters/cairn-sequence",
+  "adapters/cairn-vector",
   "crates/cairn-bytecode",
   "crates/cairn-bench",
   "crates/cairn-cas",

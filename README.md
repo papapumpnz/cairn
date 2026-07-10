@@ -125,6 +125,12 @@ transfers after 100 layout shifts and 100 changed action laws. The latent suite
 rejects memoryless explanations and recovers the required hidden two-state
 model in 100/100 worlds. See
 [G4_ACTIVE_CAUSAL_WORLD_PASS.md](docs/experiments/G4_ACTIVE_CAUSAL_WORLD_PASS.md).
+The frozen G5 suite runs one unchanged CognitionRuntime through vector,
+interactive-gridworld, and sequence adapters. One learned translation
+mechanism transfers exactly across all three, reducing 36,180 fresh candidates
+to three verified proposals, while a source audit finds no domain labels in the
+runtime. See
+[G5_CROSS_DOMAIN_COGNITION_PASS.md](docs/experiments/G5_CROSS_DOMAIN_COGNITION_PASS.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and proof DAGs, richer ontology invention, one shared orchestrating runtime,

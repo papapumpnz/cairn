@@ -9,6 +9,8 @@ repository.workspace = true
 
 [dependencies]
 cairn-core = { path = "../cairn-core" }
+cairn-invent = { path = "../cairn-invent" }
+cairn-memory = { path = "../cairn-memory" }
 
 [lints]
 workspace = true

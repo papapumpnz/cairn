@@ -1,7 +1,47 @@
 //! Online version-space maintenance; permanent promotion belongs elsewhere.
 
 use cairn_core::Hash32;
+use cairn_invent::{InventionError, InventionProblem};
+use cairn_memory::{MechanismStore, MemoryAssistedInventor, MemorySolveOutcome};
 use std::collections::{BTreeMap, BTreeSet};
+
+#[derive(Clone, Debug, Default)]
+pub struct CognitionRuntime {
+    memory: MechanismStore,
+}
+
+impl CognitionRuntime {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            memory: MechanismStore::new(),
+        }
+    }
+
+    #[must_use]
+    pub const fn with_memory(memory: MechanismStore) -> Self {
+        Self { memory }
+    }
+
+    #[must_use]
+    pub const fn memory(&self) -> &MechanismStore {
+        &self.memory
+    }
+
+    pub const fn memory_mut(&mut self) -> &mut MechanismStore {
+        &mut self.memory
+    }
+
+    /// Learn through the same task-local and memory-proposal path for every
+    /// frontend lowered to the generic invention contract.
+    ///
+    /// # Errors
+    ///
+    /// Returns bounded invention, checking, replay, or resource failures.
+    pub fn learn(&self, problem: &InventionProblem) -> Result<MemorySolveOutcome, InventionError> {
+        MemoryAssistedInventor.invent(problem, &self.memory)
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TheoryHypothesis {

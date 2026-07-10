@@ -8,10 +8,17 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-cairn-invent = { path = "../cairn-invent" }
 cairn-core = { path = "../cairn-core" }
+cairn-gridworld = { path = "../../adapters/cairn-gridworld" }
+cairn-invent = { path = "../cairn-invent" }
+cairn-mechanism = { path = "../cairn-mechanism" }
+cairn-memory = { path = "../cairn-memory" }
 cairn-rkl = { path = "../cairn-rkl" }
+cairn-runtime = { path = "../cairn-runtime" }
+cairn-sequence = { path = "../../adapters/cairn-sequence" }
 cairn-skill = { path = "../cairn-skill" }
+cairn-vector = { path = "../../adapters/cairn-vector" }
+cairn-verifier = { path = "../cairn-verifier" }
 
 [lints]
 workspace = true

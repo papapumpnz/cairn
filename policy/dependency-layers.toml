@@ -83,7 +83,7 @@ layer = "synthesis"
 allow_unsafe_modules = []
 
 [crates.cairn-runtime]
-layer = "synthesis"
+layer = "integration"
 allow_unsafe_modules = []
 
 [crates.cairn-skill]
@@ -106,6 +106,18 @@ allow_unsafe_modules = []
 layer = "benchmark"
 allow_unsafe_modules = []
 
+[crates.cairn-gridworld]
+layer = "frontend"
+allow_unsafe_modules = []
+
+[crates.cairn-sequence]
+layer = "frontend"
+allow_unsafe_modules = []
+
+[crates.cairn-vector]
+layer = "frontend"
+allow_unsafe_modules = []
+
 [crates.cairn-bench]
-layer = "benchmark"
+layer = "integration"
 allow_unsafe_modules = []

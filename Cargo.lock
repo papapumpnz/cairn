@@ -43,9 +43,16 @@ name = "cairn-bench"
 version = "0.1.0"
 dependencies = [
  "cairn-core",
+ "cairn-gridworld",
  "cairn-invent",
+ "cairn-mechanism",
+ "cairn-memory",
  "cairn-rkl",
+ "cairn-runtime",
+ "cairn-sequence",
  "cairn-skill",
+ "cairn-vector",
+ "cairn-verifier",
 ]
 
 [[package]]
@@ -128,6 +135,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "cairn-gridworld"
+version = "0.1.0"
+dependencies = [
+ "cairn-invent",
+ "cairn-rkl",
+]
+
+[[package]]
 name = "cairn-invent"
 version = "0.1.0"
 dependencies = [
@@ -184,6 +199,16 @@ name = "cairn-runtime"
 version = "0.1.0"
 dependencies = [
  "cairn-core",
+ "cairn-invent",
+ "cairn-memory",
+]
+
+[[package]]
+name = "cairn-sequence"
+version = "0.1.0"
+dependencies = [
+ "cairn-invent",
+ "cairn-rkl",
 ]
 
 [[package]]
@@ -196,6 +221,14 @@ dependencies = [
 
 [[package]]
 name = "cairn-theory"
+version = "0.1.0"
+dependencies = [
+ "cairn-invent",
+ "cairn-rkl",
+]
+
+[[package]]
+name = "cairn-vector"
 version = "0.1.0"
 dependencies = [
  "cairn-invent",
