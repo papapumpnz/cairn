@@ -11,11 +11,11 @@ repository.workspace = true
 cairn-core = { path = "../cairn-core" }
 cairn-invent = { path = "../cairn-invent" }
 cairn-rkl = { path = "../cairn-rkl" }
+cairn-verifier = { path = "../cairn-verifier" }
 
 [dev-dependencies]
 cairn-consolidator = { path = "../cairn-consolidator" }
 cairn-mechanism = { path = "../cairn-mechanism" }
-cairn-verifier = { path = "../cairn-verifier" }
 
 [lints]
 workspace = true

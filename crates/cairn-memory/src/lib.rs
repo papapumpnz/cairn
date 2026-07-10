@@ -9,6 +9,7 @@ use cairn_invent::{
     DefinitionInventor, DefinitionProposal, InventionError, InventionOutcome, InventionProblem,
 };
 use cairn_rkl::{Definition, Expr, Type, VarName};
+use cairn_verifier::VerifiedPromotion;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
@@ -33,7 +34,9 @@ pub struct SupportGeometry {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ModuleStatus {
-    Active,
+    Provisional,
+    Persistent,
+    Compiled,
     Quarantined,
     Deprecated,
 }
@@ -154,7 +157,7 @@ impl PromotionRunner {
             definition: representative.definition.clone(),
             support,
             lineage,
-            status: ModuleStatus::Active,
+            status: ModuleStatus::Provisional,
             structural_cost: representative.structural_cost,
         })
     }
@@ -187,13 +190,19 @@ impl MechanismStore {
         self.modules.is_empty()
     }
 
-    pub fn active_modules(&self) -> impl Iterator<Item = &MechanismModule> {
-        self.modules
-            .values()
-            .filter(|module| module.status == ModuleStatus::Active)
+    pub fn reusable_modules(&self) -> impl Iterator<Item = &MechanismModule> {
+        self.modules.values().filter(|module| {
+            matches!(
+                module.status,
+                ModuleStatus::Provisional | ModuleStatus::Persistent | ModuleStatus::Compiled
+            )
+        })
     }
 
     pub fn set_status(&mut self, id: Hash32, status: ModuleStatus) -> bool {
+        if matches!(status, ModuleStatus::Persistent | ModuleStatus::Compiled) {
+            return false;
+        }
         let Some(module) = self.modules.get_mut(&id) else {
             return false;
         };
@@ -201,9 +210,28 @@ impl MechanismStore {
         true
     }
 
+    /// Persist a provisional module only when an independent verifier token
+    /// covers its complete source-proof lineage and measured reuse.
+    #[must_use]
+    pub fn apply_verified_promotion(&mut self, id: Hash32, promotion: &VerifiedPromotion) -> bool {
+        let Some(module) = self.modules.get_mut(&id) else {
+            return false;
+        };
+        let lineage = module.lineage.iter().copied().collect::<BTreeSet<_>>();
+        if module.status != ModuleStatus::Provisional
+            || lineage != *promotion.source_proofs()
+            || promotion.verified_cases() == 0
+            || promotion.actual_reuse_count() == 0
+        {
+            return false;
+        }
+        module.status = ModuleStatus::Persistent;
+        true
+    }
+
     fn proposals(&self, problem: &InventionProblem) -> Vec<ReboundProposal> {
         let mut proposals = Vec::new();
-        for module in self.active_modules() {
+        for module in self.reusable_modules() {
             if !type_shape_compatible(&module.definition.return_type, &problem.return_type)
                 || module.definition.parameters.len() != problem.parameters.len()
             {
@@ -217,7 +245,7 @@ impl MechanismStore {
     }
 
     fn compositions(&self, problem: &InventionProblem) -> Vec<ComposedProposal> {
-        let modules = self.active_modules().collect::<Vec<_>>();
+        let modules = self.reusable_modules().collect::<Vec<_>>();
         let mut proposals = Vec::new();
         for outer in &modules {
             if !type_shape_compatible(&outer.definition.return_type, &problem.return_type) {

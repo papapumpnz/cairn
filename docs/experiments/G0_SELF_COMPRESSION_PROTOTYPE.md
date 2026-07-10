@@ -29,7 +29,9 @@ ranges, and values differed from both source episodes.
    demonstration each; execute an additional unseen value in every task.
 6. Measure the same tasks with fresh full search using six demonstrations.
 7. Submit the Mechanism IR, support geometry, proof lineage, and measured
-   invention/reuse evidence to the independent promotion verifier.
+   invention/reuse evidence to the independent promotion verifier. The verifier
+   issues a lineage-bound token; the store rejects direct persistent status and
+   accepts the token exactly once.
 
 ## Result
 

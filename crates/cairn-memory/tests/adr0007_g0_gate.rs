@@ -1,11 +1,11 @@
 use cairn_consolidator::{Consolidator, ProofTrace};
 use cairn_invent::{BindingExample, DefinitionInventor, InventionLimits, InventionProblem};
 use cairn_mechanism::{
-    CardinalityRange, DerivationCertificate, DomainClass, InventionEvidence, Mechanism,
-    MechanismStatus, Signature, SupportGeometry as MechanismSupport, VariableId,
+    CardinalityRange, DerivationCertificate, DomainClass, InventionEvidence, Mechanism, Signature,
+    SupportGeometry as MechanismSupport, VariableId,
 };
 use cairn_memory::{
-    MechanismStore, MemoryAssistedInventor, PromotionRunner, SolveOrigin,
+    MechanismStore, MemoryAssistedInventor, ModuleStatus, PromotionRunner, SolveOrigin,
     SupportGeometry as MemorySupport, VariationDimension,
 };
 use cairn_rkl::{
@@ -161,6 +161,7 @@ fn hidden_law_is_invented_promoted_reused_and_reduces_future_search() {
         .expect("provisional module");
     let mut store = MechanismStore::new();
     store.insert(module.clone());
+    assert!(!store.set_status(module.id(), ModuleStatus::Persistent));
 
     let mut post_successes = 0_u32;
     let mut memory_candidates = 0_u64;
@@ -263,8 +264,17 @@ fn hidden_law_is_invented_promoted_reused_and_reduces_future_search() {
         actual_reuse_count: post_successes,
         necessary_reuse_count: post_successes,
     };
+    let verified = PromotionVerifier
+        .verify(&mechanism, &evidence)
+        .expect("strict verifier token");
+    assert!(store.apply_verified_promotion(module.id(), &verified));
+    assert!(!store.apply_verified_promotion(module.id(), &verified));
     assert_eq!(
-        PromotionVerifier.verify(&mechanism, &evidence),
-        Ok(MechanismStatus::Persistent)
+        store
+            .reusable_modules()
+            .find(|stored| stored.id() == module.id())
+            .expect("stored module")
+            .status(),
+        ModuleStatus::Persistent
     );
 }

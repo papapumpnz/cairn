@@ -1,9 +1,35 @@
 //! Independent promotion boundary combining replay provenance and learning gates.
 
+use cairn_core::Hash32;
 use cairn_mechanism::{
     admit_persistent, AdmissionError, InventionEvidence, Mechanism, MechanismStatus,
 };
 pub use cairn_proof::{IndependentVerifier, ReplayVerifier, VerifyError};
+use std::collections::BTreeSet;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedPromotion {
+    source_proofs: BTreeSet<Hash32>,
+    verified_cases: u64,
+    actual_reuse_count: u32,
+}
+
+impl VerifiedPromotion {
+    #[must_use]
+    pub const fn source_proofs(&self) -> &BTreeSet<Hash32> {
+        &self.source_proofs
+    }
+
+    #[must_use]
+    pub const fn verified_cases(&self) -> u64 {
+        self.verified_cases
+    }
+
+    #[must_use]
+    pub const fn actual_reuse_count(&self) -> u32 {
+        self.actual_reuse_count
+    }
+}
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct PromotionVerifier;
@@ -20,7 +46,14 @@ impl PromotionVerifier {
         &self,
         mechanism: &Mechanism,
         evidence: &InventionEvidence,
-    ) -> Result<MechanismStatus, AdmissionError> {
-        admit_persistent(mechanism, evidence)
+    ) -> Result<VerifiedPromotion, AdmissionError> {
+        if admit_persistent(mechanism, evidence)? != MechanismStatus::Persistent {
+            return Err(AdmissionError::Unverified);
+        }
+        Ok(VerifiedPromotion {
+            source_proofs: mechanism.proof.source_proofs.clone(),
+            verified_cases: mechanism.proof.verified_cases,
+            actual_reuse_count: evidence.actual_reuse_count,
+        })
     }
 }

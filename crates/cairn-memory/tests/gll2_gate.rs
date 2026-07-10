@@ -551,9 +551,9 @@ fn unrelated_tasks_fall_back_without_accuracy_regression_and_status_is_enforced(
     assert_exact(&fresh, &held_out, unrelated.limits.execution);
     assert_exact(&remembered.invention, &held_out, unrelated.limits.execution);
 
-    let id = store.active_modules().next().expect("module").id();
+    let id = store.reusable_modules().next().expect("module").id();
     assert!(store.set_status(id, ModuleStatus::Quarantined));
-    assert_eq!(store.active_modules().count(), 4);
+    assert_eq!(store.reusable_modules().count(), 4);
 
     let first_source = DefinitionInventor
         .invent(&source_pairs()[0].0)

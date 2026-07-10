@@ -19,6 +19,8 @@
   "necessary_reuse_count": 10,
   "proof_subgraph_compression": "pass",
   "strict_promotion": "persistent",
+  "direct_persistent_status_rejected": true,
+  "lineage_token_single_use": true,
   "full_g0": "open",
   "open_dimensions": [
     "unseen_collection_cardinality",

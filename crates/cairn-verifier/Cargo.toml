@@ -8,6 +8,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+cairn-core = { path = "../cairn-core" }
 cairn-mechanism = { path = "../cairn-mechanism" }
 cairn-proof = { path = "../cairn-proof" }
 
