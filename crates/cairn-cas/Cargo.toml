@@ -1,0 +1,15 @@
+[package]
+name = "cairn-cas"
+description = "Crash-safe append-only content-addressed storage for CAIRN"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+blake3 = { version = "=1.5.5", default-features = false, features = ["std"] }
+cairn-core = { path = "../cairn-core" }
+
+[lints]
+workspace = true
+

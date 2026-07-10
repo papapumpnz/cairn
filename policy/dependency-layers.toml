@@ -22,3 +22,10 @@ layers = [
 layer = "governance"
 allow_unsafe_modules = []
 
+[crates.cairn-core]
+layer = "substrate"
+allow_unsafe_modules = []
+
+[crates.cairn-cas]
+layer = "substrate"
+allow_unsafe_modules = []

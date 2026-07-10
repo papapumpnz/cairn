@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/cairn-check"]
+members = ["crates/cairn-cas", "crates/cairn-check", "crates/cairn-core"]
 resolver = "2"
 
 [workspace.package]
@@ -16,4 +16,3 @@ unsafe_code = "deny"
 all = { level = "deny", priority = -1 }
 pedantic = { level = "deny", priority = -1 }
 module_name_repetitions = "allow"
-
