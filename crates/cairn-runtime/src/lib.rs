@@ -1,6 +1,6 @@
 //! Online version-space maintenance; permanent promotion belongs elsewhere.
 
-use cairn_core::Hash32;
+use cairn_core::{Hash32, LearningProblem, ObservationId, TaskId};
 use cairn_invent::{InventionError, InventionProblem};
 use cairn_memory::{MechanismStore, MemoryAssistedInventor, MemorySolveOutcome};
 use std::collections::{BTreeMap, BTreeSet};
@@ -8,6 +8,25 @@ use std::collections::{BTreeMap, BTreeSet};
 #[derive(Clone, Debug, Default)]
 pub struct CognitionRuntime {
     memory: MechanismStore,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct AdmittedExperience {
+    pub task: TaskId,
+    pub observations: usize,
+    pub demonstrations: usize,
+    pub requested_predictions: usize,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ExperienceError {
+    EmptyObservations,
+    EmptyDemonstrations,
+    EmptyPredictions,
+    EmptyAttemptLimit,
+    InvalidObservation(ObservationId),
+    DuplicateObservation(ObservationId),
+    UnknownReference(ObservationId),
 }
 
 impl CognitionRuntime {
@@ -41,6 +60,71 @@ impl CognitionRuntime {
     pub fn learn(&self, problem: &InventionProblem) -> Result<MemorySolveOutcome, InventionError> {
         MemoryAssistedInventor.invent(problem, &self.memory)
     }
+
+    /// Admit one modality-neutral experience envelope before any proposal
+    /// backend can inspect its payload.
+    ///
+    /// # Errors
+    ///
+    /// Rejects empty work, invalid observation identities, duplicates, and
+    /// demonstration or prediction references outside the envelope.
+    pub fn admit_experience(
+        &self,
+        problem: &LearningProblem,
+    ) -> Result<AdmittedExperience, ExperienceError> {
+        if problem.observations.is_empty() {
+            return Err(ExperienceError::EmptyObservations);
+        }
+        if problem.demonstrations.is_empty() {
+            return Err(ExperienceError::EmptyDemonstrations);
+        }
+        if problem.requested_predictions.is_empty() {
+            return Err(ExperienceError::EmptyPredictions);
+        }
+        if problem.attempt_limit == 0 {
+            return Err(ExperienceError::EmptyAttemptLimit);
+        }
+        let mut observations = BTreeSet::new();
+        for observation in &problem.observations {
+            if observation.verify().is_err() {
+                return Err(ExperienceError::InvalidObservation(observation.id));
+            }
+            if !observations.insert(observation.id) {
+                return Err(ExperienceError::DuplicateObservation(observation.id));
+            }
+        }
+        for demonstration in &problem.demonstrations {
+            check_references(&demonstration.context, &observations)?;
+            check_references(&demonstration.outcome, &observations)?;
+            if let Some(intervention) = &demonstration.intervention {
+                check_references(&intervention.arguments, &observations)?;
+            }
+        }
+        for request in &problem.requested_predictions {
+            check_references(&request.context, &observations)?;
+            if let Some(intervention) = &request.intervention {
+                check_references(&intervention.arguments, &observations)?;
+            }
+        }
+        Ok(AdmittedExperience {
+            task: problem.id,
+            observations: problem.observations.len(),
+            demonstrations: problem.demonstrations.len(),
+            requested_predictions: problem.requested_predictions.len(),
+        })
+    }
+}
+
+fn check_references(
+    references: &[ObservationId],
+    observations: &BTreeSet<ObservationId>,
+) -> Result<(), ExperienceError> {
+    for reference in references {
+        if !observations.contains(reference) {
+            return Err(ExperienceError::UnknownReference(*reference));
+        }
+    }
+    Ok(())
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

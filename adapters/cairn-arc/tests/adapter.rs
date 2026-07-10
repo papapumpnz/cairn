@@ -1,4 +1,6 @@
-use cairn_arc::{attempt_task, parse_task, run_training_batch, ArcAdapterError};
+use cairn_arc::{
+    attempt_task, lower_learning_problem, parse_task, run_training_batch, ArcAdapterError,
+};
 use cairn_invent::InventionLimits;
 use cairn_rkl::ExecLimits;
 
@@ -28,7 +30,20 @@ fn first_quarantined_attempt_learns_without_task_specific_operation() {
     .expect("attempt");
     assert_eq!(attempt.evaluated_tests, 1);
     assert_eq!(attempt.exact_tests, 1);
+    assert_eq!(attempt.generic_observations, 5);
     assert!(attempt.learned_expression.contains("Binary"));
+}
+
+#[test]
+fn static_task_lowers_to_generic_observations_without_test_answers() {
+    let task = parse_task(TASK).expect("task");
+    let problem = lower_learning_problem(&task, "urn:test:task").expect("generic problem");
+    assert_eq!(problem.observations.len(), 5);
+    assert_eq!(problem.demonstrations.len(), 2);
+    assert_eq!(problem.requested_predictions.len(), 1);
+    assert!(problem.observations.iter().all(|observation| {
+        observation.modality.0 == "urn:cairn:finite-field:v1" && observation.verify().is_ok()
+    }));
 }
 
 #[test]

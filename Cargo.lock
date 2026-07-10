@@ -31,9 +31,11 @@ dependencies = [
 name = "cairn-arc"
 version = "0.1.0"
 dependencies = [
+ "cairn-core",
  "cairn-field",
  "cairn-invent",
  "cairn-rkl",
+ "cairn-runtime",
  "serde",
  "serde_json",
 ]

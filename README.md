@@ -137,6 +137,13 @@ work falls from 24 to 20, examples from 10 to six, and the same-task observed
 CPU median from 2.284 seconds to 0.916 milliseconds; all base behaviors remain
 exact and the unrelated-law audit records no negative transfer. See
 [G6_DEVELOPMENTAL_SCALING_PASS.md](docs/experiments/G6_DEVELOPMENTAL_SCALING_PASS.md).
+The official ARC adapter now seals test answers, lowers every task to the same
+provenance-bound `LearningProblem` protocol, and passes that envelope through
+`CognitionRuntime` reference admission before invoking its quarantined legacy
+backend. The frozen first-20 score remains 17/20 over 129 generic observations;
+the three misses remain resource-limited. This is a boundary-conformance
+checkpoint, not shared-runtime ARC learning. See
+[ARC_GENERIC_EXPERIENCE_BOUNDARY.md](docs/experiments/ARC_GENERIC_EXPERIENCE_BOUNDARY.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and proof DAGs, richer ontology invention, one shared orchestrating runtime,

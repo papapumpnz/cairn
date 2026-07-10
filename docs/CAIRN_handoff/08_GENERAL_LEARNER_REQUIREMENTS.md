@@ -340,3 +340,20 @@ small, exact, synthetic, and bounded. Independent replications, richer
 mechanism classes, longer curricula, durable compiled memory, and broad
 real-world knowledge learning remain required. See
 docs/experiments/G6_DEVELOPMENTAL_SCALING_PASS.md.
+
+## 15. ARC generic-experience boundary checkpoint
+
+The quarantined ARC adapter now lowers sealed tasks to core `LearningProblem`,
+`Observation`, `Demonstration`, and `PredictionRequest` values. Every
+observation uses the finite-field modality, carries a source/content identity,
+and is admitted by `CognitionRuntime`, which rejects invalid identities,
+duplicates, and references outside the experience envelope without inspecting
+adapter semantics. The official first-20 checkpoint remains 17/20 across 129
+generic observations, with the same three resource-limited tasks.
+
+This completes the generic input boundary but not the shared-solver migration.
+The successful ARC tasks still use the quarantined legacy finite-field schema
+backend after admission. Those named schemas do not count as learned
+mechanisms, may not enter general memory, and must ultimately be replaced by
+the mechanism learner or remain a non-claiming regression baseline. See
+docs/experiments/ARC_GENERIC_EXPERIENCE_BOUNDARY.md.

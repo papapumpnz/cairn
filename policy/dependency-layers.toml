@@ -103,7 +103,7 @@ layer = "frontend"
 allow_unsafe_modules = []
 
 [crates.cairn-arc]
-layer = "benchmark"
+layer = "integration"
 allow_unsafe_modules = []
 
 [crates.cairn-gridworld]

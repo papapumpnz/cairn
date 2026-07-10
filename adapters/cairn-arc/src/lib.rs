@@ -1,15 +1,20 @@
 //! ARC-specific parsing and encoding quarantined from CAIRN cognition crates.
 
+use cairn_core::{
+    Demonstration, Hash32, Intervention, LearningProblem, PredictionRequest, SourceReference,
+    TaskId,
+};
 use cairn_field::{
     FieldError, FieldSchemaError, FieldSchemaLearner, FiniteField, PointwiseFieldLearner,
 };
 use cairn_invent::InventionLimits;
 use cairn_rkl::ExecLimits;
+use cairn_runtime::{CognitionRuntime, ExperienceError};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.2.0";
+pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.3.0";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ArcGrid {
@@ -64,6 +69,7 @@ pub enum ArcAdapterError {
     ShapeChangeUnsupported,
     Field(FieldError),
     Schema(FieldSchemaError),
+    Runtime(ExperienceError),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -72,6 +78,7 @@ pub struct ArcAttempt {
     pub evaluated_tests: usize,
     pub exact_tests: usize,
     pub training_cells: usize,
+    pub generic_observations: usize,
     pub learned_expression: String,
 }
 
@@ -94,6 +101,7 @@ pub struct ArcTaskReport {
     pub evaluated_tests: usize,
     pub exact_tests: usize,
     pub training_cells: usize,
+    pub generic_observations: usize,
     pub learned_expression: Option<String>,
     pub diagnostic: Option<String>,
 }
@@ -155,6 +163,68 @@ pub fn parse_task(bytes: &[u8]) -> Result<ArcTask, ArcAdapterError> {
     Ok(ArcTask { train, test })
 }
 
+/// Lower a static task to the universal observation/demonstration protocol.
+/// Test outputs are deliberately excluded from the returned envelope.
+///
+/// # Errors
+///
+/// Rejects an invalid finite field or observation identity.
+pub fn lower_learning_problem(
+    task: &ArcTask,
+    source_locator: &str,
+) -> Result<LearningProblem, ArcAdapterError> {
+    let mut observations = Vec::new();
+    let mut demonstrations = Vec::new();
+    for (index, pair) in task.train.iter().enumerate() {
+        let input = lower(&pair.input)?
+            .observation(source(
+                source_locator,
+                &format!("train/{index}/input"),
+                &pair.input,
+            ))
+            .map_err(ArcAdapterError::Field)?;
+        let output = lower(&pair.output)?
+            .observation(source(
+                source_locator,
+                &format!("train/{index}/output"),
+                &pair.output,
+            ))
+            .map_err(ArcAdapterError::Field)?;
+        demonstrations.push(Demonstration {
+            context: vec![input.id],
+            intervention: Some(implicit_transform()),
+            outcome: vec![output.id],
+        });
+        observations.extend([input, output]);
+    }
+    let mut requested_predictions = Vec::new();
+    for (index, case) in task.test.iter().enumerate() {
+        let input = lower(&case.input)?
+            .observation(source(
+                source_locator,
+                &format!("test/{index}/input"),
+                &case.input,
+            ))
+            .map_err(ArcAdapterError::Field)?;
+        requested_predictions.push(PredictionRequest {
+            context: vec![input.id],
+            intervention: Some(implicit_transform()),
+        });
+        observations.push(input);
+    }
+    let mut identity = Vec::new();
+    for observation in &observations {
+        identity.extend_from_slice(observation.id.0.as_bytes());
+    }
+    Ok(LearningProblem {
+        id: TaskId(Hash32::digest(&identity)),
+        observations,
+        demonstrations,
+        requested_predictions,
+        attempt_limit: 3,
+    })
+}
+
 /// Attempt an ARC task solely through the generic pointwise field learner.
 /// No task identifier, operation label, or test output enters learning.
 ///
@@ -166,6 +236,10 @@ pub fn attempt_task(
     invention: InventionLimits,
     execution: ExecLimits,
 ) -> Result<ArcAttempt, ArcAdapterError> {
+    let experience = lower_learning_problem(task, "urn:cairn:adapter-task:sealed")?;
+    let admitted = CognitionRuntime::new()
+        .admit_experience(&experience)
+        .map_err(ArcAdapterError::Runtime)?;
     let training = task
         .train
         .iter()
@@ -203,6 +277,7 @@ pub fn attempt_task(
                 evaluated_tests,
                 exact_tests,
                 training_cells: training.iter().map(|(input, _)| input.values.len()).sum(),
+                generic_observations: admitted.observations,
                 learned_expression: format!("{:?}", learned.transformation),
             });
         }
@@ -238,6 +313,7 @@ pub fn attempt_task(
         evaluated_tests: evaluated,
         exact_tests: exact,
         training_cells: learned.training_cells,
+        generic_observations: admitted.observations,
         learned_expression: format!("{:?}", learned.proposal.definition.body),
     })
 }
@@ -303,6 +379,7 @@ pub fn run_training_batch(
                     evaluated_tests: 0,
                     exact_tests: 0,
                     training_cells: 0,
+                    generic_observations: 0,
                     learned_expression: None,
                     diagnostic: Some("parse or input validation failed".to_owned()),
                 },
@@ -357,6 +434,7 @@ fn evaluate_task(
                 evaluated_tests: evaluated,
                 exact_tests: exact,
                 training_cells: attempt.training_cells,
+                generic_observations: attempt.generic_observations,
                 learned_expression: Some(attempt.learned_expression),
                 diagnostic: None,
             }
@@ -369,6 +447,7 @@ fn evaluate_task(
                 evaluated_tests: 0,
                 exact_tests: 0,
                 training_cells: 0,
+                generic_observations: 0,
                 learned_expression: None,
                 diagnostic: Some(diagnostic),
             }
@@ -414,9 +493,31 @@ fn classify_error(error: &ArcAdapterError) -> (ArcTaskStatus, String) {
         | ArcAdapterError::EmptyGrid
         | ArcAdapterError::RaggedGrid
         | ArcAdapterError::InvalidCategoricalValue(_) => ArcTaskStatus::InvalidTask,
-        ArcAdapterError::Field(_) | ArcAdapterError::Schema(_) => ArcTaskStatus::ExecutionFailure,
+        ArcAdapterError::Field(_) | ArcAdapterError::Schema(_) | ArcAdapterError::Runtime(_) => {
+            ArcTaskStatus::ExecutionFailure
+        }
     };
     (status, format!("{error:?}"))
+}
+
+fn implicit_transform() -> Intervention {
+    Intervention {
+        action: "urn:cairn:implicit-transform:v1".to_owned(),
+        arguments: Vec::new(),
+    }
+}
+
+fn source(locator: &str, role: &str, grid: &ArcGrid) -> SourceReference {
+    let mut bytes = Vec::new();
+    bytes.extend_from_slice(role.as_bytes());
+    for row in &grid.rows {
+        bytes.extend_from_slice(&u64::try_from(row.len()).unwrap_or(u64::MAX).to_be_bytes());
+        bytes.extend_from_slice(row);
+    }
+    SourceReference {
+        locator: format!("{locator}#{role}"),
+        content_hash: Hash32::digest(&bytes),
+    }
 }
 
 fn grid(rows: Vec<Vec<u8>>) -> Result<ArcGrid, ArcAdapterError> {
