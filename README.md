@@ -10,7 +10,9 @@ centre or sufficient evidence of general learning.
 
 ## Current implementation status
 
-The repository has completed WP00, WP01, WP03, and WP04. Implemented today:
+The repository has completed WP00, WP01, WP03, and WP04, and has working WP05
+reference/bytecode execution plus an initial WP20 task-invention vertical slice.
+Implemented today:
 
 - a pinned Rust workspace;
 - the repository operating law and architecture-layer manifest;
@@ -31,10 +33,21 @@ The repository has completed WP00, WP01, WP03, and WP04. Implemented today:
 - a typed immutable Relational Evidence Graph with provenance, temporal/value
   indexes, deterministic joins, bounded causal paths, canonical replay, and
   measured performance above its initial CPU gates.
+- an exact bounded RKL reference executor and typed register bytecode executor
+  with deterministic traces, reusable workspaces, explicit fuel/progress caps,
+  and zero mismatches over one million generated scalar programs;
+- domain-neutral task-local definition invention from input/output
+  demonstrations. The frozen initial GLL-1 suite autonomously synthesized five
+  omitted executable concepts and replayed 5,835 varied predictions exactly,
+  with leave-one-demonstration-out success, cost ablations, and zero accepted
+  definitions on 100 controlled negative problems.
 
-Entity/event induction, verification, ontology invention, continual memory,
-interactive world learning, planning, cross-domain integration, and knowledge
-learning remain targets; they are not claimed as achieved.
+This establishes bounded task-level symbolic learning, not general learning.
+Entity/event induction, full proof certificates, richer ontology invention,
+continual memory, interactive world learning, planning, cross-domain runtime
+integration, and knowledge learning remain targets; they are not claimed as
+achieved. See the
+[GLL-1 evidence report](docs/experiments/GLL1_OMITTED_CONCEPT_INVENTION.md).
 
 The normative target and claim boundary are in
 [`08_GENERAL_LEARNER_REQUIREMENTS.md`](docs/CAIRN_handoff/08_GENERAL_LEARNER_REQUIREMENTS.md).

@@ -63,6 +63,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cairn-invent"
+version = "0.1.0"
+dependencies = [
+ "cairn-bytecode",
+ "cairn-core",
+ "cairn-rkl",
+]
+
+[[package]]
 name = "cairn-reg"
 version = "0.1.0"
 dependencies = [
