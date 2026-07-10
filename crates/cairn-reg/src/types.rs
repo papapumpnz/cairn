@@ -1,4 +1,4 @@
-use cairn_core::Hash32;
+use cairn_core::{CanonicalError, Hash32};
 use std::fmt;
 
 macro_rules! local_id {
@@ -223,6 +223,43 @@ impl fmt::Display for RegError {
 }
 
 impl std::error::Error for RegError {}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum RegDecodeError {
+    Canonical(CanonicalError),
+    InvalidShape(&'static str),
+    UnsupportedSemantics(String),
+    IntegerOutOfRange,
+    Graph(RegError),
+}
+
+impl fmt::Display for RegDecodeError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Canonical(error) => write!(formatter, "canonical decode failed: {error}"),
+            Self::InvalidShape(message) => write!(formatter, "invalid REG artifact: {message}"),
+            Self::UnsupportedSemantics(version) => {
+                write!(formatter, "unsupported REG semantics `{version}`")
+            }
+            Self::IntegerOutOfRange => formatter.write_str("REG integer is out of range"),
+            Self::Graph(error) => write!(formatter, "REG validation failed: {error}"),
+        }
+    }
+}
+
+impl std::error::Error for RegDecodeError {}
+
+impl From<CanonicalError> for RegDecodeError {
+    fn from(value: CanonicalError) -> Self {
+        Self::Canonical(value)
+    }
+}
+
+impl From<RegError> for RegDecodeError {
+    fn from(value: RegError) -> Self {
+        Self::Graph(value)
+    }
+}
 
 pub(crate) fn normalize_attributes(
     mut attributes: Vec<Attribute>,

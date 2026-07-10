@@ -4,6 +4,7 @@
 //! derivations. It deliberately has no dependency on a spatial frontend,
 //! benchmark adapter, RKL, synthesizer, or memory implementation.
 
+mod decode;
 mod graph;
 mod query;
 mod types;

@@ -1,8 +1,9 @@
-use cairn_core::{CanonicalEncode, Hash32};
+use cairn_core::{decode_canonical, CanonicalEncode, CanonicalLimits, CanonicalValue, Hash32};
 use cairn_reg::{
     AttrKey, AttrValue, Attribute, AttributeFilter, DerivationId, DerivationKind, DerivationRecord,
-    EvidenceWeight, LogicalTime, NodeConstraint, NodeKind, PathConstraint, QueryPlan, RegError,
-    RegLimits, RelGraphBuilder, RelationDefinition, RelationPattern, Term,
+    EvidenceWeight, LogicalTime, NodeConstraint, NodeKind, PathConstraint, QueryPlan,
+    RegDecodeError, RegError, RegLimits, RelGraphBuilder, RelGraphSnapshot, RelationDefinition,
+    RelationPattern, Term,
 };
 use std::collections::BTreeSet;
 
@@ -426,6 +427,94 @@ fn hyperedge_order_and_query_caps_fail_closed() {
     .execute(graph.graph())
     .expect_err("ternary relation is not a path");
     assert_eq!(error, RegError::PathRequiresBinaryRelation(relation));
+}
+
+#[test]
+fn canonical_decode_rebuilds_identical_indexes_and_queries() {
+    let (snapshot, relation, nodes) = chain_graph().snapshot_parts();
+    let bytes = snapshot.encode_canonical().expect("encode");
+    let decoded = RelGraphSnapshot::decode_canonical(
+        &bytes,
+        CanonicalLimits::default(),
+        RegLimits::default(),
+    )
+    .expect("decode");
+    assert_eq!(decoded.encode_canonical().expect("reencode"), bytes);
+    assert_eq!(decoded.graph(), snapshot.graph());
+    let plan = QueryPlan {
+        variable_count: 1,
+        patterns: vec![RelationPattern {
+            relation,
+            arguments: vec![Term::Node(nodes[0]), Term::Variable(0)],
+        }],
+        attribute_filters: Vec::new(),
+        path_constraints: Vec::new(),
+        result_variables: vec![0],
+    };
+    assert_eq!(
+        plan.execute(decoded.graph()).expect("decoded query"),
+        plan.execute(snapshot.graph()).expect("source query")
+    );
+}
+
+#[test]
+fn canonical_decode_rejects_hostile_limits_and_semantic_reordering() {
+    let snapshot = graph_with_attributes(vec![
+        Attribute {
+            key: AttrKey(1),
+            value: AttrValue::Int(1),
+        },
+        Attribute {
+            key: AttrKey(2),
+            value: AttrValue::Int(2),
+        },
+    ]);
+    let bytes = snapshot.encode_canonical().expect("encode");
+    let tiny_cbor = CanonicalLimits {
+        max_input_bytes: bytes.len() - 1,
+        ..CanonicalLimits::default()
+    };
+    assert!(matches!(
+        RelGraphSnapshot::decode_canonical(&bytes, tiny_cbor, RegLimits::default()),
+        Err(RegDecodeError::Canonical(_))
+    ));
+    let no_nodes = RegLimits {
+        maximum_nodes: 0,
+        ..RegLimits::default()
+    };
+    assert!(matches!(
+        RelGraphSnapshot::decode_canonical(&bytes, CanonicalLimits::default(), no_nodes),
+        Err(RegDecodeError::Graph(RegError::Capacity {
+            resource: "nodes",
+            ..
+        }))
+    ));
+
+    let mut value = decode_canonical(&bytes, CanonicalLimits::default()).expect("value");
+    let CanonicalValue::Array(root) = &mut value else {
+        panic!("root array");
+    };
+    let CanonicalValue::Array(nodes) = &mut root[4] else {
+        panic!("nodes array");
+    };
+    let CanonicalValue::Array(node) = &mut nodes[0] else {
+        panic!("node array");
+    };
+    let CanonicalValue::Array(attributes) = &mut node[2] else {
+        panic!("attribute array");
+    };
+    attributes.reverse();
+    let reordered = value.encode_canonical().expect("canonical cbor");
+    assert!(matches!(
+        RelGraphSnapshot::decode_canonical(
+            &reordered,
+            CanonicalLimits::default(),
+            RegLimits::default()
+        ),
+        Err(RegDecodeError::InvalidShape(
+            "semantic fields are not in canonical order"
+        ))
+    ));
 }
 
 #[test]
