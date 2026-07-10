@@ -38,6 +38,7 @@
     "handoff_manifest": "regenerated",
     "schema_validation": "pass"
   },
-  "passed_decisive_gates": ["G0", "G1", "G2", "G3", "G4", "G5"],
-  "open_decisive_gates": ["G6"]
+  "passed_decisive_gates": ["G0", "G1", "G2", "G3", "G4", "G5", "G6"],
+  "open_decisive_gates": [],
+  "next_audit": "independent replication and broader mechanism curricula"
 }

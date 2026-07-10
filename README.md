@@ -131,6 +131,12 @@ mechanism transfers exactly across all three, reducing 36,180 fresh candidates
 to three verified proposals, while a source audit finds no domain labels in the
 runtime. See
 [G5_CROSS_DOMAIN_COGNITION_PASS.md](docs/experiments/G5_CROSS_DOMAIN_COGNITION_PASS.md).
+The frozen G6 curriculum now grows bounded composition capability from 1/3 to
+3/3 as its library expands from three to five mechanisms. Marginal candidate
+work falls from 24 to 20, examples from 10 to six, and the same-task observed
+CPU median from 2.284 seconds to 0.916 milliseconds; all base behaviors remain
+exact and the unrelated-law audit records no negative transfer. See
+[G6_DEVELOPMENTAL_SCALING_PASS.md](docs/experiments/G6_DEVELOPMENTAL_SCALING_PASS.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and proof DAGs, richer ontology invention, one shared orchestrating runtime,

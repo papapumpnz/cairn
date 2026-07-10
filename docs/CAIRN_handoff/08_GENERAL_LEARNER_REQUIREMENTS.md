@@ -319,3 +319,24 @@ An automated audit finds no adapter or domain labels in runtime semantics.
 
 This satisfies G5 on the frozen initial suite. G6 remains open. See
 docs/experiments/G5_CROSS_DOMAIN_COGNITION_PASS.md.
+
+## 14. ADR-0007 checkpoint: initial G6 pass
+
+A frozen staged curriculum starts with three independently induced mechanisms,
+then constructs and consolidates successively deeper mechanisms by verified
+composition. Under a bound that prevents fresh synthesis, capability rises
+from 1/3 to 2/3 to 3/3 while the available library grows from three to five
+mechanisms and executable composition depth rises from one to four. Marginal
+candidate work per acquisition falls from 24 to 20, demonstrations from ten to
+six, and observed same-task median CPU time from 2.284 seconds to 0.916
+milliseconds. Previously learned behavior remains 3/3 exact; an unrelated
+nonlinear law falls back to fresh search with zero measured negative transfer.
+The skill curriculum separately confirms that four induced skills compose with
+zero new interventions after two traces per primitive skill.
+
+This satisfies G6 on the frozen initial suite. G0-G6 passing is a major
+architectural checkpoint, not a general-intelligence claim: the suites remain
+small, exact, synthetic, and bounded. Independent replications, richer
+mechanism classes, longer curricula, durable compiled memory, and broad
+real-world knowledge learning remain required. See
+docs/experiments/G6_DEVELOPMENTAL_SCALING_PASS.md.

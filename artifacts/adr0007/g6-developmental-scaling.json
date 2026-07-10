@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "gate": "G6",
+  "date": "2026-07-11",
+  "status": "pass_on_frozen_initial_suite",
+  "general_intelligence_claim": false,
+  "capability_curve": [1, 2, 3],
+  "evaluation_tasks": 3,
+  "mechanism_library_curve": [3, 4, 5],
+  "composition_depth_curve": [1, 2, 4],
+  "base_candidates_per_mechanism": 24,
+  "final_composition_candidates": 20,
+  "base_examples_per_mechanism": 10,
+  "final_composition_examples": 6,
+  "observed_fresh_cpu_median_ns": 2283765571,
+  "observed_composition_cpu_median_ns": 915116,
+  "retained_prior_tasks": 3,
+  "prior_tasks": 3,
+  "negative_transfers": 0,
+  "base_skill_interventions": 2,
+  "composition_interventions": 0,
+  "open_decisive_gates": [],
+  "open_claim_requirements": [
+    "independent_replication",
+    "longer_curricula",
+    "richer_mechanism_classes",
+    "durable_compiled_memory",
+    "broad_knowledge_learning"
+  ]
+}

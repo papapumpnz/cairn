@@ -17,5 +17,5 @@
   "memory_candidate_executions": 3,
   "domain_checks_in_runtime": 0,
   "persistent_promotion": true,
-  "open_gates": ["G6"]
+  "open_gates_at_time_of_run": ["G6"]
 }
