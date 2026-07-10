@@ -28,6 +28,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "cairn-bytecode"
+version = "0.1.0"
+dependencies = [
+ "cairn-rkl",
+]
+
+[[package]]
 name = "cairn-cas"
 version = "0.1.0"
 dependencies = [

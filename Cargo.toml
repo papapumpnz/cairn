@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "crates/cairn-bytecode",
   "crates/cairn-cas",
   "crates/cairn-check",
   "crates/cairn-core",
