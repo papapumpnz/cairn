@@ -45,3 +45,7 @@ allow_unsafe_modules = []
 [crates.cairn-invent]
 layer = "synthesis"
 allow_unsafe_modules = []
+
+[crates.cairn-memory]
+layer = "memory"
+allow_unsafe_modules = []

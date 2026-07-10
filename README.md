@@ -41,6 +41,11 @@ Implemented today:
   omitted executable concepts and replayed 5,835 varied predictions exactly,
   with leave-one-demonstration-out success, cost ablations, and zero accepted
   definitions on 100 controlled negative problems.
+- proof-gated mechanism memory that promotes only definitions supported by
+  multiple tasks and held-out rebinding. On the frozen initial GLL-2 curriculum,
+  memory reduced median search work from 480 candidates to one verified proposal
+  (99.79%), reduced median demonstrations from two to one, retained exact
+  related/unrelated predictions, and fell back to fresh search when unrelated.
 
 This establishes bounded task-level symbolic learning, not general learning.
 Entity/event induction, full proof certificates, richer ontology invention,
@@ -48,6 +53,8 @@ continual memory, interactive world learning, planning, cross-domain runtime
 integration, and knowledge learning remain targets; they are not claimed as
 achieved. See the
 [GLL-1 evidence report](docs/experiments/GLL1_OMITTED_CONCEPT_INVENTION.md).
+The continual-learning result is documented in the
+[GLL-2 evidence report](docs/experiments/GLL2_CONTINUAL_MECHANISM_MEMORY.md).
 
 The normative target and claim boundary are in
 [`08_GENERAL_LEARNER_REQUIREMENTS.md`](docs/CAIRN_handoff/08_GENERAL_LEARNER_REQUIREMENTS.md).

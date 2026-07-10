@@ -5,6 +5,7 @@ members = [
   "crates/cairn-check",
   "crates/cairn-core",
   "crates/cairn-invent",
+  "crates/cairn-memory",
   "crates/cairn-reg",
   "crates/cairn-rkl",
 ]

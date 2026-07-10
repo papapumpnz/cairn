@@ -181,6 +181,36 @@ impl DefinitionInventor {
             .map(|trace| trace.result)
             .map_err(|_| InventionError::InternalExecution)
     }
+
+    /// Admit an externally proposed definition against the complete current
+    /// problem. This is the only entry point used by mechanism memory: a
+    /// retrieved module remains a proposal and cannot bypass replay.
+    ///
+    /// # Errors
+    ///
+    /// Returns exact checking, replay, compilation, or disagreement failures.
+    pub fn admit_definition(
+        &self,
+        problem: &InventionProblem,
+        definition: Definition,
+        structural_cost: u16,
+        proposals_evaluated: u64,
+    ) -> Result<InventionOutcome, InventionError> {
+        validate_problem(problem)?;
+        let bytes = definition
+            .encode_canonical()
+            .map_err(|_| InventionError::InternalCanonicalization)?;
+        admit(
+            problem,
+            DefinitionProposal {
+                definition,
+                structural_cost,
+                semantic_hash: Hash32::digest(&bytes),
+                candidates_evaluated: proposals_evaluated,
+                observational_classes: 0,
+            },
+        )
+    }
 }
 
 #[derive(Clone)]
