@@ -31,6 +31,8 @@ fn first_quarantined_attempt_learns_without_task_specific_operation() {
     assert_eq!(attempt.evaluated_tests, 1);
     assert_eq!(attempt.exact_tests, 1);
     assert_eq!(attempt.generic_observations, 5);
+    assert_eq!(attempt.relational_nodes, 20);
+    assert!(attempt.relational_facts > 0);
     assert!(attempt.learned_expression.contains("Binary"));
 }
 

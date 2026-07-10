@@ -20,6 +20,7 @@ cairn-core = { path = "../../crates/cairn-core" }
 cairn-field = { path = "../../crates/cairn-field" }
 cairn-invent = { path = "../../crates/cairn-invent" }
 cairn-rkl = { path = "../../crates/cairn-rkl" }
+cairn-reg = { path = "../../crates/cairn-reg" }
 cairn-runtime = { path = "../../crates/cairn-runtime" }
 serde = { version = "=1.0.217", default-features = false, features = ["derive", "std"] }
 serde_json = { version = "=1.0.133", default-features = false, features = ["std"] }

@@ -9,9 +9,12 @@
     "selected": 20,
     "exact": 17,
     "resource_limited": 3,
-    "adapter_semantics": "1.3.0",
+    "adapter_semantics": "1.4.0",
     "generic_experience_admission": true,
-    "generic_observations": 129,
+    "generic_observations": 150,
+    "relational_evidence_emission": true,
+    "relational_evidence_nodes": 23114,
+    "relational_evidence_facts": 70550,
     "shared_mechanism_backend": false
   },
   "new_boundaries": [

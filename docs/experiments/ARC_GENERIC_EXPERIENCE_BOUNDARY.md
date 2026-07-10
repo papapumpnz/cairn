@@ -16,6 +16,13 @@ used by modality-neutral cognition:
 - expected test outputs are excluded before lowering;
 - `CognitionRuntime` verifies observation identities and reference closure.
 
+Each admitted finite-field observation is then decoded without benchmark
+labels into a relational evidence graph. Cells are scalar nodes with row,
+column, and value attributes; exact orthogonal adjacency and same-value
+adjacency facts provide the substrate consumed by the existing demand-driven
+entity generator. A non-ARC diagram fixture confirms that connected components
+and value groups are proposed from these relations.
+
 No ARC type or vocabulary was added to the runtime. The admission path accepts
 only generic `LearningProblem` values.
 
@@ -23,7 +30,9 @@ only generic `LearningProblem` values.
 
     corpus:                    ARC-AGI-1 v1.0.2 training prefix
     selected tasks:           20
-    generic observations:     129
+    generic observations:     150
+    relational evidence nodes: 23,114
+    exact relation facts:      70,550
     exact tasks:              17
     resource-limited tasks:   3
     incorrect tasks:          0

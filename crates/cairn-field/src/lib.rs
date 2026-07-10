@@ -14,6 +14,11 @@ use cairn_invent::{
     BindingExample, DefinitionInventor, DefinitionProposal, InventionError, InventionLimits,
     InventionProblem,
 };
+use cairn_reg::{
+    AttrKey, AttrValue, Attribute, DerivationId, DerivationKind, DerivationRecord, EvidenceWeight,
+    NodeConstraint, NodeId, NodeKind, RegError, RegLimits, RelGraphBuilder, RelGraphSnapshot,
+    RelationDefinition, RelationId,
+};
 use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -31,6 +36,19 @@ pub enum FieldError {
     Observation(ObservationError),
     Invention(InventionError),
     Prediction,
+    ObservationMismatch,
+    Reg(RegError),
+}
+
+#[derive(Clone, Debug)]
+pub struct FieldEvidence {
+    pub graph: RelGraphSnapshot,
+    pub cells: Vec<NodeId>,
+    pub adjacent: RelationId,
+    pub same_value_adjacent: RelationId,
+    pub row_key: AttrKey,
+    pub column_key: AttrKey,
+    pub value_key: AttrKey,
 }
 
 impl FiniteField {
@@ -81,6 +99,158 @@ impl FiniteField {
         )
         .map_err(FieldError::Observation)
     }
+
+    /// Decode an exact field observation into modality-neutral scalar nodes
+    /// and adjacency relations suitable for entity and theory invention.
+    ///
+    /// # Errors
+    ///
+    /// Rejects invalid fields, mismatched observation provenance/payload, and
+    /// relational graph capacity or integrity failures.
+    pub fn evidence_graph(
+        &self,
+        observation: &Observation,
+        limits: RegLimits,
+    ) -> Result<FieldEvidence, FieldError> {
+        self.validate()?;
+        observation.verify().map_err(FieldError::Observation)?;
+        let expected = self.observation(observation.source.clone())?;
+        if observation.logical_time.is_some() || expected.id != observation.id {
+            return Err(FieldError::ObservationMismatch);
+        }
+        let mut builder = RelGraphBuilder::new(limits);
+        let derivation = builder
+            .add_derivation(DerivationRecord {
+                kind: DerivationKind::Observed,
+                operation: observation.id.0,
+                inputs: Vec::new(),
+                parameters: Vec::new(),
+                semantics_version: "cairn.field.evidence/1".to_owned(),
+            })
+            .map_err(FieldError::Reg)?;
+        let adjacent = builder
+            .declare_relation(RelationDefinition {
+                name: "field.adjacent".to_owned(),
+                arguments: vec![
+                    NodeConstraint::Kind(NodeKind::Scalar),
+                    NodeConstraint::Kind(NodeKind::Scalar),
+                ],
+            })
+            .map_err(FieldError::Reg)?;
+        let same_value_adjacent = builder
+            .declare_relation(RelationDefinition {
+                name: "field.same_value_adjacent".to_owned(),
+                arguments: vec![
+                    NodeConstraint::Kind(NodeKind::Scalar),
+                    NodeConstraint::Kind(NodeKind::Scalar),
+                ],
+            })
+            .map_err(FieldError::Reg)?;
+        let row_key = AttrKey(1);
+        let column_key = AttrKey(2);
+        let value_key = AttrKey(3);
+        let columns = usize::try_from(self.shape[1]).map_err(|_| FieldError::Capacity)?;
+        let cells = self
+            .values
+            .iter()
+            .enumerate()
+            .map(|(index, value)| {
+                builder
+                    .add_node(
+                        NodeKind::Scalar,
+                        vec![
+                            Attribute {
+                                key: row_key,
+                                value: AttrValue::Int(
+                                    i64::try_from(index / columns)
+                                        .map_err(|_| FieldError::Capacity)?,
+                                ),
+                            },
+                            Attribute {
+                                key: column_key,
+                                value: AttrValue::Int(
+                                    i64::try_from(index % columns)
+                                        .map_err(|_| FieldError::Capacity)?,
+                                ),
+                            },
+                            Attribute {
+                                key: value_key,
+                                value: AttrValue::Int(*value),
+                            },
+                        ],
+                        derivation,
+                    )
+                    .map_err(FieldError::Reg)
+            })
+            .collect::<Result<Vec<_>, FieldError>>()?;
+        let rows = usize::try_from(self.shape[0]).map_err(|_| FieldError::Capacity)?;
+        add_adjacencies(
+            &mut builder,
+            &cells,
+            &self.values,
+            rows,
+            columns,
+            adjacent,
+            same_value_adjacent,
+            derivation,
+        )?;
+        Ok(FieldEvidence {
+            graph: builder.publish(),
+            cells,
+            adjacent,
+            same_value_adjacent,
+            row_key,
+            column_key,
+            value_key,
+        })
+    }
+}
+
+#[allow(clippy::too_many_arguments)] // Explicit graph resources keep the frontend stateless.
+fn add_adjacencies(
+    builder: &mut RelGraphBuilder,
+    cells: &[NodeId],
+    values: &[i64],
+    rows: usize,
+    columns: usize,
+    adjacent: RelationId,
+    same_value_adjacent: RelationId,
+    derivation: DerivationId,
+) -> Result<(), FieldError> {
+    for row in 0..rows {
+        for column in 0..columns {
+            let source = row * columns + column;
+            for target in [
+                (column + 1 < columns).then_some(source + 1),
+                (row + 1 < rows).then_some(source + columns),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                builder
+                    .add_fact(
+                        adjacent,
+                        vec![cells[source], cells[target]],
+                        Vec::new(),
+                        EvidenceWeight::Exact,
+                        derivation,
+                    )
+                    .map_err(FieldError::Reg)?;
+                if values[source] == values[target] {
+                    builder
+                        .add_fact(
+                            same_value_adjacent,
+                            vec![cells[source], cells[target]],
+                            Vec::new(),
+                            EvidenceWeight::Exact,
+                            derivation,
+                        )
+                        .map_err(FieldError::Reg)?;
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 #[derive(Clone, Debug, PartialEq)]

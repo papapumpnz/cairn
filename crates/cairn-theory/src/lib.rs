@@ -1,8 +1,11 @@
 //! Environment-neutral induction of theory components from binding evidence.
 
-use cairn_invent::{DefinitionInventor, InventionError, InventionOutcome, InventionProblem};
-use cairn_rkl::{BinaryOp, Expr, Schedule, Value};
-use std::collections::BTreeSet;
+use cairn_invent::{
+    BindingExample, DefinitionInventor, InventionError, InventionLimits, InventionOutcome,
+    InventionProblem,
+};
+use cairn_rkl::{BinaryOp, Binder, Expr, RuntimeEnvironment, Schedule, Type, Value, VarName};
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PredicateColumn {
@@ -97,6 +100,91 @@ impl GuardInducer {
             }
         }
         Err(GuardFailure::Unrealizable)
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ContrastExample {
+    pub features: BTreeMap<VarName, Value>,
+    pub selected: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ContrastError {
+    EmptyExamples,
+    MissingPositive,
+    MissingNegative,
+    FeatureMismatch,
+    Invention(InventionError),
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ContrastPredicateInventor;
+
+impl ContrastPredicateInventor {
+    /// Invent an executable Boolean definition that separates selected from
+    /// rejected bindings using only typed feature values and generic RKL.
+    ///
+    /// # Errors
+    ///
+    /// Rejects empty/one-class evidence, inconsistent feature schemas, and
+    /// bounded invention failure.
+    pub fn invent(
+        &self,
+        name: &str,
+        features: &[(VarName, Type)],
+        examples: &[ContrastExample],
+        literals: Vec<Value>,
+        limits: InventionLimits,
+    ) -> Result<InventionOutcome, ContrastError> {
+        if examples.is_empty() {
+            return Err(ContrastError::EmptyExamples);
+        }
+        if !examples.iter().any(|example| example.selected) {
+            return Err(ContrastError::MissingPositive);
+        }
+        if !examples.iter().any(|example| !example.selected) {
+            return Err(ContrastError::MissingNegative);
+        }
+        let names = features
+            .iter()
+            .map(|(name, _)| name)
+            .collect::<BTreeSet<_>>();
+        if examples.iter().any(|example| {
+            example.features.len() != features.len()
+                || example.features.keys().collect::<BTreeSet<_>>() != names
+        }) {
+            return Err(ContrastError::FeatureMismatch);
+        }
+        let demonstrations = examples
+            .iter()
+            .map(|example| {
+                let mut inputs = RuntimeEnvironment::new();
+                for (name, value) in &example.features {
+                    inputs.insert(name.clone(), value.clone());
+                }
+                BindingExample {
+                    inputs,
+                    output: Value::Bool(example.selected),
+                }
+            })
+            .collect();
+        DefinitionInventor
+            .invent(&InventionProblem {
+                definition_name: name.to_owned(),
+                parameters: features
+                    .iter()
+                    .map(|(name, ty)| Binder {
+                        name: name.clone(),
+                        ty: ty.clone(),
+                    })
+                    .collect(),
+                return_type: Type::Bool,
+                literals,
+                demonstrations,
+                limits,
+            })
+            .map_err(ContrastError::Invention)
     }
 }
 

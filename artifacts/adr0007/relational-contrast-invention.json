@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "date": "2026-07-11",
+  "status": "bounded_capability_pass",
+  "general_intelligence_claim": false,
+  "official_generic_observations": 150,
+  "official_relational_nodes": 23114,
+  "official_relational_facts": 70550,
+  "entity_fixture_connected_components": true,
+  "entity_fixture_attribute_groups": true,
+  "contrast_candidates_evaluated": 2086,
+  "contrast_structural_cost": 5,
+  "contrast_training_bindings": 5,
+  "contrast_held_out_exact": 4,
+  "contrast_held_out_total": 4,
+  "target_present_as_named_primitive": false,
+  "persistent_promotion": false,
+  "open_requirements": [
+    "relational_feature_invention",
+    "residual_constructor_invention",
+    "cross_domain_transfer",
+    "verifier_gated_promotion"
+  ]
+}

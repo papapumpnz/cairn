@@ -34,6 +34,7 @@ dependencies = [
  "cairn-core",
  "cairn-field",
  "cairn-invent",
+ "cairn-reg",
  "cairn-rkl",
  "cairn-runtime",
  "serde",
@@ -133,7 +134,9 @@ name = "cairn-field"
 version = "0.1.0"
 dependencies = [
  "cairn-core",
+ "cairn-entity",
  "cairn-invent",
+ "cairn-reg",
  "cairn-rkl",
 ]
 

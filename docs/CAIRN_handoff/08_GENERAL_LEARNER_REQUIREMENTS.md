@@ -192,6 +192,15 @@ service. The evidence graph, RKL, entity algebra, event induction, and verifier
 must compile and operate without that service. Spatial facts enter cognition as
 ordinary sourced entities, relations, attributes, and events.
 
+Implementation checkpoint (2026-07-11): `FiniteField::evidence_graph` emits
+provenance-bound scalar nodes, typed attributes, and exact adjacency relations.
+The demand-driven entity generator consumes those facts without field or ARC
+types. `ContrastPredicateInventor` then constructs Boolean RKL definitions from
+positive and hard-negative typed bindings. On the frozen initial family it
+invented the omitted enclosure-plus-marker selector after 2,086 candidates and
+predicted four unseen value/size combinations exactly. This establishes the
+route, not broad relational ontology learning.
+
 ## 5. Proof-backed knowledge learning
 
 The knowledge subsystem stores:
@@ -348,8 +357,9 @@ The quarantined ARC adapter now lowers sealed tasks to core `LearningProblem`,
 observation uses the finite-field modality, carries a source/content identity,
 and is admitted by `CognitionRuntime`, which rejects invalid identities,
 duplicates, and references outside the experience envelope without inspecting
-adapter semantics. The official first-20 checkpoint remains 17/20 across 129
-generic observations, with the same three resource-limited tasks.
+adapter semantics. The official first-20 checkpoint remains 17/20 after 150
+generic observations emit 23,114 scalar evidence nodes and 70,550 exact
+adjacency facts, with the same three resource-limited tasks.
 
 This completes the generic input boundary but not the shared-solver migration.
 The successful ARC tasks still use the quarantined legacy finite-field schema

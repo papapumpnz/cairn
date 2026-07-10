@@ -5,16 +5,18 @@ use cairn_core::{
     TaskId,
 };
 use cairn_field::{
-    FieldError, FieldSchemaError, FieldSchemaLearner, FiniteField, PointwiseFieldLearner,
+    FieldError, FieldEvidence, FieldSchemaError, FieldSchemaLearner, FiniteField,
+    PointwiseFieldLearner,
 };
 use cairn_invent::InventionLimits;
+use cairn_reg::RegLimits;
 use cairn_rkl::ExecLimits;
 use cairn_runtime::{CognitionRuntime, ExperienceError};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.3.0";
+pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.4.0";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ArcGrid {
@@ -79,6 +81,8 @@ pub struct ArcAttempt {
     pub exact_tests: usize,
     pub training_cells: usize,
     pub generic_observations: usize,
+    pub relational_nodes: usize,
+    pub relational_facts: usize,
     pub learned_expression: String,
 }
 
@@ -102,8 +106,16 @@ pub struct ArcTaskReport {
     pub exact_tests: usize,
     pub training_cells: usize,
     pub generic_observations: usize,
+    pub relational_nodes: usize,
+    pub relational_facts: usize,
     pub learned_expression: Option<String>,
     pub diagnostic: Option<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ArcExperience {
+    pub problem: LearningProblem,
+    pub evidence: Vec<FieldEvidence>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -124,6 +136,9 @@ pub struct ArcBatchReport {
     pub resource_limited_tasks: usize,
     pub invalid_tasks: usize,
     pub execution_failures: usize,
+    pub generic_observations: usize,
+    pub relational_nodes: usize,
+    pub relational_facts: usize,
     pub reports: Vec<ArcTaskReport>,
 }
 
@@ -225,6 +240,38 @@ pub fn lower_learning_problem(
     })
 }
 
+/// Lower and independently decode every carried observation into relational
+/// evidence. Adapter records remain outside the returned graph semantics.
+///
+/// # Errors
+///
+/// Rejects generic lowering, field validation, provenance mismatches, or REG
+/// capacity failures.
+pub fn lower_relational_experience(
+    task: &ArcTask,
+    source_locator: &str,
+    limits: RegLimits,
+) -> Result<ArcExperience, ArcAdapterError> {
+    let problem = lower_learning_problem(task, source_locator)?;
+    let fields = task
+        .train
+        .iter()
+        .flat_map(|pair| [&pair.input, &pair.output])
+        .chain(task.test.iter().map(|case| &case.input))
+        .map(lower)
+        .collect::<Result<Vec<_>, _>>()?;
+    let evidence = fields
+        .iter()
+        .zip(&problem.observations)
+        .map(|(field, observation)| {
+            field
+                .evidence_graph(observation, limits)
+                .map_err(ArcAdapterError::Field)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(ArcExperience { problem, evidence })
+}
+
 /// Attempt an ARC task solely through the generic pointwise field learner.
 /// No task identifier, operation label, or test output enters learning.
 ///
@@ -236,10 +283,21 @@ pub fn attempt_task(
     invention: InventionLimits,
     execution: ExecLimits,
 ) -> Result<ArcAttempt, ArcAdapterError> {
-    let experience = lower_learning_problem(task, "urn:cairn:adapter-task:sealed")?;
+    let experience =
+        lower_relational_experience(task, "urn:cairn:adapter-task:sealed", RegLimits::default())?;
     let admitted = CognitionRuntime::new()
-        .admit_experience(&experience)
+        .admit_experience(&experience.problem)
         .map_err(ArcAdapterError::Runtime)?;
+    let relational_nodes = experience
+        .evidence
+        .iter()
+        .map(|item| item.graph.graph().node_count())
+        .sum();
+    let relational_facts = experience
+        .evidence
+        .iter()
+        .map(|item| item.graph.graph().fact_count())
+        .sum();
     let training = task
         .train
         .iter()
@@ -278,6 +336,8 @@ pub fn attempt_task(
                 exact_tests,
                 training_cells: training.iter().map(|(input, _)| input.values.len()).sum(),
                 generic_observations: admitted.observations,
+                relational_nodes,
+                relational_facts,
                 learned_expression: format!("{:?}", learned.transformation),
             });
         }
@@ -314,6 +374,8 @@ pub fn attempt_task(
         exact_tests: exact,
         training_cells: learned.training_cells,
         generic_observations: admitted.observations,
+        relational_nodes,
+        relational_facts,
         learned_expression: format!("{:?}", learned.proposal.definition.body),
     })
 }
@@ -359,6 +421,9 @@ pub fn run_training_batch(
         resource_limited_tasks: 0,
         invalid_tasks: 0,
         execution_failures: 0,
+        generic_observations: 0,
+        relational_nodes: 0,
+        relational_facts: 0,
         reports: Vec::with_capacity(paths.len()),
     };
     for path in paths {
@@ -380,6 +445,8 @@ pub fn run_training_batch(
                     exact_tests: 0,
                     training_cells: 0,
                     generic_observations: 0,
+                    relational_nodes: 0,
+                    relational_facts: 0,
                     learned_expression: None,
                     diagnostic: Some("parse or input validation failed".to_owned()),
                 },
@@ -387,10 +454,60 @@ pub fn run_training_batch(
             continue;
         };
         batch.parsed_tasks += 1;
+        let Ok((generic_observations, relational_nodes, relational_facts)) =
+            admit_batch_boundary(&task, &task_name)
+        else {
+            record_report(
+                &mut batch,
+                ArcTaskReport {
+                    task: task_name,
+                    status: ArcTaskStatus::ExecutionFailure,
+                    evaluated_tests: 0,
+                    exact_tests: 0,
+                    training_cells: 0,
+                    generic_observations: 0,
+                    relational_nodes: 0,
+                    relational_facts: 0,
+                    learned_expression: None,
+                    diagnostic: Some("generic experience admission failed".to_owned()),
+                },
+            );
+            continue;
+        };
+        batch.generic_observations = batch
+            .generic_observations
+            .saturating_add(generic_observations);
+        batch.relational_nodes = batch.relational_nodes.saturating_add(relational_nodes);
+        batch.relational_facts = batch.relational_facts.saturating_add(relational_facts);
         let report = evaluate_task(task_name, task, invention, execution);
         record_report(&mut batch, report);
     }
     Ok(batch)
+}
+
+fn admit_batch_boundary(
+    task: &ArcTask,
+    task_name: &str,
+) -> Result<(usize, usize, usize), ArcAdapterError> {
+    let experience = lower_relational_experience(
+        task,
+        &format!("urn:cairn:corpus-task:{task_name}"),
+        RegLimits::default(),
+    )?;
+    CognitionRuntime::new()
+        .admit_experience(&experience.problem)
+        .map_err(ArcAdapterError::Runtime)?;
+    let nodes = experience
+        .evidence
+        .iter()
+        .map(|item| item.graph.graph().node_count())
+        .sum();
+    let facts = experience
+        .evidence
+        .iter()
+        .map(|item| item.graph.graph().fact_count())
+        .sum();
+    Ok((experience.problem.observations.len(), nodes, facts))
 }
 
 fn evaluate_task(
@@ -435,6 +552,8 @@ fn evaluate_task(
                 exact_tests: exact,
                 training_cells: attempt.training_cells,
                 generic_observations: attempt.generic_observations,
+                relational_nodes: attempt.relational_nodes,
+                relational_facts: attempt.relational_facts,
                 learned_expression: Some(attempt.learned_expression),
                 diagnostic: None,
             }
@@ -448,6 +567,8 @@ fn evaluate_task(
                 exact_tests: 0,
                 training_cells: 0,
                 generic_observations: 0,
+                relational_nodes: 0,
+                relational_facts: 0,
                 learned_expression: None,
                 diagnostic: Some(diagnostic),
             }

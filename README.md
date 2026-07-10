@@ -140,10 +140,17 @@ exact and the unrelated-law audit records no negative transfer. See
 The official ARC adapter now seals test answers, lowers every task to the same
 provenance-bound `LearningProblem` protocol, and passes that envelope through
 `CognitionRuntime` reference admission before invoking its quarantined legacy
-backend. The frozen first-20 score remains 17/20 over 129 generic observations;
-the three misses remain resource-limited. This is a boundary-conformance
+backend. The frozen first-20 score remains 17/20 after 150 generic observations
+become 23,114 evidence nodes and 70,550 exact relation facts; the three misses
+remain resource-limited. This is a boundary-conformance
 checkpoint, not shared-runtime ARC learning. See
 [ARC_GENERIC_EXPERIENCE_BOUNDARY.md](docs/experiments/ARC_GENERIC_EXPERIENCE_BOUNDARY.md).
+The first post-G6 invention expansion now turns exact finite observations into
+generic relation graphs and synthesizes an omitted eligibility predicate from
+positive and hard-negative entity bindings. The learned RKL predicate was
+`1 == min(enclosed, has_marker)`, found after 2,086 candidates, and transferred
+across unseen values and sizes without an `eligible` primitive. See
+[RELATIONAL_CONTRAST_INVENTION.md](docs/experiments/RELATIONAL_CONTRAST_INVENTION.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and proof DAGs, richer ontology invention, one shared orchestrating runtime,
