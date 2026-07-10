@@ -215,17 +215,60 @@ impl MechanismStore {
         }
         proposals
     }
+
+    fn compositions(&self, problem: &InventionProblem) -> Vec<ComposedProposal> {
+        let modules = self.active_modules().collect::<Vec<_>>();
+        let mut proposals = Vec::new();
+        for outer in &modules {
+            if !type_shape_compatible(&outer.definition.return_type, &problem.return_type) {
+                continue;
+            }
+            for inner in &modules {
+                if outer.id == inner.id {
+                    continue;
+                }
+                let combined_arity = outer
+                    .definition
+                    .parameters
+                    .len()
+                    .saturating_add(inner.definition.parameters.len())
+                    .saturating_sub(1);
+                if combined_arity != problem.parameters.len() {
+                    continue;
+                }
+                for substituted_parameter in 0..outer.definition.parameters.len() {
+                    if !type_shape_compatible(
+                        &outer.definition.parameters[substituted_parameter].ty,
+                        &inner.definition.return_type,
+                    ) {
+                        continue;
+                    }
+                    compose_bindings(outer, inner, substituted_parameter, problem, &mut proposals);
+                }
+            }
+        }
+        proposals
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SolveOrigin {
     MemoryProposal,
+    MemoryComposition,
     FreshSearch,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompositionRecord {
+    pub outer_module: Hash32,
+    pub inner_module: Hash32,
+    pub substituted_parameter: usize,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MemorySolveMetrics {
     pub memory_proposals_evaluated: u64,
+    pub composition_proposals_evaluated: u64,
     pub rejected_memory_proposals: u64,
     pub fresh_candidates_evaluated: u64,
     pub total_search_work: u64,
@@ -235,6 +278,7 @@ pub struct MemorySolveMetrics {
 pub struct MemorySolveOutcome {
     pub invention: InventionOutcome,
     pub origin: SolveOrigin,
+    pub composition: Option<CompositionRecord>,
     pub metrics: MemorySolveMetrics,
 }
 
@@ -268,8 +312,36 @@ impl MemoryAssistedInventor {
                 return Ok(MemorySolveOutcome {
                     invention,
                     origin: SolveOrigin::MemoryProposal,
+                    composition: None,
                     metrics: MemorySolveMetrics {
                         memory_proposals_evaluated: attempted,
+                        composition_proposals_evaluated: 0,
+                        rejected_memory_proposals: attempted - 1,
+                        fresh_candidates_evaluated: 0,
+                        total_search_work: attempted,
+                    },
+                });
+            }
+        }
+        let direct_attempts = attempted;
+        let compositions = store.compositions(problem);
+        let mut composition_attempts = 0_u64;
+        for proposal in compositions {
+            composition_attempts += 1;
+            attempted += 1;
+            if let Ok(invention) = inventor.admit_definition(
+                problem,
+                proposal.definition,
+                proposal.structural_cost,
+                attempted,
+            ) {
+                return Ok(MemorySolveOutcome {
+                    invention,
+                    origin: SolveOrigin::MemoryComposition,
+                    composition: Some(proposal.record),
+                    metrics: MemorySolveMetrics {
+                        memory_proposals_evaluated: direct_attempts,
+                        composition_proposals_evaluated: composition_attempts,
                         rejected_memory_proposals: attempted - 1,
                         fresh_candidates_evaluated: 0,
                         total_search_work: attempted,
@@ -282,8 +354,10 @@ impl MemoryAssistedInventor {
         Ok(MemorySolveOutcome {
             invention,
             origin: SolveOrigin::FreshSearch,
+            composition: None,
             metrics: MemorySolveMetrics {
-                memory_proposals_evaluated: attempted,
+                memory_proposals_evaluated: direct_attempts,
+                composition_proposals_evaluated: composition_attempts,
                 rejected_memory_proposals: attempted,
                 fresh_candidates_evaluated: fresh,
                 total_search_work: attempted.saturating_add(fresh),
@@ -295,6 +369,133 @@ impl MemoryAssistedInventor {
 struct ReboundProposal {
     definition: Definition,
     structural_cost: u16,
+}
+
+struct ComposedProposal {
+    definition: Definition,
+    structural_cost: u16,
+    record: CompositionRecord,
+}
+
+fn compose_bindings(
+    outer: &MechanismModule,
+    inner: &MechanismModule,
+    substituted_parameter: usize,
+    problem: &InventionProblem,
+    proposals: &mut Vec<ComposedProposal>,
+) {
+    let inner_mappings =
+        compatible_bindings(&inner.definition.parameters, problem, &BTreeSet::new());
+    for inner_mapping in inner_mappings {
+        let used = inner_mapping.iter().copied().collect::<BTreeSet<_>>();
+        let remaining_outer = outer
+            .definition
+            .parameters
+            .iter()
+            .enumerate()
+            .filter(|(index, _)| *index != substituted_parameter)
+            .map(|(_, parameter)| parameter.clone())
+            .collect::<Vec<_>>();
+        for outer_mapping in compatible_bindings(&remaining_outer, problem, &used) {
+            let inner_substitutions = inner
+                .definition
+                .parameters
+                .iter()
+                .zip(&inner_mapping)
+                .map(|(parameter, current)| {
+                    (
+                        parameter.name.clone(),
+                        Expr::Var(problem.parameters[*current].name.clone()),
+                    )
+                })
+                .collect::<BTreeMap<_, _>>();
+            let inner_body = substitute(
+                &inner.definition.body,
+                &inner_substitutions,
+                &mut BTreeSet::new(),
+            );
+            let mut outer_substitutions = BTreeMap::new();
+            outer_substitutions.insert(
+                outer.definition.parameters[substituted_parameter]
+                    .name
+                    .clone(),
+                inner_body,
+            );
+            for (parameter, current) in remaining_outer.iter().zip(&outer_mapping) {
+                outer_substitutions.insert(
+                    parameter.name.clone(),
+                    Expr::Var(problem.parameters[*current].name.clone()),
+                );
+            }
+            let Some(structural_cost) = outer.structural_cost.checked_add(inner.structural_cost)
+            else {
+                continue;
+            };
+            proposals.push(ComposedProposal {
+                definition: Definition {
+                    name: problem.definition_name.clone(),
+                    parameters: problem.parameters.clone(),
+                    return_type: problem.return_type.clone(),
+                    body: substitute(
+                        &outer.definition.body,
+                        &outer_substitutions,
+                        &mut BTreeSet::new(),
+                    ),
+                    recursion: None,
+                    proof_annotations: Vec::new(),
+                },
+                structural_cost,
+                record: CompositionRecord {
+                    outer_module: outer.id,
+                    inner_module: inner.id,
+                    substituted_parameter,
+                },
+            });
+        }
+    }
+}
+
+fn compatible_bindings(
+    parameters: &[cairn_rkl::Binder],
+    problem: &InventionProblem,
+    initially_used: &BTreeSet<usize>,
+) -> Vec<Vec<usize>> {
+    fn visit(
+        parameters: &[cairn_rkl::Binder],
+        problem: &InventionProblem,
+        index: usize,
+        used: &mut BTreeSet<usize>,
+        selected: &mut Vec<usize>,
+        results: &mut Vec<Vec<usize>>,
+    ) {
+        if index == parameters.len() {
+            results.push(selected.clone());
+            return;
+        }
+        for (current, candidate) in problem.parameters.iter().enumerate() {
+            if used.contains(&current)
+                || !type_shape_compatible(&parameters[index].ty, &candidate.ty)
+            {
+                continue;
+            }
+            used.insert(current);
+            selected.push(current);
+            visit(parameters, problem, index + 1, used, selected, results);
+            selected.pop();
+            used.remove(&current);
+        }
+    }
+
+    let mut results = Vec::new();
+    visit(
+        parameters,
+        problem,
+        0,
+        &mut initially_used.clone(),
+        &mut Vec::new(),
+        &mut results,
+    );
+    results
 }
 
 fn bindings(
@@ -311,7 +512,12 @@ fn bindings(
             .parameters
             .iter()
             .zip(mapping.iter())
-            .map(|(old, new)| (old.name.clone(), problem.parameters[*new].name.clone()))
+            .map(|(old, new)| {
+                (
+                    old.name.clone(),
+                    Expr::Var(problem.parameters[*new].name.clone()),
+                )
+            })
             .collect::<BTreeMap<_, _>>();
         proposals.push(ReboundProposal {
             definition: Definition {
@@ -345,7 +551,7 @@ fn bindings(
 
 fn substitute(
     expression: &Expr,
-    substitutions: &BTreeMap<VarName, VarName>,
+    substitutions: &BTreeMap<VarName, Expr>,
     bound: &mut BTreeSet<VarName>,
 ) -> Expr {
     match expression {
@@ -356,11 +562,16 @@ fn substitute(
             row: *row,
             column: *column,
         },
-        Expr::Var(name) => Expr::Var(if bound.contains(name) {
-            name.clone()
-        } else {
-            substitutions.get(name).unwrap_or(name).clone()
-        }),
+        Expr::Var(name) => {
+            if bound.contains(name) {
+                Expr::Var(name.clone())
+            } else {
+                substitutions
+                    .get(name)
+                    .cloned()
+                    .unwrap_or_else(|| Expr::Var(name.clone()))
+            }
+        }
         Expr::Tuple(values) => Expr::Tuple(
             values
                 .iter()
@@ -464,7 +675,7 @@ fn normalized_body(definition: &Definition) -> Expr {
         .map(|(index, parameter)| {
             (
                 parameter.name.clone(),
-                VarName(format!("parameter_{index}")),
+                Expr::Var(VarName(format!("parameter_{index}"))),
             )
         })
         .collect::<BTreeMap<_, _>>();

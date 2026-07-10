@@ -46,6 +46,10 @@ Implemented today:
   memory reduced median search work from 480 candidates to one verified proposal
   (99.79%), reduced median demonstrations from two to one, retained exact
   related/unrelated predictions, and fell back to fresh search when unrelated.
+- generic composition of two independently promoted mechanisms by typed RKL
+  substitution. The frozen initial GLL-3 suite composed magnitude with clamping,
+  collection counting with clamping, and magnitude with categorical control,
+  producing 510 exact held-out predictions with no coded composite operators.
 
 This establishes bounded task-level symbolic learning, not general learning.
 Entity/event induction, full proof certificates, richer ontology invention,
@@ -55,6 +59,8 @@ achieved. See the
 [GLL-1 evidence report](docs/experiments/GLL1_OMITTED_CONCEPT_INVENTION.md).
 The continual-learning result is documented in the
 [GLL-2 evidence report](docs/experiments/GLL2_CONTINUAL_MECHANISM_MEMORY.md).
+The initial composition result is in the
+[GLL-3 evidence report](docs/experiments/GLL3_SKILL_COMPOSITION.md).
 
 The normative target and claim boundary are in
 [`08_GENERAL_LEARNER_REQUIREMENTS.md`](docs/CAIRN_handoff/08_GENERAL_LEARNER_REQUIREMENTS.md).
