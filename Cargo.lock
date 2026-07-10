@@ -56,6 +56,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "cairn-rkl"
+version = "0.1.0"
+dependencies = [
+ "cairn-core",
+]
+
+[[package]]
 name = "camino"
 version = "1.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

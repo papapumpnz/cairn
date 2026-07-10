@@ -29,3 +29,7 @@ allow_unsafe_modules = []
 [crates.cairn-cas]
 layer = "substrate"
 allow_unsafe_modules = []
+
+[crates.cairn-rkl]
+layer = "language"
+allow_unsafe_modules = []
