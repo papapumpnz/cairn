@@ -14,6 +14,7 @@ cairn-rkl = { path = "../cairn-rkl" }
 cairn-verifier = { path = "../cairn-verifier" }
 
 [dev-dependencies]
+cairn-bench = { path = "../cairn-bench" }
 cairn-consolidator = { path = "../cairn-consolidator" }
 cairn-mechanism = { path = "../cairn-mechanism" }
 

@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "gate": "G0",
+  "date": "2026-07-11",
+  "status": "pass_on_frozen_initial_suite",
+  "general_intelligence_claim": false,
+  "families": 5,
+  "source_episodes": 10,
+  "held_out_tasks": 10,
+  "initial_successes": 0,
+  "post_experience_successes": 10,
+  "fresh_candidate_executions": 33600,
+  "memory_candidate_executions": 10,
+  "candidate_reduction_factor": 3360.0,
+  "memory_demonstrations_per_task": 1,
+  "held_out_predictions_verified": 10,
+  "persistent_mechanisms": 5,
+  "source_code_changes_during_run": 0,
+  "varied_support_dimensions": [
+    "parameter_names",
+    "numeric_ranges",
+    "categorical_values",
+    "collection_cardinalities",
+    "positions",
+    "layouts"
+  ],
+  "mechanism_families": [
+    "bounded_scalar_magnitude",
+    "bounded_clamping",
+    "symbolic_relational_choice",
+    "collection_cardinality_adjustment",
+    "coordinate_translation"
+  ],
+  "open_gates": ["G1", "G2", "G3", "G4", "G5", "G6"]
+}

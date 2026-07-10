@@ -39,6 +39,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "cairn-bench"
+version = "0.1.0"
+dependencies = [
+ "cairn-invent",
+ "cairn-rkl",
+]
+
+[[package]]
 name = "cairn-bytecode"
 version = "0.1.0"
 dependencies = [
@@ -138,6 +146,7 @@ dependencies = [
 name = "cairn-memory"
 version = "0.1.0"
 dependencies = [
+ "cairn-bench",
  "cairn-consolidator",
  "cairn-core",
  "cairn-invent",

@@ -101,3 +101,7 @@ allow_unsafe_modules = []
 [crates.cairn-arc]
 layer = "benchmark"
 allow_unsafe_modules = []
+
+[crates.cairn-bench]
+layer = "benchmark"
+allow_unsafe_modules = []

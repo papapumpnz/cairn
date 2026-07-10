@@ -2,6 +2,7 @@
 members = [
   "adapters/cairn-arc",
   "crates/cairn-bytecode",
+  "crates/cairn-bench",
   "crates/cairn-cas",
   "crates/cairn-cegis",
   "crates/cairn-check",

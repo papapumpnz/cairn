@@ -38,5 +38,6 @@
     "handoff_manifest": "regenerated",
     "schema_validation": "pass"
   },
-  "open_decisive_gates": ["G0", "G1", "G2", "G3", "G4", "G5", "G6"]
+  "passed_decisive_gates": ["G0"],
+  "open_decisive_gates": ["G1", "G2", "G3", "G4", "G5", "G6"]
 }

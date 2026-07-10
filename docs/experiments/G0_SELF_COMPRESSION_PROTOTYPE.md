@@ -2,7 +2,7 @@
 
 Date: 2026-07-11
 
-Status: narrow-domain prototype pass; full G0 remains open
+Status: historical narrow-domain prototype; superseded by the multifamily G0 pass
 
 ## Pre-registered question
 
@@ -68,8 +68,7 @@ to fail. Experience therefore changed future search and sample requirements.
 
 ## What it does not prove
 
-This is one scalar mechanism family. It does not yet vary collection
-cardinality or layout, does not demonstrate cross-domain reuse, and does not
-show autonomous curriculum generation. Full G0 requires multiple unrelated
-hidden-law families and unseen cardinality/layout transfer. G1-G6 remain open,
-and no general-intelligence claim is made.
+This prototype alone did not vary collection cardinality or layout. The
+successor G0_MULTIFAMILY_HIDDEN_LAW_PASS.md adds five unrelated families and
+unseen cardinality/layout transfer. G1-G6 remain open, and no
+general-intelligence claim is made.

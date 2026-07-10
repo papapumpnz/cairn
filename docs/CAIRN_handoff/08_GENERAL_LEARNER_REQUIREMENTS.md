@@ -245,3 +245,18 @@ The same frozen first-ten ARC batch later reached 10/10 after generic field
 schemas were added under ADR-0006. An untouched tasks 11–20 probe remained 0/10.
 This is a development capability pass, not evidence that GLL-1, GLL-5, broad
 ARC generalization, or general intelligence is complete.
+
+## 8. ADR-0007 checkpoint: initial G0 pass
+
+The independently owned frozen hidden-law suite now passes across five
+unrelated mechanisms. Initial bounded success was 0/10 and post-experience
+success was 10/10 with no source changes. Ten independently replayed held-out
+probes varied parameter names, ranges, symbols, collection cardinalities,
+positions, and layouts. Candidate executions fell from 33,600 under fresh
+search to 10 verified memory proposals. All five mechanisms required
+proof-subgraph compression and a lineage-bound verifier token before persistent
+status.
+
+This satisfies G0 on the frozen initial suite. It does not satisfy G1-G6 or the
+general-learning pass. See
+docs/experiments/G0_MULTIFAMILY_HIDDEN_LAW_PASS.md.
