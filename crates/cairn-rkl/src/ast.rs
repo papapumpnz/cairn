@@ -289,7 +289,7 @@ pub struct RuleBinder {
 pub enum Effect {
     Preserve(Expr),
     Delete(Expr),
-    EmitCells(Expr),
+    Emit(Expr),
     SetState { target: Expr, value: Expr },
 }
 
@@ -339,4 +339,20 @@ pub struct Theory {
     pub renderer: Renderer,
     pub assumptions: Vec<Expr>,
     pub proof_annotations: Vec<Hash32>,
+}
+
+/// A whole theory admitted by [`crate::TheoryChecker`].
+///
+/// Construction is intentionally restricted so persistent semantic bytes can
+/// only be produced after definition, rule, schedule, and renderer checks.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CheckedTheory {
+    pub(crate) theory: Theory,
+}
+
+impl CheckedTheory {
+    #[must_use]
+    pub const fn theory(&self) -> &Theory {
+        &self.theory
+    }
 }

@@ -1,6 +1,6 @@
 use crate::{
-    BinaryOp, CheckError, CheckErrorKind, Definition, Expr, ExprPath, IntRange, PathSegment,
-    PredicateExpr, Type, TypedExpr, UnaryOp, VarName,
+    BinaryOp, CheckError, CheckErrorKind, CheckedTheory, Definition, Effect, Expr, ExprPath,
+    IntRange, PathSegment, PredicateExpr, Schedule, Theory, Type, TypedExpr, UnaryOp, VarName,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -397,6 +397,439 @@ impl BoundChecker for TypeChecker {
         let typed = self.check(&definition.body, &environment)?;
         require_compatible(&definition.return_type, &typed.ty, ExprPath::default())?;
         Ok(typed)
+    }
+}
+
+/// Whole-theory structural, typing, totality, and schedule validation.
+pub trait TheoryChecker {
+    /// Admit a theory for canonical persistence and later execution.
+    ///
+    /// # Errors
+    ///
+    /// Returns a deterministic theory-qualified path and exact failure class.
+    fn check_theory(&self, theory: &Theory) -> Result<CheckedTheory, CheckError>;
+}
+
+impl TheoryChecker for TypeChecker {
+    fn check_theory(&self, theory: &Theory) -> Result<CheckedTheory, CheckError> {
+        if theory.definitions.is_empty() && theory.rules.is_empty() {
+            return Err(CheckError::new(
+                ExprPath::default(),
+                CheckErrorKind::EmptyTheory,
+            ));
+        }
+
+        let checker = checker_with_definitions(self, &theory.definitions)?;
+        check_definitions(&checker, &theory.definitions)?;
+        let rule_names = check_rules(&checker, &theory.rules)?;
+        validate_schedule(&theory.schedule, &rule_names)?;
+        check_renderer_and_assumptions(&checker, theory)?;
+
+        Ok(CheckedTheory {
+            theory: theory.clone(),
+        })
+    }
+}
+
+fn checker_with_definitions(
+    base: &TypeChecker,
+    definitions: &[Definition],
+) -> Result<TypeChecker, CheckError> {
+    let mut checker = base.clone();
+    let mut names = BTreeSet::new();
+    for (index, definition) in definitions.iter().enumerate() {
+        let path = ExprPath::default().child(PathSegment::Definition(index));
+        if !names.insert(definition.name.clone()) {
+            return Err(CheckError::new(
+                path,
+                CheckErrorKind::DuplicateDefinition(definition.name.clone()),
+            ));
+        }
+        for parameter in &definition.parameters {
+            validate_type(&parameter.ty, &path)?;
+        }
+        validate_type(&definition.return_type, &path)?;
+        checker.register_definition(
+            definition.name.clone(),
+            DefinitionSignature {
+                parameters: definition
+                    .parameters
+                    .iter()
+                    .map(|parameter| parameter.ty.clone())
+                    .collect(),
+                return_type: definition.return_type.clone(),
+            },
+        );
+    }
+    Ok(checker)
+}
+
+fn check_definitions(checker: &TypeChecker, definitions: &[Definition]) -> Result<(), CheckError> {
+    if let Some(cycle) = mutual_recursion_cycle(definitions) {
+        return Err(CheckError::new(
+            ExprPath::default(),
+            CheckErrorKind::MutualRecursionUnsupported(cycle),
+        ));
+    }
+    for (index, definition) in definitions.iter().enumerate() {
+        checker
+            .check_definition(definition)
+            .map_err(|error| prefix_error(error, PathSegment::Definition(index)))?;
+    }
+    Ok(())
+}
+
+fn check_rules(
+    checker: &TypeChecker,
+    rules: &[crate::RewriteRule],
+) -> Result<BTreeSet<String>, CheckError> {
+    let mut names = BTreeSet::new();
+    for (index, rule) in rules.iter().enumerate() {
+        let path = ExprPath::default().child(PathSegment::Rule(index));
+        if !names.insert(rule.name.clone()) {
+            return Err(CheckError::new(
+                path.clone(),
+                CheckErrorKind::DuplicateRule(rule.name.clone()),
+            ));
+        }
+        let environment = check_rule_binders(checker, rule, &path)?;
+        checker
+            .check_predicate(&rule.guard, &environment)
+            .map_err(|error| prefix_path(error, &path.child(PathSegment::Guard)))?;
+        check_effects(checker, &rule.effects, &environment, &path)?;
+    }
+    Ok(names)
+}
+
+fn check_rule_binders(
+    checker: &TypeChecker,
+    rule: &crate::RewriteRule,
+    rule_path: &ExprPath,
+) -> Result<TypeEnvironment, CheckError> {
+    let mut environment = TypeEnvironment::new();
+    let mut names = BTreeSet::new();
+    for (index, binder) in rule.binders.iter().enumerate() {
+        let path = rule_path.child(PathSegment::Binder(index));
+        if !names.insert(binder.variable.name.clone()) {
+            return Err(CheckError::new(
+                path,
+                CheckErrorKind::DuplicateBinder(binder.variable.name.0.clone()),
+            ));
+        }
+        validate_type(&binder.variable.ty, &path)?;
+        let domain = checker
+            .check(&binder.domain, &environment)
+            .map_err(|error| prefix_path(error, &path.child(PathSegment::Domain)))?;
+        let element = domain_element_type(domain.ty()).ok_or_else(|| {
+            CheckError::new(
+                path.child(PathSegment::Domain),
+                CheckErrorKind::InvalidDomain(domain.ty().clone()),
+            )
+        })?;
+        require_compatible(
+            &binder.variable.ty,
+            &element,
+            path.child(PathSegment::Domain),
+        )?;
+        environment.insert(binder.variable.name.clone(), binder.variable.ty.clone());
+    }
+    Ok(environment)
+}
+
+fn check_effects(
+    checker: &TypeChecker,
+    effects: &[Effect],
+    environment: &TypeEnvironment,
+    rule_path: &ExprPath,
+) -> Result<(), CheckError> {
+    for (index, effect) in effects.iter().enumerate() {
+        let path = rule_path.child(PathSegment::Effect(index));
+        match effect {
+            Effect::Preserve(value) | Effect::Delete(value) | Effect::Emit(value) => {
+                checker
+                    .check(value, environment)
+                    .map_err(|error| prefix_path(error, &path))?;
+            }
+            Effect::SetState { target, value } => {
+                let target_type = checker
+                    .check(target, environment)
+                    .map_err(|error| prefix_path(error, &path))?;
+                require_type(Type::State, target_type.ty().clone(), path.clone())?;
+                checker
+                    .check(value, environment)
+                    .map_err(|error| prefix_path(error, &path))?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn check_renderer_and_assumptions(
+    checker: &TypeChecker,
+    theory: &Theory,
+) -> Result<(), CheckError> {
+    checker
+        .check(&theory.renderer.canvas, &TypeEnvironment::new())
+        .map_err(|error| prefix_error(error, PathSegment::Canvas))?;
+    for (index, layer) in theory.renderer.layers.iter().enumerate() {
+        checker
+            .check(layer, &TypeEnvironment::new())
+            .map_err(|error| prefix_error(error, PathSegment::Layer(index)))?;
+    }
+    checker
+        .check(&theory.renderer.background, &TypeEnvironment::new())
+        .map_err(|error| prefix_error(error, PathSegment::Background))?;
+    for (index, assumption) in theory.assumptions.iter().enumerate() {
+        checker
+            .check_predicate(assumption, &TypeEnvironment::new())
+            .map_err(|error| prefix_error(error, PathSegment::Assumption(index)))?;
+    }
+    Ok(())
+}
+
+fn domain_element_type(ty: &Type) -> Option<Type> {
+    match ty {
+        Type::CellSet { .. } => Some(Type::Coord2),
+        Type::EntitySet { .. } => Some(Type::Entity),
+        Type::List { element, .. } => Some((**element).clone()),
+        Type::Map { key, value, .. } => Some(Type::Tuple(vec![(**key).clone(), (**value).clone()])),
+        Type::Relation { arguments, .. } => Some(Type::Tuple(arguments.clone())),
+        _ => None,
+    }
+}
+
+fn prefix_error(error: CheckError, segment: PathSegment) -> CheckError {
+    prefix_path(error, &ExprPath::default().child(segment))
+}
+
+fn prefix_path(mut error: CheckError, prefix: &ExprPath) -> CheckError {
+    let mut path = prefix.0.clone();
+    path.extend(error.path.0);
+    error.path = ExprPath(path);
+    error
+}
+
+fn validate_schedule(schedule: &Schedule, rules: &BTreeSet<String>) -> Result<(), CheckError> {
+    let path = ExprPath::default().child(PathSegment::Schedule);
+    let mut mentioned = BTreeSet::new();
+    validate_schedule_part(schedule, rules, &mut mentioned, &path)
+}
+
+fn validate_schedule_part(
+    schedule: &Schedule,
+    rules: &BTreeSet<String>,
+    mentioned: &mut BTreeSet<String>,
+    path: &ExprPath,
+) -> Result<(), CheckError> {
+    match schedule {
+        Schedule::Parallel => Ok(()),
+        Schedule::Sequence(names) | Schedule::DecisionList(names) => {
+            for name in names {
+                validate_scheduled_name(name, rules, mentioned, path)?;
+            }
+            Ok(())
+        }
+        Schedule::DependencyDag(edges) => {
+            let mut graph = BTreeMap::<String, BTreeSet<String>>::new();
+            for (before, after) in edges {
+                validate_rule_name(before, rules, path)?;
+                validate_rule_name(after, rules, path)?;
+                mentioned.insert(before.clone());
+                mentioned.insert(after.clone());
+                graph
+                    .entry(before.clone())
+                    .or_default()
+                    .insert(after.clone());
+            }
+            if directed_cycle(&graph) {
+                return Err(CheckError::new(path.clone(), CheckErrorKind::ScheduleCycle));
+            }
+            Ok(())
+        }
+        Schedule::BoundedFixpoint {
+            rules: names,
+            maximum_steps,
+        } => {
+            if *maximum_steps == 0 {
+                return Err(CheckError::new(path.clone(), CheckErrorKind::EmptyBound));
+            }
+            for name in names {
+                validate_scheduled_name(name, rules, mentioned, path)?;
+            }
+            Ok(())
+        }
+        Schedule::Hierarchical(parts) => {
+            for part in parts {
+                validate_schedule_part(part, rules, mentioned, path)?;
+            }
+            Ok(())
+        }
+    }
+}
+
+fn validate_rule_name(
+    name: &str,
+    rules: &BTreeSet<String>,
+    path: &ExprPath,
+) -> Result<(), CheckError> {
+    if rules.contains(name) {
+        Ok(())
+    } else {
+        Err(CheckError::new(
+            path.clone(),
+            CheckErrorKind::UnknownRule(name.to_owned()),
+        ))
+    }
+}
+
+fn validate_scheduled_name(
+    name: &str,
+    rules: &BTreeSet<String>,
+    mentioned: &mut BTreeSet<String>,
+    path: &ExprPath,
+) -> Result<(), CheckError> {
+    validate_rule_name(name, rules, path)?;
+    if !mentioned.insert(name.to_owned()) {
+        return Err(CheckError::new(
+            path.clone(),
+            CheckErrorKind::DuplicateScheduledRule(name.to_owned()),
+        ));
+    }
+    Ok(())
+}
+
+fn directed_cycle(graph: &BTreeMap<String, BTreeSet<String>>) -> bool {
+    fn visit(
+        node: &str,
+        graph: &BTreeMap<String, BTreeSet<String>>,
+        active: &mut BTreeSet<String>,
+        complete: &mut BTreeSet<String>,
+    ) -> bool {
+        if active.contains(node) {
+            return true;
+        }
+        if complete.contains(node) {
+            return false;
+        }
+        active.insert(node.to_owned());
+        if graph.get(node).is_some_and(|next| {
+            next.iter()
+                .any(|child| visit(child, graph, active, complete))
+        }) {
+            return true;
+        }
+        active.remove(node);
+        complete.insert(node.to_owned());
+        false
+    }
+
+    let mut active = BTreeSet::new();
+    let mut complete = BTreeSet::new();
+    graph
+        .keys()
+        .any(|node| visit(node, graph, &mut active, &mut complete))
+}
+
+fn mutual_recursion_cycle(definitions: &[Definition]) -> Option<Vec<String>> {
+    let names = definitions
+        .iter()
+        .map(|definition| definition.name.clone())
+        .collect::<BTreeSet<_>>();
+    let graph = definitions
+        .iter()
+        .map(|definition| {
+            let mut calls = BTreeSet::new();
+            collect_calls(&definition.body, &mut calls);
+            calls.remove(&definition.name);
+            calls.retain(|name| names.contains(name));
+            (definition.name.clone(), calls)
+        })
+        .collect::<BTreeMap<_, _>>();
+
+    let mut active = Vec::new();
+    let mut complete = BTreeSet::new();
+    graph
+        .keys()
+        .find_map(|name| mutual_visit(name, &graph, &mut active, &mut complete))
+}
+
+fn mutual_visit(
+    node: &str,
+    graph: &BTreeMap<String, BTreeSet<String>>,
+    active: &mut Vec<String>,
+    complete: &mut BTreeSet<String>,
+) -> Option<Vec<String>> {
+    if let Some(index) = active.iter().position(|name| name == node) {
+        return Some(active[index..].to_vec());
+    }
+    if complete.contains(node) {
+        return None;
+    }
+    active.push(node.to_owned());
+    if let Some(cycle) = graph
+        .get(node)
+        .into_iter()
+        .flatten()
+        .find_map(|child| mutual_visit(child, graph, active, complete))
+    {
+        return Some(cycle);
+    }
+    active.pop();
+    complete.insert(node.to_owned());
+    None
+}
+
+fn collect_calls(expression: &Expr, calls: &mut BTreeSet<String>) {
+    match expression {
+        Expr::Call {
+            function,
+            arguments,
+        } => {
+            calls.insert(function.clone());
+            for argument in arguments {
+                collect_calls(argument, calls);
+            }
+        }
+        Expr::Tuple(values) => {
+            for value in values {
+                collect_calls(value, calls);
+            }
+        }
+        Expr::Let { value, body, .. } => {
+            collect_calls(value, calls);
+            collect_calls(body, calls);
+        }
+        Expr::If {
+            condition,
+            then_branch,
+            else_branch,
+        } => {
+            collect_calls(condition, calls);
+            collect_calls(then_branch, calls);
+            collect_calls(else_branch, calls);
+        }
+        Expr::Unary { argument, .. } | Expr::Count(argument) => collect_calls(argument, calls),
+        Expr::Binary { left, right, .. } => {
+            collect_calls(left, calls);
+            collect_calls(right, calls);
+        }
+        Expr::SingletonSet { value, .. } => collect_calls(value, calls),
+        Expr::BoundedFixpoint {
+            initial,
+            step,
+            progress_measure,
+            ..
+        } => {
+            collect_calls(initial, calls);
+            collect_calls(step, calls);
+            collect_calls(progress_measure, calls);
+        }
+        Expr::Bool(_)
+        | Expr::Int(_)
+        | Expr::Atom(_)
+        | Expr::Coord2 { .. }
+        | Expr::Var(_)
+        | Expr::EmptySet { .. } => {}
     }
 }
 

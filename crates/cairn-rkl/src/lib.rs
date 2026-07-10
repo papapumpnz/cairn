@@ -13,7 +13,7 @@ mod parser;
 
 pub use ast::*;
 pub use canonical::{CanonicalForm, Canonicalizer, DefaultCanonicalizer};
-pub use checker::{BoundChecker, DefinitionSignature, TypeChecker, TypeEnvironment};
+pub use checker::{BoundChecker, DefinitionSignature, TheoryChecker, TypeChecker, TypeEnvironment};
 pub use cost::{Cost, CostError, CostModel, StructuralCostModel};
 pub use error::{CheckError, CheckErrorKind, ExprPath, PathSegment};
 pub use parser::{parse_debug_expr, ParseError};

@@ -39,6 +39,17 @@ pub enum PathSegment {
     Initial,
     Step,
     Progress,
+    Definition(usize),
+    Rule(usize),
+    Binder(usize),
+    Domain,
+    Guard,
+    Effect(usize),
+    Canvas,
+    Layer(usize),
+    Background,
+    Assumption(usize),
+    Schedule,
 }
 
 impl fmt::Display for PathSegment {
@@ -57,6 +68,17 @@ impl fmt::Display for PathSegment {
             Self::Initial => formatter.write_str("initial"),
             Self::Step => formatter.write_str("step"),
             Self::Progress => formatter.write_str("progress"),
+            Self::Definition(index) => write!(formatter, "definition[{index}]"),
+            Self::Rule(index) => write!(formatter, "rule[{index}]"),
+            Self::Binder(index) => write!(formatter, "binder[{index}]"),
+            Self::Domain => formatter.write_str("domain"),
+            Self::Guard => formatter.write_str("guard"),
+            Self::Effect(index) => write!(formatter, "effect[{index}]"),
+            Self::Canvas => formatter.write_str("canvas"),
+            Self::Layer(index) => write!(formatter, "layer[{index}]"),
+            Self::Background => formatter.write_str("background"),
+            Self::Assumption(index) => write!(formatter, "assumption[{index}]"),
+            Self::Schedule => formatter.write_str("schedule"),
         }
     }
 }
@@ -86,6 +108,15 @@ pub enum CheckErrorKind {
     EmptyBound,
     RecursiveCallWithoutBound(String),
     RecursiveBoundMissingProgress(String),
+    DuplicateDefinition(String),
+    DuplicateRule(String),
+    DuplicateBinder(String),
+    InvalidDomain(Type),
+    UnknownRule(String),
+    DuplicateScheduledRule(String),
+    ScheduleCycle,
+    EmptyTheory,
+    MutualRecursionUnsupported(Vec<String>),
     CapacityCap {
         requested: usize,
         maximum: usize,
@@ -142,6 +173,34 @@ impl fmt::Display for CheckError {
                 write!(
                     formatter,
                     "recursive definition `{name}` has no integer progress measure"
+                )
+            }
+            CheckErrorKind::DuplicateDefinition(name) => {
+                write!(formatter, "duplicate definition `{name}`")
+            }
+            CheckErrorKind::DuplicateRule(name) => write!(formatter, "duplicate rule `{name}`"),
+            CheckErrorKind::DuplicateBinder(name) => {
+                write!(formatter, "duplicate binder `{name}`")
+            }
+            CheckErrorKind::InvalidDomain(actual) => {
+                write!(
+                    formatter,
+                    "binder domain is not a compatible finite collection: {actual:?}"
+                )
+            }
+            CheckErrorKind::UnknownRule(name) => write!(formatter, "unknown rule `{name}`"),
+            CheckErrorKind::DuplicateScheduledRule(name) => {
+                write!(formatter, "rule `{name}` occurs more than once in schedule")
+            }
+            CheckErrorKind::ScheduleCycle => formatter.write_str("schedule dependency cycle"),
+            CheckErrorKind::EmptyTheory => {
+                formatter.write_str("theory must contain a definition or rule")
+            }
+            CheckErrorKind::MutualRecursionUnsupported(names) => {
+                write!(
+                    formatter,
+                    "mutual recursion is unsupported: {}",
+                    names.join(", ")
                 )
             }
             CheckErrorKind::CapacityCap { requested, maximum } => {

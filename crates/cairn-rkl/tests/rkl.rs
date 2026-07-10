@@ -1,10 +1,13 @@
-use cairn_core::{decode_canonical, CanonicalEncode, CanonicalLimits};
+use cairn_core::{decode_canonical, CanonicalEncode, CanonicalLimits, Hash32};
 use cairn_rkl::{
-    parse_debug_expr, BinaryOp, Binder, BoundChecker, Canonicalizer, CheckErrorKind, CostModel,
-    DefaultCanonicalizer, Definition, DefinitionSignature, Expr, IntRange, RecursionBound,
-    StructuralCostModel, Type, TypeChecker, TypeEnvironment, UnaryOp, VarName,
+    parse_debug_expr, BinaryOp, Binder, BoundChecker, Canonicalizer, CheckErrorKind,
+    ConflictPolicy, CostModel, DefaultCanonicalizer, Definition, DefinitionSignature, Effect, Expr,
+    IntRange, Quantifier, RecursionBound, Renderer, RewriteRule, RuleBinder, Schedule,
+    StructuralCostModel, Theory, TheoryChecker, Type, TypeChecker, TypeEnvironment, UnaryOp,
+    VarName,
 };
 use std::collections::BTreeMap;
+use std::fmt::Write as _;
 
 #[test]
 fn debug_parser_feeds_exact_type_and_range_checker() {
@@ -103,6 +106,22 @@ fn categorical_atoms_are_distinct_from_integers() {
 }
 
 #[test]
+fn atom_canonical_cbor_has_stable_golden_bytes() {
+    let atom = checker()
+        .check(&Expr::Atom(7), &TypeEnvironment::new())
+        .expect("atom");
+    let bytes = atom.encode_canonical().expect("canonical atom");
+    let mut hex = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        write!(hex, "{byte:02x}").expect("write to string");
+    }
+    assert_eq!(
+        hex,
+        "8465747970656465312e302e30816961746f6d5f74797065826461746f6d07"
+    );
+}
+
+#[test]
 fn finite_fields_require_axes_and_element_bounds() {
     for invalid in [
         Type::FiniteField {
@@ -132,6 +151,55 @@ fn finite_fields_require_axes_and_element_bounds() {
         .check(&Expr::Var(VarName("field".to_owned())), &environment)
         .expect("bounded finite field");
     assert_eq!(typed.ty(), &valid);
+}
+
+#[test]
+fn alpha_equivalent_theories_have_identical_semantic_hashes() {
+    let first = sample_theory("parameter", "entity", b"proof-a");
+    let second = sample_theory("renamed", "item", b"proof-b");
+    let first = checker().check_theory(&first).expect("first theory");
+    let second = checker().check_theory(&second).expect("second theory");
+    let canonicalizer = DefaultCanonicalizer;
+    assert_eq!(
+        canonicalizer
+            .canonicalize_theory(&first)
+            .expect("first canonical theory")
+            .semantic_hash,
+        canonicalizer
+            .canonicalize_theory(&second)
+            .expect("second canonical theory")
+            .semantic_hash
+    );
+}
+
+#[test]
+fn theory_errors_retain_rule_and_binder_paths() {
+    let mut theory = sample_theory("parameter", "entity", b"proof");
+    theory.rules[0].binders[0].domain = Expr::Int(1);
+    let error = checker()
+        .check_theory(&theory)
+        .expect_err("integer is not a finite binder domain");
+    assert_eq!(error.path.to_string(), "$.rule[0].binder[0].domain");
+    assert!(matches!(error.kind, CheckErrorKind::InvalidDomain(_)));
+}
+
+#[test]
+fn cyclic_rule_schedules_fail_closed() {
+    let mut theory = sample_theory("parameter", "entity", b"proof");
+    theory.rules.push(RewriteRule {
+        name: "second".to_owned(),
+        binders: Vec::new(),
+        guard: Expr::Bool(true),
+        effects: vec![Effect::Emit(Expr::Atom(1))],
+        priority: 1,
+    });
+    theory.schedule = Schedule::DependencyDag(vec![
+        ("retain".to_owned(), "second".to_owned()),
+        ("second".to_owned(), "retain".to_owned()),
+    ]);
+    let error = checker().check_theory(&theory).expect_err("schedule cycle");
+    assert_eq!(error.path.to_string(), "$.schedule");
+    assert_eq!(error.kind, CheckErrorKind::ScheduleCycle);
 }
 
 #[test]
@@ -298,6 +366,52 @@ fn one_hundred_thousand_generated_terms_are_stable_and_in_bounds() {
 
 fn checker() -> TypeChecker {
     TypeChecker::new(10_000)
+}
+
+fn sample_theory(parameter: &str, entity: &str, proof: &[u8]) -> Theory {
+    let integer = Type::Int(IntRange {
+        lower: -10,
+        upper: 10,
+    });
+    Theory {
+        definitions: vec![Definition {
+            name: "identity".to_owned(),
+            parameters: vec![Binder {
+                name: VarName(parameter.to_owned()),
+                ty: integer.clone(),
+            }],
+            return_type: integer,
+            body: Expr::Var(VarName(parameter.to_owned())),
+            recursion: None,
+            proof_annotations: vec![Hash32::digest(proof)],
+        }],
+        rules: vec![RewriteRule {
+            name: "retain".to_owned(),
+            binders: vec![RuleBinder {
+                variable: Binder {
+                    name: VarName(entity.to_owned()),
+                    ty: Type::Entity,
+                },
+                domain: Expr::EmptySet {
+                    element: Type::Entity,
+                    maximum: 8,
+                },
+                quantifier: Quantifier::ForEach,
+            }],
+            guard: Expr::Bool(true),
+            effects: vec![Effect::Preserve(Expr::Var(VarName(entity.to_owned())))],
+            priority: 0,
+        }],
+        schedule: Schedule::Sequence(vec!["retain".to_owned()]),
+        renderer: Renderer {
+            canvas: Expr::Int(0),
+            layers: vec![Expr::Atom(0)],
+            conflict_policy: ConflictPolicy::SameValueIdempotent,
+            background: Expr::Atom(0),
+        },
+        assumptions: vec![Expr::Bool(true)],
+        proof_annotations: vec![Hash32::digest(proof)],
+    }
 }
 
 fn generated_int(state: &mut u64, depth: usize) -> Expr {

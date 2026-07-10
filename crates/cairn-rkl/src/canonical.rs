@@ -1,4 +1,7 @@
-use crate::{BinaryOp, Definition, Expr, Type, TypedExpr, UnaryOp, VarName, RKL_SEMANTICS_VERSION};
+use crate::{
+    BinaryOp, CheckedTheory, ConflictPolicy, Definition, Effect, Expr, Quantifier, RewriteRule,
+    Schedule, Theory, Type, TypedExpr, UnaryOp, VarName, RKL_SEMANTICS_VERSION,
+};
 use cairn_core::{CanonicalEncode, CanonicalError, CanonicalValue, Hash32};
 
 /// Canonical semantic form with proof annotations removed.
@@ -17,6 +20,13 @@ pub trait Canonicalizer {
     ///
     /// Returns canonical-CBOR errors; checked RKL syntax has no other failure.
     fn canonicalize(&self, expression: &TypedExpr) -> Result<CanonicalForm, CanonicalError>;
+
+    /// Canonicalize a previously checked whole theory, excluding proof lineage.
+    ///
+    /// # Errors
+    ///
+    /// Returns canonical-CBOR errors only; theory admission is a prior step.
+    fn canonicalize_theory(&self, theory: &CheckedTheory) -> Result<CanonicalForm, CanonicalError>;
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -30,6 +40,23 @@ impl Canonicalizer for DefaultCanonicalizer {
                 CanonicalValue::Text(RKL_SEMANTICS_VERSION.to_owned()),
                 type_value(expression.ty()),
                 expression_value(expression.expression(), &mut Vec::new())?,
+            ],
+        );
+        let bytes = value.encode_canonical()?;
+        let semantic_hash = Hash32::digest(&bytes);
+        Ok(CanonicalForm {
+            value,
+            bytes,
+            semantic_hash,
+        })
+    }
+
+    fn canonicalize_theory(&self, theory: &CheckedTheory) -> Result<CanonicalForm, CanonicalError> {
+        let value = tagged(
+            "checked_theory",
+            vec![
+                CanonicalValue::Text(RKL_SEMANTICS_VERSION.to_owned()),
+                theory_value(theory.theory())?,
             ],
         );
         let bytes = value.encode_canonical()?;
@@ -91,6 +118,219 @@ impl CanonicalEncode for Definition {
         )
         .encode_canonical()
     }
+}
+
+impl CanonicalEncode for CheckedTheory {
+    fn encode_canonical(&self) -> Result<Vec<u8>, CanonicalError> {
+        DefaultCanonicalizer
+            .canonicalize_theory(self)
+            .map(|form| form.bytes)
+    }
+}
+
+fn theory_value(theory: &Theory) -> Result<CanonicalValue, CanonicalError> {
+    let mut definitions = theory.definitions.iter().collect::<Vec<_>>();
+    definitions.sort_by(|left, right| left.name.cmp(&right.name));
+    let mut rules = theory.rules.iter().collect::<Vec<_>>();
+    rules.sort_by(|left, right| left.name.cmp(&right.name));
+    Ok(tagged(
+        "theory",
+        vec![
+            CanonicalValue::Array(
+                definitions
+                    .into_iter()
+                    .map(definition_value)
+                    .collect::<Result<Vec<_>, _>>()?,
+            ),
+            CanonicalValue::Array(
+                rules
+                    .into_iter()
+                    .map(rule_value)
+                    .collect::<Result<Vec<_>, _>>()?,
+            ),
+            schedule_value(&theory.schedule)?,
+            tagged(
+                "renderer",
+                vec![
+                    expression_value(&theory.renderer.canvas, &mut Vec::new())?,
+                    CanonicalValue::Array(
+                        theory
+                            .renderer
+                            .layers
+                            .iter()
+                            .map(|layer| expression_value(layer, &mut Vec::new()))
+                            .collect::<Result<Vec<_>, _>>()?,
+                    ),
+                    tagged(
+                        conflict_policy_name(theory.renderer.conflict_policy),
+                        Vec::new(),
+                    ),
+                    expression_value(&theory.renderer.background, &mut Vec::new())?,
+                ],
+            ),
+            CanonicalValue::Array(
+                theory
+                    .assumptions
+                    .iter()
+                    .map(|assumption| expression_value(assumption, &mut Vec::new()))
+                    .collect::<Result<Vec<_>, _>>()?,
+            ),
+        ],
+    ))
+}
+
+fn definition_value(definition: &Definition) -> Result<CanonicalValue, CanonicalError> {
+    let mut environment = definition
+        .parameters
+        .iter()
+        .map(|binder| binder.name.clone())
+        .collect::<Vec<_>>();
+    let recursion = if let Some(bound) = &definition.recursion {
+        tagged(
+            "recursion",
+            vec![
+                CanonicalValue::Unsigned(u64::from(bound.maximum_steps)),
+                expression_value(&bound.progress_measure, &mut environment)?,
+            ],
+        )
+    } else {
+        CanonicalValue::Null
+    };
+    Ok(tagged(
+        "definition",
+        vec![
+            CanonicalValue::Text(definition.name.clone()),
+            CanonicalValue::Array(
+                definition
+                    .parameters
+                    .iter()
+                    .map(|binder| type_value(&binder.ty))
+                    .collect(),
+            ),
+            type_value(&definition.return_type),
+            expression_value(&definition.body, &mut environment)?,
+            recursion,
+        ],
+    ))
+}
+
+fn rule_value(rule: &RewriteRule) -> Result<CanonicalValue, CanonicalError> {
+    let mut environment = Vec::new();
+    let mut binders = Vec::with_capacity(rule.binders.len());
+    for binder in &rule.binders {
+        let domain = expression_value(&binder.domain, &mut environment)?;
+        binders.push(tagged(
+            "binder",
+            vec![
+                type_value(&binder.variable.ty),
+                domain,
+                tagged(quantifier_name(binder.quantifier), Vec::new()),
+            ],
+        ));
+        environment.push(binder.variable.name.clone());
+    }
+    Ok(tagged(
+        "rule",
+        vec![
+            CanonicalValue::Text(rule.name.clone()),
+            CanonicalValue::Array(binders),
+            expression_value(&rule.guard, &mut environment)?,
+            CanonicalValue::Array(
+                rule.effects
+                    .iter()
+                    .map(|effect| effect_value(effect, &mut environment))
+                    .collect::<Result<Vec<_>, _>>()?,
+            ),
+            CanonicalValue::Unsigned(u64::from(rule.priority)),
+        ],
+    ))
+}
+
+fn effect_value(
+    effect: &Effect,
+    environment: &mut Vec<VarName>,
+) -> Result<CanonicalValue, CanonicalError> {
+    match effect {
+        Effect::Preserve(value) => Ok(tagged(
+            "preserve",
+            vec![expression_value(value, environment)?],
+        )),
+        Effect::Delete(value) => Ok(tagged(
+            "delete",
+            vec![expression_value(value, environment)?],
+        )),
+        Effect::Emit(value) => Ok(tagged("emit", vec![expression_value(value, environment)?])),
+        Effect::SetState { target, value } => Ok(tagged(
+            "set_state",
+            vec![
+                expression_value(target, environment)?,
+                expression_value(value, environment)?,
+            ],
+        )),
+    }
+}
+
+fn schedule_value(schedule: &Schedule) -> Result<CanonicalValue, CanonicalError> {
+    match schedule {
+        Schedule::Parallel => Ok(tagged("parallel", Vec::new())),
+        Schedule::Sequence(rules) => Ok(named_schedule("sequence", rules)),
+        Schedule::DecisionList(rules) => Ok(named_schedule("decision_list", rules)),
+        Schedule::DependencyDag(edges) => {
+            let mut values = edges
+                .iter()
+                .map(|(before, after)| {
+                    tagged(
+                        "edge",
+                        vec![
+                            CanonicalValue::Text(before.clone()),
+                            CanonicalValue::Text(after.clone()),
+                        ],
+                    )
+                })
+                .collect::<Vec<_>>();
+            sort_values(&mut values)?;
+            Ok(tagged(
+                "dependency_dag",
+                vec![CanonicalValue::Array(values)],
+            ))
+        }
+        Schedule::BoundedFixpoint {
+            rules,
+            maximum_steps,
+        } => Ok(tagged(
+            "schedule_fixpoint",
+            vec![
+                CanonicalValue::Array(
+                    rules
+                        .iter()
+                        .map(|name| CanonicalValue::Text(name.clone()))
+                        .collect(),
+                ),
+                CanonicalValue::Unsigned(u64::from(*maximum_steps)),
+            ],
+        )),
+        Schedule::Hierarchical(parts) => Ok(tagged(
+            "hierarchical",
+            vec![CanonicalValue::Array(
+                parts
+                    .iter()
+                    .map(schedule_value)
+                    .collect::<Result<Vec<_>, _>>()?,
+            )],
+        )),
+    }
+}
+
+fn named_schedule(name: &str, rules: &[String]) -> CanonicalValue {
+    tagged(
+        name,
+        vec![CanonicalValue::Array(
+            rules
+                .iter()
+                .map(|rule| CanonicalValue::Text(rule.clone()))
+                .collect(),
+        )],
+    )
 }
 
 // The exhaustive match is intentionally kept together so every new AST tag
@@ -385,5 +625,24 @@ const fn binary_name(op: BinaryOp) -> &'static str {
         BinaryOp::Union => "union",
         BinaryOp::Intersection => "intersection",
         BinaryOp::Difference => "difference",
+    }
+}
+
+const fn quantifier_name(quantifier: Quantifier) -> &'static str {
+    match quantifier {
+        Quantifier::One => "one",
+        Quantifier::Unique => "unique",
+        Quantifier::ForEach => "for_each",
+        Quantifier::Group => "group",
+        Quantifier::Exists => "exists",
+    }
+}
+
+const fn conflict_policy_name(policy: ConflictPolicy) -> &'static str {
+    match policy {
+        ConflictPolicy::Reject => "reject",
+        ConflictPolicy::SameValueIdempotent => "same_value_idempotent",
+        ConflictPolicy::Priority => "priority",
+        ConflictPolicy::LastWrite => "last_write",
     }
 }
