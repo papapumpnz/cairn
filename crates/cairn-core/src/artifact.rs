@@ -1,5 +1,6 @@
 use crate::{
-    ArtifactId, CanonicalEncode, CanonicalError, CanonicalValue, Hash32, ARTIFACT_PROTOCOL_VERSION,
+    decode_canonical, ArtifactId, CanonicalEncode, CanonicalError, CanonicalLimits, CanonicalValue,
+    Hash32, ARTIFACT_PROTOCOL_VERSION,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -299,6 +300,276 @@ impl<T: CanonicalEncode> ArtifactEnvelope<T> {
     }
 }
 
+impl ArtifactEnvelope<CanonicalValue> {
+    /// Decode, negotiate, and independently validate a complete envelope.
+    ///
+    /// Payload schema compatibility must be explicitly registered. Executable
+    /// semantics versions require exact membership in `supported_semantics`;
+    /// no minor-version guessing or silent migration is performed.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed or unknown fields, unsupported versions, capacity
+    /// violations, non-canonical payloads, and reconstructed hash mismatches.
+    pub fn decode_envelope(
+        bytes: &[u8],
+        registry: &SchemaRegistry,
+        supported_semantics: &BTreeSet<SemanticsVersion>,
+        limits: CanonicalLimits,
+    ) -> Result<Self, ArtifactError> {
+        let value = decode_canonical(bytes, limits)?;
+        let mut fields = named_fields(value, "envelope")?;
+        reject_unknown_fields(
+            &fields,
+            &[
+                "protocol",
+                "schema",
+                "artifact_id",
+                "kind",
+                "semantics",
+                "parents",
+                "task_scope",
+                "producer",
+                "budget",
+                "created",
+                "payload_hash",
+                "payload",
+                "signature",
+            ],
+            "envelope",
+        )?;
+        let protocol_version = to_u16(take_unsigned(&mut fields, "protocol")?, "protocol")?;
+        if protocol_version != ARTIFACT_PROTOCOL_VERSION {
+            return Err(ArtifactError::UnsupportedProtocol(protocol_version));
+        }
+        let schema = parse_schema(take(&mut fields, "schema")?)?;
+        registry.resolve(&schema)?;
+        let artifact_id = ArtifactId::from_hash(parse_hash(take(&mut fields, "artifact_id")?)?);
+        let artifact_kind = ArtifactKind::new(take_text(&mut fields, "kind")?)?;
+        let semantics_version: SemanticsVersion = take_text(&mut fields, "semantics")?.parse()?;
+        if !supported_semantics.contains(&semantics_version) {
+            return Err(ArtifactError::UnsupportedSemantics(semantics_version));
+        }
+        let parent_ids = parse_parents(take(&mut fields, "parents")?)?;
+        let task_scope = parse_optional_hash(take(&mut fields, "task_scope")?)?;
+        let producer = parse_producer(take(&mut fields, "producer")?)?;
+        let budget = parse_budget(take(&mut fields, "budget")?)?;
+        let created_at_logical = take_unsigned(&mut fields, "created")?;
+        let payload_hash = parse_hash(take(&mut fields, "payload_hash")?)?;
+        let payload_bytes = take_bytes(&mut fields, "payload")?;
+        let maximum_payload = registry.maximum_payload_bytes(&schema)?;
+        if payload_bytes.len() > maximum_payload {
+            return Err(ArtifactError::PayloadCapacity {
+                actual: payload_bytes.len(),
+                maximum: maximum_payload,
+            });
+        }
+        let payload_limits = CanonicalLimits {
+            max_input_bytes: limits.max_input_bytes.min(maximum_payload),
+            max_scalar_bytes: limits.max_scalar_bytes.min(maximum_payload),
+            ..limits
+        };
+        let payload = decode_canonical(&payload_bytes, payload_limits)?;
+        let signature = parse_optional_bytes(take(&mut fields, "signature")?)?;
+        let envelope = Self {
+            protocol_version,
+            schema,
+            artifact_id,
+            artifact_kind,
+            semantics_version,
+            parent_ids,
+            task_scope,
+            producer,
+            budget,
+            created_at_logical,
+            payload_hash,
+            payload,
+            signature,
+        };
+        envelope.validate()?;
+        Ok(envelope)
+    }
+}
+
+fn named_fields(
+    value: CanonicalValue,
+    context: &'static str,
+) -> Result<BTreeMap<String, CanonicalValue>, ArtifactError> {
+    let CanonicalValue::Map(entries) = value else {
+        return Err(ArtifactError::InvalidFieldType(context));
+    };
+    entries
+        .into_iter()
+        .map(|(key, value)| {
+            let CanonicalValue::Text(key) = key else {
+                return Err(ArtifactError::InvalidFieldType(context));
+            };
+            Ok((key, value))
+        })
+        .collect()
+}
+
+fn reject_unknown_fields(
+    fields: &BTreeMap<String, CanonicalValue>,
+    known: &[&str],
+    context: &'static str,
+) -> Result<(), ArtifactError> {
+    if let Some(name) = fields.keys().find(|name| !known.contains(&name.as_str())) {
+        return Err(ArtifactError::UnknownField {
+            context,
+            name: name.clone(),
+        });
+    }
+    Ok(())
+}
+
+fn take(
+    fields: &mut BTreeMap<String, CanonicalValue>,
+    name: &'static str,
+) -> Result<CanonicalValue, ArtifactError> {
+    fields.remove(name).ok_or(ArtifactError::MissingField(name))
+}
+
+fn take_text(
+    fields: &mut BTreeMap<String, CanonicalValue>,
+    name: &'static str,
+) -> Result<String, ArtifactError> {
+    let CanonicalValue::Text(value) = take(fields, name)? else {
+        return Err(ArtifactError::InvalidFieldType(name));
+    };
+    Ok(value)
+}
+
+fn take_unsigned(
+    fields: &mut BTreeMap<String, CanonicalValue>,
+    name: &'static str,
+) -> Result<u64, ArtifactError> {
+    let CanonicalValue::Unsigned(value) = take(fields, name)? else {
+        return Err(ArtifactError::InvalidFieldType(name));
+    };
+    Ok(value)
+}
+
+fn take_bytes(
+    fields: &mut BTreeMap<String, CanonicalValue>,
+    name: &'static str,
+) -> Result<Vec<u8>, ArtifactError> {
+    let CanonicalValue::Bytes(value) = take(fields, name)? else {
+        return Err(ArtifactError::InvalidFieldType(name));
+    };
+    Ok(value)
+}
+
+fn parse_schema(value: CanonicalValue) -> Result<SchemaRef, ArtifactError> {
+    let CanonicalValue::Array(mut values) = value else {
+        return Err(ArtifactError::InvalidFieldType("schema"));
+    };
+    if values.len() != 2 {
+        return Err(ArtifactError::InvalidFieldType("schema"));
+    }
+    let version = values
+        .pop()
+        .ok_or(ArtifactError::InvalidFieldType("schema"))?;
+    let name = values
+        .pop()
+        .ok_or(ArtifactError::InvalidFieldType("schema"))?;
+    let CanonicalValue::Text(name) = name else {
+        return Err(ArtifactError::InvalidFieldType("schema.name"));
+    };
+    let CanonicalValue::Unsigned(version) = version else {
+        return Err(ArtifactError::InvalidFieldType("schema.version"));
+    };
+    SchemaRef::new(name, to_u32(version, "schema.version")?)
+}
+
+fn parse_hash(value: CanonicalValue) -> Result<Hash32, ArtifactError> {
+    let CanonicalValue::Bytes(bytes) = value else {
+        return Err(ArtifactError::InvalidFieldType("hash"));
+    };
+    let bytes: [u8; 32] = bytes
+        .try_into()
+        .map_err(|_| ArtifactError::InvalidFieldType("hash"))?;
+    Ok(Hash32::from_bytes(bytes))
+}
+
+fn parse_optional_hash(value: CanonicalValue) -> Result<Option<Hash32>, ArtifactError> {
+    match value {
+        CanonicalValue::Null => Ok(None),
+        other => parse_hash(other).map(Some),
+    }
+}
+
+fn parse_optional_bytes(value: CanonicalValue) -> Result<Option<Vec<u8>>, ArtifactError> {
+    match value {
+        CanonicalValue::Null => Ok(None),
+        CanonicalValue::Bytes(bytes) => Ok(Some(bytes)),
+        _ => Err(ArtifactError::InvalidFieldType("signature")),
+    }
+}
+
+fn parse_parents(value: CanonicalValue) -> Result<Vec<ArtifactId>, ArtifactError> {
+    let CanonicalValue::Array(values) = value else {
+        return Err(ArtifactError::InvalidFieldType("parents"));
+    };
+    values
+        .into_iter()
+        .map(|value| parse_hash(value).map(ArtifactId::from_hash))
+        .collect()
+}
+
+fn parse_producer(value: CanonicalValue) -> Result<ProducerRecord, ArtifactError> {
+    let mut fields = named_fields(value, "producer")?;
+    reject_unknown_fields(
+        &fields,
+        &["component", "version", "commit", "host_run_id", "agent_id"],
+        "producer",
+    )?;
+    let agent_id = match take(&mut fields, "agent_id")? {
+        CanonicalValue::Null => None,
+        CanonicalValue::Text(value) => Some(value),
+        _ => return Err(ArtifactError::InvalidFieldType("producer.agent_id")),
+    };
+    Ok(ProducerRecord {
+        component: take_text(&mut fields, "component")?,
+        version: take_text(&mut fields, "version")?,
+        commit: take_text(&mut fields, "commit")?,
+        host_run_id: take_text(&mut fields, "host_run_id")?,
+        agent_id,
+    })
+}
+
+fn parse_budget(value: CanonicalValue) -> Result<BudgetRecord, ArtifactError> {
+    let CanonicalValue::Array(values) = value else {
+        return Err(ArtifactError::InvalidFieldType("budget"));
+    };
+    if values.len() != 3 {
+        return Err(ArtifactError::InvalidFieldType("budget"));
+    }
+    Ok(BudgetRecord {
+        work_units: value_unsigned(values.first(), "budget.work_units")?,
+        cpu_nanos: value_unsigned(values.get(1), "budget.cpu_nanos")?,
+        peak_rss_bytes: value_unsigned(values.get(2), "budget.peak_rss_bytes")?,
+    })
+}
+
+fn value_unsigned(
+    value: Option<&CanonicalValue>,
+    field: &'static str,
+) -> Result<u64, ArtifactError> {
+    let Some(CanonicalValue::Unsigned(value)) = value else {
+        return Err(ArtifactError::InvalidFieldType(field));
+    };
+    Ok(*value)
+}
+
+fn to_u16(value: u64, field: &'static str) -> Result<u16, ArtifactError> {
+    u16::try_from(value).map_err(|_| ArtifactError::IntegerFieldOverflow(field))
+}
+
+fn to_u32(value: u64, field: &'static str) -> Result<u32, ArtifactError> {
+    u32::try_from(value).map_err(|_| ArtifactError::IntegerFieldOverflow(field))
+}
+
 // The identity tuple is intentionally explicit: omitting any member changes
 // artifact semantics and must be review-visible at this call boundary.
 #[allow(clippy::too_many_arguments)]
@@ -473,6 +744,76 @@ impl SchemaRegistry {
             .map(|descriptor| descriptor.maximum_payload_bytes)
             .ok_or_else(|| ArtifactError::UnsupportedSchema(schema.clone()))
     }
+
+    /// Open a map payload through an explicitly negotiated additive reader.
+    ///
+    /// Unknown payload fields remain queryable and are never interpreted as
+    /// required semantics. This supports older additive-compatible schemas
+    /// without rewriting their canonical bytes.
+    ///
+    /// # Errors
+    ///
+    /// Rejects unsupported schema versions or non-map/text-keyed payloads.
+    pub fn additive_reader<'a>(
+        &self,
+        schema: &SchemaRef,
+        payload: &'a CanonicalValue,
+    ) -> Result<(SchemaDecision, AdditiveMapReader<'a>), ArtifactError> {
+        let decision = self.resolve(schema)?;
+        Ok((decision, AdditiveMapReader::new(payload)?))
+    }
+}
+
+/// Non-mutating reader for additive compatible map fields.
+#[derive(Clone, Debug)]
+pub struct AdditiveMapReader<'a> {
+    fields: BTreeMap<&'a str, &'a CanonicalValue>,
+}
+
+impl<'a> AdditiveMapReader<'a> {
+    fn new(payload: &'a CanonicalValue) -> Result<Self, ArtifactError> {
+        let CanonicalValue::Map(entries) = payload else {
+            return Err(ArtifactError::InvalidFieldType("additive payload"));
+        };
+        let fields = entries
+            .iter()
+            .map(|(key, value)| {
+                let CanonicalValue::Text(key) = key else {
+                    return Err(ArtifactError::InvalidFieldType("additive payload key"));
+                };
+                Ok((key.as_str(), value))
+            })
+            .collect::<Result<BTreeMap<_, _>, ArtifactError>>()?;
+        Ok(Self { fields })
+    }
+
+    /// Read a required known field.
+    ///
+    /// # Errors
+    ///
+    /// Returns `MissingField` rather than inventing a default.
+    pub fn required(&self, name: &'static str) -> Result<&'a CanonicalValue, ArtifactError> {
+        self.fields
+            .get(name)
+            .copied()
+            .ok_or(ArtifactError::MissingField(name))
+    }
+
+    /// Read an optional known field without changing artifact identity.
+    #[must_use]
+    pub fn optional(&self, name: &str) -> Option<&'a CanonicalValue> {
+        self.fields.get(name).copied()
+    }
+
+    /// Return unknown additive field names in canonical lexical order.
+    #[must_use]
+    pub fn unknown_fields(&self, known: &[&str]) -> Vec<&'a str> {
+        self.fields
+            .keys()
+            .copied()
+            .filter(|name| !known.contains(name))
+            .collect()
+    }
 }
 
 /// Exact artifact construction or validation failure.
@@ -487,6 +828,18 @@ pub enum ArtifactError {
     DuplicateSchema(String),
     UnsupportedSchema(SchemaRef),
     UnsupportedProtocol(u16),
+    UnsupportedSemantics(SemanticsVersion),
+    MissingField(&'static str),
+    UnknownField {
+        context: &'static str,
+        name: String,
+    },
+    InvalidFieldType(&'static str),
+    IntegerFieldOverflow(&'static str),
+    PayloadCapacity {
+        actual: usize,
+        maximum: usize,
+    },
     DuplicateParent,
     ParentsNotCanonical,
     ParentCycle(ArtifactId),
@@ -530,6 +883,25 @@ impl fmt::Display for ArtifactError {
             }
             Self::UnsupportedProtocol(value) => {
                 write!(formatter, "unsupported artifact protocol {value}")
+            }
+            Self::UnsupportedSemantics(value) => {
+                write!(formatter, "unsupported executable semantics {value}")
+            }
+            Self::MissingField(name) => write!(formatter, "artifact field `{name}` is missing"),
+            Self::UnknownField { context, name } => {
+                write!(formatter, "unknown {context} field `{name}`")
+            }
+            Self::InvalidFieldType(name) => {
+                write!(formatter, "artifact field `{name}` has invalid type")
+            }
+            Self::IntegerFieldOverflow(name) => {
+                write!(formatter, "artifact integer field `{name}` overflows")
+            }
+            Self::PayloadCapacity { actual, maximum } => {
+                write!(
+                    formatter,
+                    "payload has {actual} bytes; schema cap is {maximum}"
+                )
             }
             Self::DuplicateParent => formatter.write_str("parent artifact IDs are not unique"),
             Self::ParentsNotCanonical => {

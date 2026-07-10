@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cairn.invalid/schemas/artifact-envelope.schema.json",
+  "title": "CAIRN artifact envelope diagnostic projection",
+  "$comment": "Canonical persistence is CBOR. This JSON schema defines the equivalent inspection projection; ADR-0001 defines semantic identity.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol_version",
+    "schema",
+    "artifact_id",
+    "artifact_kind",
+    "semantics_version",
+    "parent_ids",
+    "task_scope",
+    "producer",
+    "budget",
+    "created_at_logical",
+    "payload_hash",
+    "payload_encoding",
+    "payload_base64",
+    "signature_base64url"
+  ],
+  "properties": {
+    "protocol_version": { "const": 1 },
+    "schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "$ref": "#/$defs/name" },
+        "version": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "artifact_id": { "$ref": "#/$defs/blake3" },
+    "artifact_kind": { "$ref": "#/$defs/name" },
+    "semantics_version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "parent_ids": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/blake3" },
+      "uniqueItems": true
+    },
+    "task_scope": {
+      "oneOf": [
+        { "$ref": "#/$defs/blake3" },
+        { "type": "null" }
+      ]
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component", "version", "commit", "host_run_id", "agent_id"],
+      "properties": {
+        "component": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "version": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{7,64}$" },
+        "host_run_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "agent_id": { "type": ["string", "null"], "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["work_units", "cpu_nanos", "peak_rss_bytes"],
+      "properties": {
+        "work_units": { "type": "integer", "minimum": 0 },
+        "cpu_nanos": { "type": "integer", "minimum": 0 },
+        "peak_rss_bytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "created_at_logical": { "type": "integer", "minimum": 0 },
+    "payload_hash": { "$ref": "#/$defs/blake3" },
+    "payload_encoding": { "const": "canonical-cbor" },
+    "payload_base64": { "type": "string", "contentEncoding": "base64" },
+    "signature_base64url": {
+      "type": ["string", "null"],
+      "pattern": "^[A-Za-z0-9_-]+$"
+    }
+  },
+  "$defs": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]{0,127}$"
+    },
+    "blake3": {
+      "type": "string",
+      "pattern": "^blake3:[0-9a-f]{64}$"
+    }
+  }
+}
+

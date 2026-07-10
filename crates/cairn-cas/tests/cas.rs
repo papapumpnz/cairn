@@ -2,10 +2,15 @@ use cairn_cas::{
     validate_parent_graph, Blake3ContentHasher, Cas, CasError, CasLimits, ContentHasher,
     ParentPolicy, PutStatus,
 };
-use cairn_core::{ArtifactId, Hash32};
-use std::collections::BTreeMap;
+use cairn_core::{
+    ArtifactEnvelope, ArtifactId, ArtifactKind, BlobId, BudgetRecord, CanonicalLimits,
+    CanonicalValue, Hash32, ProducerRecord, SchemaDescriptor, SchemaRef, SchemaRegistry,
+    SemanticsVersion,
+};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Barrier};
 
@@ -114,6 +119,20 @@ fn corrupt_blob_is_rejected() {
 }
 
 #[test]
+fn accepted_blob_slices_are_immutable_shared_snapshots() {
+    let fixture = Fixture::new();
+    let cas = fixture.cas();
+    let id = cas.put(b"snapshot").expect("put").id;
+    let first = cas.get(id).expect("get");
+    let second = first.clone();
+    fs::write(blob_path(&fixture.root, id.hash()), b"mutated!").expect("mutate backing file");
+    assert_eq!(first.as_slice(), b"snapshot");
+    assert_eq!(second.slice(1..5), Some(&b"naps"[..]));
+    assert_eq!(first.as_slice().as_ptr(), second.as_slice().as_ptr());
+    assert!(matches!(cas.get(id), Err(CasError::HashMismatch { .. })));
+}
+
+#[test]
 fn recovery_removes_temporary_and_rebuilds_missing_registration() {
     let fixture = Fixture::new();
     let cas = fixture.cas();
@@ -178,6 +197,115 @@ fn parent_cycle_and_missing_parent_are_distinct() {
 fn production_and_reference_hashers_agree() {
     let hasher = Blake3ContentHasher;
     assert_eq!(hasher.hash(b"same"), Hash32::digest(b"same"));
+}
+
+#[test]
+fn canonical_envelope_crosses_cas_boundary_and_revalidates() {
+    let fixture = Fixture::new();
+    let cas = fixture.cas();
+    let envelope = ArtifactEnvelope::new(
+        SchemaRef::new("test.artifact", 1).expect("schema"),
+        ArtifactKind::new("test.artifact").expect("kind"),
+        SemanticsVersion::new(1, 0, 0),
+        Vec::new(),
+        None,
+        ProducerRecord {
+            component: "cas-test".to_owned(),
+            version: "0.1.0".to_owned(),
+            commit: "abcdef0".to_owned(),
+            host_run_id: "test-run".to_owned(),
+            agent_id: None,
+        },
+        BudgetRecord {
+            work_units: 1,
+            cpu_nanos: 2,
+            peak_rss_bytes: 3,
+        },
+        1,
+        CanonicalValue::Text("verified".to_owned()),
+    )
+    .expect("envelope");
+    let stored = cas.put_envelope(&envelope).expect("put envelope");
+    assert_eq!(stored.artifact_id, envelope.artifact_id);
+    let mut registry = SchemaRegistry::new();
+    registry
+        .register(SchemaDescriptor {
+            name: "test.artifact".to_owned(),
+            current_version: 1,
+            additive_read_versions: BTreeSet::new(),
+            maximum_payload_bytes: 1024,
+        })
+        .expect("register");
+    let loaded = cas
+        .get_envelope(
+            stored.envelope_blob_id,
+            &registry,
+            &BTreeSet::from([SemanticsVersion::new(1, 0, 0)]),
+            CanonicalLimits::default(),
+        )
+        .expect("get envelope");
+    assert_eq!(loaded, envelope);
+}
+
+#[test]
+fn independent_processes_converge_on_one_blob() {
+    let fixture = Fixture::new();
+    let worker = env!("CARGO_BIN_EXE_cairn-cas-worker");
+    let children = (0..8)
+        .map(|_| {
+            Command::new(worker)
+                .arg(&fixture.root)
+                .arg("put")
+                .current_dir(&fixture.root)
+                .stdout(Stdio::piped())
+                .spawn()
+                .expect("spawn worker")
+        })
+        .collect::<Vec<_>>();
+    let outputs = children
+        .into_iter()
+        .map(|child| child.wait_with_output().expect("worker output"))
+        .collect::<Vec<_>>();
+    assert!(outputs.iter().all(|output| output.status.success()));
+    let lines = outputs
+        .iter()
+        .map(|output| String::from_utf8(output.stdout.clone()).expect("UTF-8 output"))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        lines
+            .iter()
+            .filter(|line| line.starts_with("STORED "))
+            .count(),
+        1
+    );
+    assert_eq!(
+        lines
+            .iter()
+            .map(|line| line.split_whitespace().nth(1).expect("worker ID"))
+            .collect::<std::collections::BTreeSet<_>>()
+            .len(),
+        1
+    );
+}
+
+#[test]
+fn abrupt_process_loss_after_blob_publish_recovers_exactly() {
+    let fixture = Fixture::new();
+    let worker = env!("CARGO_BIN_EXE_cairn-cas-worker");
+    let status = Command::new(worker)
+        .arg(&fixture.root)
+        .arg("crash-after-blob")
+        .current_dir(&fixture.root)
+        .status()
+        .expect("run crash worker");
+    assert!(!status.success());
+
+    let cas = fixture.cas();
+    let report = cas.recover().expect("recover after worker loss");
+    assert_eq!(report.temporary_files_removed, 1);
+    assert_eq!(report.registrations_recovered, 1);
+    let id = BlobId::from_hash(Hash32::digest(&[0x42; 4096]));
+    cas.verify(id).expect("recovered blob verifies");
 }
 
 fn blob_path(root: &Path, hash: Hash32) -> PathBuf {

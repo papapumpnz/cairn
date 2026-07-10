@@ -5,7 +5,10 @@
 //! unreferenced temporary file or a published blob missing its registration;
 //! [`Cas::recover`] handles both states without mutating accepted blob bytes.
 
-use cairn_core::{ArtifactId, BlobId, Hash32, HashParseError};
+use cairn_core::{
+    ArtifactEnvelope, ArtifactError, ArtifactId, BlobId, CanonicalEncode, CanonicalLimits,
+    CanonicalValue, Hash32, HashParseError, SchemaRegistry, SemanticsVersion,
+};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::fs::{self, File, OpenOptions};
@@ -16,6 +19,7 @@ use std::sync::Arc;
 
 const REGISTRATION_MAGIC: &[u8; 4] = b"CRN1";
 const REGISTRATION_LENGTH: usize = 4 + 32 + 8 + 32;
+static NEXT_TEMPORARY: AtomicU64 = AtomicU64::new(0);
 
 /// Explicit storage capacity bounds checked before allocation or writes.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -48,10 +52,45 @@ impl ContentHasher for Blake3ContentHasher {
     }
 }
 
+/// Durable publication boundary exposed for deterministic fault injection.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PublicationPoint {
+    BlobPublished,
+    RegistrationPublished,
+}
+
+/// Testable crash/fault boundary. Production uses a no-op implementation.
+pub trait FaultInjector: Send + Sync {
+    /// Called only after the named filesystem state has been synchronized.
+    ///
+    /// # Errors
+    ///
+    /// May return an explicit injected failure. A subprocess test may instead
+    /// terminate at this exact boundary to exercise crash recovery.
+    fn checkpoint(&self, point: PublicationPoint) -> Result<(), CasError>;
+}
+
+#[derive(Debug)]
+struct NoFault;
+
+impl FaultInjector for NoFault {
+    fn checkpoint(&self, _point: PublicationPoint) -> Result<(), CasError> {
+        Ok(())
+    }
+}
+
 /// Outcome of an idempotent content write.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PutOutcome {
     pub id: BlobId,
+    pub status: PutStatus,
+}
+
+/// Linked semantic artifact identity and physical envelope blob identity.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct StoredArtifact {
+    pub artifact_id: ArtifactId,
+    pub envelope_blob_id: BlobId,
     pub status: PutStatus,
 }
 
@@ -99,7 +138,7 @@ pub struct Cas {
     root: PathBuf,
     limits: CasLimits,
     hasher: Arc<dyn ContentHasher>,
-    next_temporary: AtomicU64,
+    fault_injector: Arc<dyn FaultInjector>,
 }
 
 impl fmt::Debug for Cas {
@@ -120,7 +159,12 @@ impl Cas {
     /// Returns a typed filesystem error if required directories cannot be
     /// created or synchronized.
     pub fn open(path: impl Into<PathBuf>, limits: CasLimits) -> Result<Self, CasError> {
-        Self::open_with_hasher(path, limits, Arc::new(Blake3ContentHasher))
+        Self::open_with_components(
+            path,
+            limits,
+            Arc::new(Blake3ContentHasher),
+            Arc::new(NoFault),
+        )
     }
 
     /// Open a store with an injected hasher for collision tests.
@@ -133,6 +177,20 @@ impl Cas {
         limits: CasLimits,
         hasher: Arc<dyn ContentHasher>,
     ) -> Result<Self, CasError> {
+        Self::open_with_components(path, limits, hasher, Arc::new(NoFault))
+    }
+
+    /// Open with independently injected hashing and crash boundaries.
+    ///
+    /// # Errors
+    ///
+    /// Returns a typed filesystem error if initialization fails.
+    pub fn open_with_components(
+        path: impl Into<PathBuf>,
+        limits: CasLimits,
+        hasher: Arc<dyn ContentHasher>,
+        fault_injector: Arc<dyn FaultInjector>,
+    ) -> Result<Self, CasError> {
         let root = path.into();
         create_directory(&root)?;
         create_directory(&root.join("blobs"))?;
@@ -143,7 +201,7 @@ impl Cas {
             root,
             limits,
             hasher,
-            next_temporary: AtomicU64::new(0),
+            fault_injector,
         })
     }
 
@@ -170,6 +228,45 @@ impl Cas {
                 PutStatus::AlreadyPresent
             },
         })
+    }
+
+    /// Validate and store one complete canonical artifact envelope.
+    ///
+    /// # Errors
+    ///
+    /// Returns artifact validation/encoding failures before publication, then
+    /// the same capacity, collision, corruption, or filesystem errors as
+    /// [`Cas::put`].
+    pub fn put_envelope<T: CanonicalEncode>(
+        &self,
+        envelope: &ArtifactEnvelope<T>,
+    ) -> Result<StoredArtifact, CasError> {
+        envelope.validate()?;
+        let bytes = envelope.encode_envelope()?;
+        let outcome = self.put(&bytes)?;
+        Ok(StoredArtifact {
+            artifact_id: envelope.artifact_id,
+            envelope_blob_id: outcome.id,
+            status: outcome.status,
+        })
+    }
+
+    /// Load, decode, negotiate, and validate a stored artifact envelope.
+    ///
+    /// # Errors
+    ///
+    /// Returns storage integrity errors before canonical envelope, schema,
+    /// semantics, payload, and identity validation errors.
+    pub fn get_envelope(
+        &self,
+        blob_id: BlobId,
+        registry: &SchemaRegistry,
+        supported_semantics: &BTreeSet<SemanticsVersion>,
+        limits: CanonicalLimits,
+    ) -> Result<ArtifactEnvelope<CanonicalValue>, CasError> {
+        let blob = self.get(blob_id)?;
+        ArtifactEnvelope::decode_envelope(blob.as_slice(), registry, supported_semantics, limits)
+            .map_err(CasError::Artifact)
     }
 
     /// Read and verify one bounded immutable blob.
@@ -265,6 +362,8 @@ impl Cas {
         match result {
             Ok(()) => {
                 sync_directory(parent)?;
+                self.fault_injector
+                    .checkpoint(PublicationPoint::BlobPublished)?;
                 remove_temporary(&temporary)?;
                 Ok(true)
             }
@@ -308,6 +407,8 @@ impl Cas {
         match fs::hard_link(&temporary, &target) {
             Ok(()) => {
                 sync_directory(parent)?;
+                self.fault_injector
+                    .checkpoint(PublicationPoint::RegistrationPublished)?;
                 remove_temporary(&temporary)
             }
             Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
@@ -387,7 +488,7 @@ impl Cas {
     }
 
     fn temporary_path(&self, kind: &str) -> PathBuf {
-        let sequence = self.next_temporary.fetch_add(1, Ordering::Relaxed);
+        let sequence = NEXT_TEMPORARY.fetch_add(1, Ordering::Relaxed);
         self.root
             .join("tmp")
             .join(format!("{kind}-{}-{sequence}", std::process::id()))
@@ -548,6 +649,7 @@ pub enum CasError {
     InvalidRegistration,
     InvalidStorePath(PathBuf),
     InvalidHash(HashParseError),
+    Artifact(ArtifactError),
     ParentMissing {
         parent: ArtifactId,
     },
@@ -596,6 +698,7 @@ impl fmt::Display for CasError {
                 write!(formatter, "invalid CAS path {}", path.display())
             }
             Self::InvalidHash(error) => write!(formatter, "invalid CAS digest path: {error}"),
+            Self::Artifact(error) => write!(formatter, "invalid artifact envelope: {error}"),
             Self::ParentMissing { parent } => write!(formatter, "parent is missing: {parent}"),
             Self::ParentCycle { at } => write!(formatter, "parent cycle reaches {at}"),
             Self::ParentGraphCapacity { maximum } => {
@@ -613,6 +716,7 @@ impl std::error::Error for CasError {
         match self {
             Self::Io { source, .. } => Some(source),
             Self::InvalidHash(source) => Some(source),
+            Self::Artifact(source) => Some(source),
             _ => None,
         }
     }
@@ -621,6 +725,12 @@ impl std::error::Error for CasError {
 impl From<HashParseError> for CasError {
     fn from(value: HashParseError) -> Self {
         Self::InvalidHash(value)
+    }
+}
+
+impl From<ArtifactError> for CasError {
+    fn from(value: ArtifactError) -> Self {
+        Self::Artifact(value)
     }
 }
 

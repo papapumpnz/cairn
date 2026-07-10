@@ -6,7 +6,7 @@ theories from relational evidence.
 
 ## Current implementation status
 
-The repository is at work package WP00. Implemented today:
+The repository has completed WP00 and is implementing WP01. Implemented today:
 
 - a pinned Rust workspace;
 - the repository operating law and architecture-layer manifest;
@@ -16,9 +16,14 @@ The repository is at work package WP00. Implemented today:
 - `cairn-attest`, which records the local CPU/runtime boundary and identifies
   prohibited loaded accelerator libraries;
 - planted negative tests, schema checks, and CI wiring.
+- canonical CBOR values with strict bounded decoding and stable BLAKE3 IDs;
+- versioned artifact envelopes, explicit additive schema readers, and semantic
+  identity independent of producer/time metadata;
+- crash-safe append-only content-addressed storage with thread/process
+  idempotency, corruption checks, and recovery.
 
-Inference, storage, grid, RKL, verifier, synthesis, and benchmark components
-remain design targets; they are not claimed as implemented.
+Grid, RKL, verifier, synthesis, learning, and reasoning components remain design
+targets; they are not claimed as implemented.
 
 ## Developer checks
 

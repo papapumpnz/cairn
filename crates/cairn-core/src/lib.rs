@@ -9,8 +9,8 @@ mod canonical;
 mod hash;
 
 pub use artifact::{
-    ArtifactEnvelope, ArtifactError, ArtifactKind, BudgetRecord, ProducerRecord, SchemaDecision,
-    SchemaDescriptor, SchemaRef, SchemaRegistry, SemanticsVersion,
+    AdditiveMapReader, ArtifactEnvelope, ArtifactError, ArtifactKind, BudgetRecord, ProducerRecord,
+    SchemaDecision, SchemaDescriptor, SchemaRef, SchemaRegistry, SemanticsVersion,
 };
 pub use canonical::{
     decode_canonical, CanonicalDecode, CanonicalEncode, CanonicalError, CanonicalLimits,

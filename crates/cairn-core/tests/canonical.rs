@@ -1,5 +1,5 @@
 use cairn_core::{
-    decode_canonical, ArtifactEnvelope, ArtifactKind, BudgetRecord, CanonicalEncode,
+    decode_canonical, ArtifactEnvelope, ArtifactError, ArtifactKind, BudgetRecord, CanonicalEncode,
     CanonicalError, CanonicalLimits, CanonicalValue, ProducerRecord, SchemaDecision,
     SchemaDescriptor, SchemaRef, SchemaRegistry, SemanticsVersion,
 };
@@ -147,6 +147,113 @@ fn schema_registry_only_allows_declared_additive_reads() {
         .is_err());
 }
 
+#[test]
+fn complete_envelope_round_trips_through_strict_decoder() {
+    let envelope = envelope("worker", 12);
+    let bytes = envelope.encode_envelope().expect("encode envelope");
+    let decoded = ArtifactEnvelope::decode_envelope(
+        &bytes,
+        &test_registry(1),
+        &BTreeSet::from([SemanticsVersion::new(1, 0, 0)]),
+        CanonicalLimits::default(),
+    )
+    .expect("decode envelope");
+    assert_eq!(decoded, envelope);
+    assert_eq!(decoded.encode_envelope().expect("reencode"), bytes);
+}
+
+#[test]
+fn envelope_rejects_unknown_schema_and_semantics() {
+    let envelope = envelope("worker", 12);
+    let bytes = envelope.encode_envelope().expect("encode envelope");
+    assert!(matches!(
+        ArtifactEnvelope::decode_envelope(
+            &bytes,
+            &SchemaRegistry::new(),
+            &BTreeSet::from([SemanticsVersion::new(1, 0, 0)]),
+            CanonicalLimits::default(),
+        ),
+        Err(ArtifactError::UnsupportedSchema(_))
+    ));
+    assert!(matches!(
+        ArtifactEnvelope::decode_envelope(
+            &bytes,
+            &test_registry(1),
+            &BTreeSet::new(),
+            CanonicalLimits::default(),
+        ),
+        Err(ArtifactError::UnsupportedSemantics(_))
+    ));
+}
+
+#[test]
+fn envelope_payload_tampering_is_detected_after_canonical_decode() {
+    let envelope = envelope("worker", 12);
+    let bytes = envelope.encode_envelope().expect("encode envelope");
+    let mut outer = decode_canonical(&bytes, CanonicalLimits::default()).expect("decode outer");
+    let CanonicalValue::Map(entries) = &mut outer else {
+        panic!("envelope must be map");
+    };
+    let payload = entries
+        .iter_mut()
+        .find_map(|(key, value)| {
+            (key == &CanonicalValue::Text("payload".to_owned())).then_some(value)
+        })
+        .expect("payload field");
+    *payload = CanonicalValue::Bytes(
+        CanonicalValue::Unsigned(99)
+            .encode_canonical()
+            .expect("payload"),
+    );
+    let tampered = outer.encode_canonical().expect("tampered envelope");
+    assert!(matches!(
+        ArtifactEnvelope::decode_envelope(
+            &tampered,
+            &test_registry(1),
+            &BTreeSet::from([SemanticsVersion::new(1, 0, 0)]),
+            CanonicalLimits::default(),
+        ),
+        Err(ArtifactError::PayloadHashMismatch { .. })
+    ));
+}
+
+#[test]
+fn additive_reader_preserves_unknown_fields_and_requires_declared_ones() {
+    let mut registry = SchemaRegistry::new();
+    registry
+        .register(SchemaDescriptor {
+            name: "test.value".to_owned(),
+            current_version: 2,
+            additive_read_versions: BTreeSet::from([1]),
+            maximum_payload_bytes: 1024,
+        })
+        .expect("registry");
+    let schema = SchemaRef::new("test.value", 1).expect("schema");
+    let payload = CanonicalValue::Map(vec![
+        (
+            CanonicalValue::Text("required".to_owned()),
+            CanonicalValue::Unsigned(1),
+        ),
+        (
+            CanonicalValue::Text("future".to_owned()),
+            CanonicalValue::Unsigned(2),
+        ),
+    ]);
+    let (decision, reader) = registry
+        .additive_reader(&schema, &payload)
+        .expect("additive reader");
+    assert_eq!(decision, SchemaDecision::AdditiveCompatible);
+    assert_eq!(
+        reader.required("required"),
+        Ok(&CanonicalValue::Unsigned(1))
+    );
+    assert_eq!(reader.unknown_fields(&["required"]), vec!["future"]);
+    assert!(matches!(
+        reader.required("absent"),
+        Err(ArtifactError::MissingField("absent"))
+    ));
+}
+
 fn envelope(component: &str, work_units: u64) -> ArtifactEnvelope<CanonicalValue> {
     ArtifactEnvelope::new(
         SchemaRef::new("test.value", 1).expect("schema"),
@@ -173,6 +280,19 @@ fn envelope(component: &str, work_units: u64) -> ArtifactEnvelope<CanonicalValue
         )]),
     )
     .expect("envelope")
+}
+
+fn test_registry(version: u32) -> SchemaRegistry {
+    let mut registry = SchemaRegistry::new();
+    registry
+        .register(SchemaDescriptor {
+            name: "test.value".to_owned(),
+            current_version: version,
+            additive_read_versions: BTreeSet::new(),
+            maximum_payload_bytes: 1024,
+        })
+        .expect("register test schema");
+    registry
 }
 
 fn random_value(state: &mut u64, depth: usize) -> CanonicalValue {
