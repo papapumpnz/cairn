@@ -8,6 +8,7 @@ members = [
   "crates/cairn-memory",
   "crates/cairn-reg",
   "crates/cairn-rkl",
+  "crates/cairn-world",
 ]
 resolver = "2"
 

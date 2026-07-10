@@ -50,6 +50,11 @@ Implemented today:
   substitution. The frozen initial GLL-3 suite composed magnitude with clamping,
   collection counting with clamping, and magnitude with categorical control,
   producing 510 exact held-out predictions with no coded composite operators.
+- bounded interactive causal learning for fully observed deterministic worlds.
+  Across 100 procedurally permuted unknown worlds, CAIRN inferred action laws,
+  predicted 32,400 transitions exactly, inferred goals, constructed 100 shortest
+  plans, saved 400 exploratory actions on repeated episodes, and transferred 100
+  learned multi-step options into shifted layouts.
 
 This establishes bounded task-level symbolic learning, not general learning.
 Entity/event induction, full proof certificates, richer ontology invention,
@@ -61,6 +66,8 @@ The continual-learning result is documented in the
 [GLL-2 evidence report](docs/experiments/GLL2_CONTINUAL_MECHANISM_MEMORY.md).
 The initial composition result is in the
 [GLL-3 evidence report](docs/experiments/GLL3_SKILL_COMPOSITION.md).
+The initial unknown-world result is in the
+[GLL-4 evidence report](docs/experiments/GLL4_UNKNOWN_WORLD_LEARNING.md).
 
 The normative target and claim boundary are in
 [`08_GENERAL_LEARNER_REQUIREMENTS.md`](docs/CAIRN_handoff/08_GENERAL_LEARNER_REQUIREMENTS.md).
