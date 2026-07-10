@@ -1,0 +1,13 @@
+[package]
+name = "cairn-reg"
+description = "Typed immutable Relational Evidence Graph for CAIRN"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cairn-core = { path = "../cairn-core" }
+
+[lints]
+workspace = true

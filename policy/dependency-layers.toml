@@ -33,3 +33,7 @@ allow_unsafe_modules = []
 [crates.cairn-rkl]
 layer = "language"
 allow_unsafe_modules = []
+
+[crates.cairn-reg]
+layer = "evidence"
+allow_unsafe_modules = []

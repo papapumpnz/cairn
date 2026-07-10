@@ -3,6 +3,7 @@ members = [
   "crates/cairn-cas",
   "crates/cairn-check",
   "crates/cairn-core",
+  "crates/cairn-reg",
   "crates/cairn-rkl",
 ]
 resolver = "2"

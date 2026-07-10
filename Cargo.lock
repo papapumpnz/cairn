@@ -56,6 +56,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "cairn-reg"
+version = "0.1.0"
+dependencies = [
+ "cairn-core",
+]
+
+[[package]]
 name = "cairn-rkl"
 version = "0.1.0"
 dependencies = [
