@@ -526,7 +526,7 @@ pub struct Renderer {
     pub canvas: CanvasExpr,
     pub layers: Vec<LayerExpr>,
     pub conflict_policy: ConflictPolicy,
-    pub background: ColorExpr,
+    pub background: Expr,
 }
 ```
 
@@ -534,34 +534,39 @@ Canvas expressions may derive dimensions from input, selected panels, entity ext
 
 ### 6.7 Expressive closure
 
-RKL is designed to express any bounded finite-grid transformation by quantifying over coordinates and emitting cells. This prevents a semantic closure failure at the kernel level. The literal coordinate-by-coordinate solution is assigned prohibitive description cost and cannot generalize to a novel test input; it exists only to establish substrate completeness and diagnose search failures.
+RKL is designed to express any bounded finite observation transformation by
+quantifying over finite domains and emitting values, entities, relations, or
+state effects. Spatial adapters may lower a field to coordinates and elements,
+but those axes are not RKL semantics. Literal member-by-member solutions carry
+prohibitive description cost and cannot generalize; they exist only to establish
+substrate completeness and diagnose search failures.
 
 The practical search language is the set of low-cost definitions and theory sketches induced from evidence. Dynamic invention changes that language without adding opaque, unverifiable semantics.
 
-## 7. Static-task inference: evidence to event covers
+## 7. Demonstration inference: evidence to event covers
 
 ### 7.1 Transition framing
 
-Each training pair is treated as one observed transition:
+Each demonstration is treated as one observed transition:
 
 ```text
-input state G_i  --unknown mechanism-->  output state H_i
+context O_i  --unknown mechanism/intervention-->  outcome O'_i
 ```
 
 The first inference problem is not “which program generated H_i?” It is:
 
-> which minimal set of causal events could account for every preserved, changed, deleted, and created part of H_i relative to G_i?
+> which minimal set of causal events could account for every preserved, changed, deleted, and created entity, relation, or value in the outcome relative to its context?
 
 ### 7.2 Candidate entity demand
 
 The event engine asks the entity algebra for candidate source and target entities only when they can participate in a low-cost explanation. Demand sources include:
 
-- unchanged connected regions;
-- maximal changed regions;
-- repeated shapes;
-- candidate panels;
-- regions whose colors, shape, or topology match across input and output;
-- regions related by low-complexity coordinate transforms;
+- unchanged relation-defined groups;
+- maximal mismatch evidence;
+- repeated structures;
+- candidate containers;
+- entities whose categorical, structural, or topological evidence matches across context and outcome;
+- entities related by low-complexity transforms supplied as evidence;
 - symbols whose variation correlates with an effect;
 - unmatched output regions requiring construction.
 
@@ -884,19 +889,19 @@ The solver backend is an optimization aid, not the semantic authority. Every can
 ### 10.1 Main CEGIS loop
 
 ```rust
-pub fn solve_static(task: &StaticTask, budget: Budget) -> SolveOutcome {
-    let evidence = build_initial_evidence(task);
+pub fn solve_problem(problem: &LearningProblem, budget: Budget) -> SolveOutcome {
+    let evidence = build_initial_evidence(problem);
     let mut frontier = seed_theory_sketches(&evidence);
-    let mut constraints = ConstraintState::new(task);
+    let mut constraints = ConstraintState::new(problem);
     let mut beliefs = TheoryBeliefSet::new();
 
     while let Some(job) = frontier.next(budget.remaining()) {
         let candidate = synthesize_candidate(job, &constraints, &evidence)?;
-        let replay = execute_on_all_demonstrations(&candidate, task);
+        let replay = execute_on_all_demonstrations(&candidate, problem);
 
         match replay {
             Replay::Exact(certificate) => {
-                let tests = falsify_static(&candidate, task, &evidence);
+                let tests = falsify_candidate(&candidate, problem, &evidence);
                 beliefs.insert(candidate, certificate, tests);
             }
             Replay::Mismatch(counterexample) => {
@@ -914,7 +919,7 @@ pub fn solve_static(task: &StaticTask, budget: Budget) -> SolveOutcome {
         }
     }
 
-    arbitrate_and_emit(beliefs, task)
+    arbitrate_and_emit(beliefs, problem)
 }
 ```
 
@@ -925,11 +930,11 @@ A counterexample is structured:
 ```rust
 pub struct Counterexample {
     pub theory: TheoryId,
-    pub pair: PairId,
-    pub mismatch_cells: CellSetId,
-    pub missing_cells: CellSetId,
-    pub extra_cells: CellSetId,
-    pub wrong_values: Vec<CellMismatch>,
+    pub demonstration: DemonstrationId,
+    pub mismatch: EvidenceSlice,
+    pub missing: EvidenceSlice,
+    pub extra: EvidenceSlice,
+    pub wrong_values: Vec<ValueMismatch>,
     pub failed_bindings: Vec<BindingFailure>,
     pub conflicting_rules: Vec<RuleConflict>,
     pub unsatisfied_core: ExplanationCore,
@@ -1124,7 +1129,8 @@ The system does not seek global saturation. It uses goal-directed saturation aro
 
 ### 13.1 Hard acceptance
 
-A static candidate is eligible only if it exactly reproduces every training output, including dimensions, for every training pair.
+A deterministic candidate is eligible only if it exactly reproduces every
+demonstration outcome under the frontend's declared equality semantics.
 
 An interactive transition model may be probabilistic because observations can be partial. Exact deterministic transitions remain hard constraints where observed.
 
@@ -1167,7 +1173,7 @@ Generate synthetic inputs on which top candidate theories disagree. This does no
 
 ### 13.4 Posterior modes
 
-Candidates are clustered by predicted test output and by semantic theory signature. Near-identical syntax is one mode. The arbiter retains calibrated mass over modes rather than collapsing immediately to one minimum-cost theory.
+Candidates are clustered by predicted requested observations and by semantic theory signature. Near-identical syntax is one mode. The arbiter retains calibrated mass over modes rather than collapsing immediately to one minimum-cost theory.
 
 ### 13.5 Two attempts
 
@@ -1182,7 +1188,9 @@ multiplied by falsification survival
 subject to exact training fit
 ```
 
-Two theories that differ internally but produce the same test grid count as one attempt. The system emits two distinct grids only when two credible semantic modes remain.
+Two theories that differ internally but produce the same requested prediction
+count as one attempt. The runtime emits distinct predictions only when credible
+semantic modes remain and the adapter permits multiple attempts.
 
 ## 14. ARC-AGI-1 and ARC-AGI-2 solve pipeline
 
@@ -1622,7 +1630,7 @@ ObservationBundle
 EvidenceFragment
 EntityDefinition
 EventHypothesis
-PairEventCover
+DemonstrationEventCover
 Alignment
 RuleSketch
 ConstraintDelta
@@ -1801,7 +1809,7 @@ cairn/
     cairn-check
     cairn-core
     cairn-cas
-    cairn-grid
+    cairn-spatial
     cairn-reg
     cairn-entity
     cairn-rkl
@@ -1853,6 +1861,8 @@ Crates lower in this list may depend only on explicitly declared layers. In part
 - benchmark and evaluation crates do not enter production inference crates.
 - adapters translate benchmark/modality records into generic observations and
   requested predictions; adapter types never enter cognition crates;
+- `cairn-spatial` is an optional frontend service; `cairn-reg`, `cairn-rkl`,
+  `cairn-entity`, `cairn-events`, and `cairn-proof` cannot depend on it;
 - temporal evidence, memory, planning, and graphics are core development lanes,
   not post-ARC extensions;
 - knowledge retrieval may propose claims or schemas but cannot enter verifier

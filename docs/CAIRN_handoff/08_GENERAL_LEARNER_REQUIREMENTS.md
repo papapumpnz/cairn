@@ -137,6 +137,11 @@ pair, test grid, ARC colour, and ARC operation types belong only to `cairn-arc12
 Gridworld, vector graphics, audio-event, video-event, and text/knowledge adapters
 connect through the same frontend and cognition contracts.
 
+Packed finite spatial fields and geometry kernels are an optional frontend
+service. The evidence graph, RKL, entity algebra, event induction, and verifier
+must compile and operate without that service. Spatial facts enter cognition as
+ordinary sourced entities, relations, attributes, and events.
+
 ## 5. Proof-backed knowledge learning
 
 The knowledge subsystem stores:

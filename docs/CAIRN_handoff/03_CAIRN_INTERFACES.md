@@ -236,8 +236,8 @@ pub struct EventHypothesis {
     pub derivation: DerivationId,
 }
 
-pub struct PairEventCover {
-    pub pair: PairId,
+pub struct DemonstrationEventCover {
+    pub demonstration: DemonstrationId,
     pub events: Vec<EventId>,
     pub layer_constraints: Vec<LayerConstraint>,
     pub exact_replay: ReplayDigest,
@@ -252,7 +252,7 @@ A cover artifact is invalid unless the event set can be lowered to a replay plan
 
 ```rust
 pub struct RoleMapEntry {
-    pub pair: PairId,
+    pub demonstration: DemonstrationId,
     pub local: LocalRoleRef,
     pub abstract_role: RoleVar,
 }
@@ -401,7 +401,7 @@ pub struct ExplanationCore {
     pub kind: CoreKind,
     pub facts: Vec<FactRef>,
     pub blocked_choices: Vec<SemanticChoice>,
-    pub mismatch_region: CellSet,
+    pub mismatch_evidence: EvidenceSlice,
     pub minimality: CoreMinimality,
 }
 ```

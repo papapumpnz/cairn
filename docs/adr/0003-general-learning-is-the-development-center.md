@@ -96,7 +96,9 @@ Verifier impact: modality hooks may verify source/render semantics, but core
 theory acceptance remains independent of synthesis and memory.
 
 Downstream interfaces: WP22 becomes an adapter; WP23, WP26-WP29, WP32-WP34 and
-their dependencies are revised. Core types must remain environment-neutral.
+their dependencies are revised. WP02 becomes an optional spatial-frontend
+service; WP03, WP05-WP07, and WP09 no longer depend on it. Core types must
+remain environment-neutral.
 
 ## Validation
 
@@ -124,4 +126,3 @@ compatible.
 - `02_CAIRN_MASTER_DESIGN.md`
 - `04_CAIRN_EXPERIMENT_LADDER.md`
 - `HANDOFF_INDEX.md`
-

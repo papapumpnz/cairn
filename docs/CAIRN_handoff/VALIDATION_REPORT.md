@@ -18,6 +18,7 @@ generic learning-problem schema present: pass
 task, continual, and interactive loop metrics required by benchmark schema: pass
 GLL-1 through GLL-6 specified consistently: pass
 ARC adapter quarantine represented in interfaces and dependency graph: pass
+generic evidence/execution/verifier path has no spatial-package dependency: pass
 example TOML syntax: pass
 cpu_only = true: pass
 allow_gpu_runtime = false: pass

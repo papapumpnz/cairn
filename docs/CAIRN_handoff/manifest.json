@@ -2,14 +2,14 @@
   "schema_version": "1.0",
   "bundle": "CAIRN_ARCHITECTURE_HANDOFF",
   "architecture": "CAIRN — Causal Analogical Induction over Relational Networks",
-  "generated_utc": "2026-07-10T07:45:00Z",
+  "generated_utc": "2026-07-10T07:55:03Z",
   "hash_algorithm": "SHA-256",
   "manifest_excludes": [
     "manifest.json",
     "manifest.sha256"
   ],
   "file_count": 62,
-  "total_bytes": 359563,
+  "total_bytes": 364217,
   "source_archives": [
     {
       "name": "mosasic_experiments.zip",
@@ -37,13 +37,13 @@
     },
     {
       "path": "02_CAIRN_MASTER_DESIGN.md",
-      "bytes": 68567,
-      "sha256": "8c7058fe44e6b4abb9b49a97210db385fbfe08f75fb32050a058a630345f14fb"
+      "bytes": 68994,
+      "sha256": "4e28f915748e510125ee6d92f5a89e90a5e19eda7e139830657999dc637f8f60"
     },
     {
       "path": "03_CAIRN_INTERFACES.md",
-      "bytes": 16749,
-      "sha256": "1ccd067d4640dfd3844582904f8ea03b3f0da048154b9a6ea7f7e53cb9e7bea5"
+      "bytes": 16802,
+      "sha256": "fcfef8fc293d42b121acef0c9f50b1879af2150f7667f67452e8e176422708ea"
     },
     {
       "path": "04_CAIRN_EXPERIMENT_LADDER.md",
@@ -67,8 +67,8 @@
     },
     {
       "path": "08_GENERAL_LEARNER_REQUIREMENTS.md",
-      "bytes": 5850,
-      "sha256": "30aa443fcaa39301094d6f948f31fbc54760ea463aeb4ade2a36d25a254340d7"
+      "bytes": 6148,
+      "sha256": "5e7698f4f8432c7293b09a2292fd5598fd91b91d74c4e9a5e7b2ca6cbd932b92"
     },
     {
       "path": "BIBLIOGRAPHY.md",
@@ -77,8 +77,8 @@
     },
     {
       "path": "HANDOFF_INDEX.md",
-      "bytes": 5233,
-      "sha256": "1749110519916d34c01c32ea7a785cd51c6cea9936ab774ddd0d071e48df6334"
+      "bytes": 5373,
+      "sha256": "613fab4227f554f8da1c89cfc1ab5bd170bbba8325e2f31db7cfbfb35a2bf927"
     },
     {
       "path": "SOURCE_ARCHIVE_RECORD.md",
@@ -87,8 +87,8 @@
     },
     {
       "path": "VALIDATION_REPORT.md",
-      "bytes": 1927,
-      "sha256": "1b6134ae23cd348c782e432a75902701f41b77475305c71e9bc8f110d8b88060"
+      "bytes": 2008,
+      "sha256": "5ac2e9ec687942a8740a79b07c4638c8ac0e0b7d804041e617b67403d5f02097"
     },
     {
       "path": "examples/INTERACTIVE_SOLVE_TRACE.md",
@@ -167,13 +167,13 @@
     },
     {
       "path": "work_packages/WP02.md",
-      "bytes": 2732,
-      "sha256": "6b1ca2c4b9184dbe83123fe73877e4580c20d94d35d1db33c17d1e0539c2f9e1"
+      "bytes": 3260,
+      "sha256": "db7848e140032cba16770afbf513f082bcb95b416b6f365d51d5d9cb6674aafb"
     },
     {
       "path": "work_packages/WP03.md",
-      "bytes": 2723,
-      "sha256": "8115ccc8f97ac646cbf6ce4d0574bf179adbc07ce20e0b72e977aa6867a66d24"
+      "bytes": 2921,
+      "sha256": "a2dc514c10d00e27230ae00d9d7b1212adc5908fdec89adf77e5155500ea9410"
     },
     {
       "path": "work_packages/WP04.md",
@@ -182,38 +182,38 @@
     },
     {
       "path": "work_packages/WP05.md",
-      "bytes": 2675,
-      "sha256": "c313784dbac6c5cece0956fd608ca45d5ad068e025ee4d6b8a0c4250ea40dc21"
+      "bytes": 3072,
+      "sha256": "cfe803d68bfe88ae74404132a6f7e5c49e26680754701c54ce4a0d2cd2569c26"
     },
     {
       "path": "work_packages/WP06.md",
-      "bytes": 2690,
-      "sha256": "6a45c692981d0b7cb97ee2dadb6e7c411e7f1872b24ea15d5a18ad1a875c9c93"
+      "bytes": 3057,
+      "sha256": "91bea4a529c9ca56552ad9092790f50da043926462d880331101915bf615c0c1"
     },
     {
       "path": "work_packages/WP07.md",
-      "bytes": 2573,
-      "sha256": "96ff83032ed1ea4719d1c344d1b68d1da5671c90aadb305c3a377ba7023beb21"
+      "bytes": 2985,
+      "sha256": "570ce55954ae44f2ec7235107580c18655c546b586d249b2dda7bd490cd8e027"
     },
     {
       "path": "work_packages/WP08.md",
-      "bytes": 2475,
-      "sha256": "c35732fed74e4984d6de7b8de9dfeb9861721ed6ef8139f31120e2ec5ac736cb"
+      "bytes": 2768,
+      "sha256": "883bc9287000493fb1863eb66e194c4c5304ab3390ca763fc94f2d0be692fd8f"
     },
     {
       "path": "work_packages/WP09.md",
-      "bytes": 2644,
-      "sha256": "7d3441995de7ad2c2c39bb63c6b602757ead5d009cfafeb4e07a8836d36c799b"
+      "bytes": 2989,
+      "sha256": "57e5d3cf5034287e1841744205e83b94b8b8c778ead2315d5a3f89a0953087ad"
     },
     {
       "path": "work_packages/WP10.md",
-      "bytes": 2625,
-      "sha256": "14cbc4477151bd8d8cdfbd637b956bc3bc4b1f0d4bb80c27b1e46804856ce63d"
+      "bytes": 2768,
+      "sha256": "21b1b929b22505589c7d215750ad1f969b224d90272e7b48cc31c88ce7a40f9b"
     },
     {
       "path": "work_packages/WP11.md",
-      "bytes": 2604,
-      "sha256": "02384d81f9c25d0142fa004d21a0210e36cb4eec90cdfbdd6e2602825ec47086"
+      "bytes": 2659,
+      "sha256": "3b5aa46abd228c7289fadaac94cb7f0bd2593730ce4817fbae8f4e73624bfa2b"
     },
     {
       "path": "work_packages/WP12.md",
@@ -227,23 +227,23 @@
     },
     {
       "path": "work_packages/WP14.md",
-      "bytes": 2543,
-      "sha256": "88a3daba36d8586dc6f56ff781afe2ad8b1455ffc8a7b859569f712f9e25d0f9"
+      "bytes": 2608,
+      "sha256": "d71a7853b0afea907470128f121d355211658d75d39902f0b15162748ffe8cf1"
     },
     {
       "path": "work_packages/WP15.md",
-      "bytes": 2777,
-      "sha256": "79d0514463a7247c96aabececdb4b7867f4785c50346e0e19100eb86f6b19a91"
+      "bytes": 2837,
+      "sha256": "77b443cff196b60e563ae97e6e878ef5d81c109d6e07799443db64934151c9c2"
     },
     {
       "path": "work_packages/WP16.md",
-      "bytes": 2565,
-      "sha256": "938ef24a65db34fbbd8595dd8c6219aee320cf6f2ac06b5319056793dadf5ae8"
+      "bytes": 2630,
+      "sha256": "9eb3a7e9d42d49b9a3552776f028ee5f14213fc94783e29b0e416e8c3eb4ddd2"
     },
     {
       "path": "work_packages/WP17.md",
-      "bytes": 2580,
-      "sha256": "1188e3eb24fdd0731647cdbd3fd0a2dac3d410e182ec852d04e6a129373865f4"
+      "bytes": 2637,
+      "sha256": "7381ca959059048b02f8b88942d47123208d6925544777803d4b4f684e38d953"
     },
     {
       "path": "work_packages/WP18.md",
@@ -257,13 +257,13 @@
     },
     {
       "path": "work_packages/WP20.md",
-      "bytes": 2639,
-      "sha256": "98d2f17278313febdd6f45ad8513273daac647e95afd47f6b519399673537a01"
+      "bytes": 2667,
+      "sha256": "dcd32086506154b8eea92c6214ac88be3548c4c9e30d40841135c05b69201001"
     },
     {
       "path": "work_packages/WP21.md",
-      "bytes": 2548,
-      "sha256": "a52c95f40061891ff3b87517c9f71559a25e7a647cc46d9d6c68213d99ee484e"
+      "bytes": 2584,
+      "sha256": "f5ab43138bc744deac8a81d727d8737d02cbb59558dad9add5ef512037c63aef"
     },
     {
       "path": "work_packages/WP22.md",
@@ -332,8 +332,8 @@
     },
     {
       "path": "work_packages/index.json",
-      "bytes": 28881,
-      "sha256": "0f0fd83c22f2eba09fe494e0fac01bff609812dbb94f56c8ee2ebdfe6b37a36b"
+      "bytes": 29487,
+      "sha256": "86b6c8d867809188b7207a424b731cb08034459bec7ab7a22c04efa0c4ac7df9"
     }
   ]
 }

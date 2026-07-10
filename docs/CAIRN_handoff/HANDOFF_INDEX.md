@@ -8,14 +8,15 @@ Each work package has one primary owner. Packages in the same lane may execute c
 Lane A: governance and substrate
 WP00 -> WP01
 WP00 -> WP02
-WP01 + WP02 -> WP03
-WP01 -> WP04 -> WP05
-WP03 + WP05 -> WP06
+WP01 -> WP03
+WP01 -> WP04
+WP03 + WP04 -> WP05
+WP01 + WP03 + WP04 + WP05 -> WP06
 
-Lane B: static evidence
-WP02 + WP03 + WP04 -> WP07
-WP07 -> WP08
-WP07 + WP08 -> WP09 -> WP10
+Lane B: generic evidence and spatial frontend
+WP03 + WP04 -> WP07
+WP02 + WP03 + WP07 -> WP08
+WP03 + WP07 -> WP09 -> WP10
 WP10 + WP03 -> WP11
 
 Lane C: synthesis
@@ -58,14 +59,14 @@ WP18 + WP19 + WP20 + WP21 + WP22 + WP23 + WP24 + WP28 + WP29 + WP32 + WP33 -> WP
 |---|---|---|
 | WP00 | Governance | Repository, LAW, CPU/transformer checker, CI |
 | WP01 | Storage | Canonical CBOR, BLAKE3 CAS, artifact envelopes |
-| WP02 | Systems | Packed grids and CPU geometry kernels |
+| WP02 | Spatial frontend systems | Packed finite fields and CPU geometry kernels |
 | WP03 | Data systems | Relational Evidence Graph and query indexes |
 | WP04 | Languages | RKL AST, types, bounds, canonical form |
 | WP05 | Runtime | Reference and optimized RKL executors |
 | WP06 | Formal integrity | Proof DAGs, replay certificates, independent verifier |
-| WP07 | Perception | Demand-driven entity algebra |
-| WP08 | Vision geometry | Structure evidence and motif/panel detectors |
-| WP09 | Abduction | Event and correspondence hypothesis generator |
+| WP07 | Generic perception | Relation-defined demand-driven entity algebra |
+| WP08 | Spatial frontend | Structure evidence lowered to generic relations |
+| WP09 | Generic abduction | Cross-domain event and correspondence hypotheses |
 | WP10 | Optimization | Exact pair event-cover solver |
 | WP11 | Analogy | Cross-pair role alignment and anti-unification |
 | WP12 | Symbolic optimization | Typed e-graph and goal-directed equality saturation |
@@ -113,28 +114,34 @@ Agent 6: generic benchmark and GLL evidence-pack scaffolding without dataset acc
 Second wave after foundation interfaces freeze:
 
 ```text
-WP03, WP05, WP07, WP13, WP23, WP29
+WP03, WP13, WP23
 ```
 
 Third wave:
 
 ```text
-WP06, WP08, WP09, WP12, WP24, WP26
+WP05, WP07, WP29
 ```
 
 Fourth wave:
 
 ```text
-WP10, WP11, WP14, WP15, WP17, WP27
+WP06, WP08, WP09, WP12, WP24, WP26
 ```
 
 Fifth wave:
 
 ```text
-WP16, WP18, WP19, WP20, WP28
+WP10, WP11, WP14, WP15, WP17, WP27
 ```
 
 Sixth wave:
+
+```text
+WP16, WP18, WP19, WP20, WP28
+```
+
+Seventh wave:
 
 ```text
 WP21, WP22, WP30, WP31, WP32, WP33
