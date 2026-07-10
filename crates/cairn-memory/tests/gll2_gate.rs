@@ -7,6 +7,7 @@ use cairn_memory::{
 };
 use cairn_rkl::{Binder, ExecLimits, IntRange, RuntimeEnvironment, Type, Value, VarName};
 use std::collections::BTreeSet;
+use std::time::Instant;
 
 fn int_type(lower: i64, upper: i64) -> Type {
     Type::Int(IntRange { lower, upper })
@@ -569,6 +570,93 @@ fn unrelated_tasks_fall_back_without_accuracy_regression_and_status_is_enforced(
         ),
         Err(PromotionError::InsufficientTasks { .. })
     ));
+}
+
+#[test]
+fn frozen_g2_equal_budget_cpu_and_negative_transfer_gate() {
+    let store = promoted_store();
+    let tasks = related_tasks();
+    let mut fresh_times = Vec::new();
+    let mut memory_times = Vec::new();
+    for _ in 0..7 {
+        let started = Instant::now();
+        for (problem, held_out) in &tasks {
+            let outcome = DefinitionInventor
+                .invent(problem)
+                .expect("timed fresh solve");
+            assert!(held_out.iter().all(|example| predicts_exactly(
+                &outcome,
+                example,
+                problem.limits.execution
+            )));
+        }
+        fresh_times
+            .push(u64::try_from(started.elapsed().as_nanos()).expect("bounded test duration"));
+
+        let started = Instant::now();
+        for (problem, held_out) in &tasks {
+            let outcome = MemoryAssistedInventor
+                .invent(problem, &store)
+                .expect("timed memory solve");
+            assert!(held_out.iter().all(|example| predicts_exactly(
+                &outcome.invention,
+                example,
+                problem.limits.execution
+            )));
+        }
+        memory_times
+            .push(u64::try_from(started.elapsed().as_nanos()).expect("bounded test duration"));
+    }
+    let fresh_median_ns = median(&mut fresh_times);
+    let memory_median_ns = median(&mut memory_times);
+    assert!(memory_median_ns.saturating_mul(2) <= fresh_median_ns);
+
+    let mut unrelated_exact = 0_u32;
+    let mut negative_transfers = 0_u32;
+    for index in 0_i64..100 {
+        let bound = 12 + index % 9;
+        let name = format!("unrelated_{index}");
+        let problem = InventionProblem {
+            definition_name: "unrelated_generated_law".to_owned(),
+            parameters: vec![Binder {
+                name: VarName(name.clone()),
+                ty: int_type(-bound, bound),
+            }],
+            return_type: int_type(0, bound * bound),
+            literals: Vec::new(),
+            demonstrations: [-bound, -5, -1, 0, 3, bound - 1]
+                .into_iter()
+                .map(|value| {
+                    example(
+                        &[(name.as_str(), Value::Int(value))],
+                        Value::Int(value * value),
+                    )
+                })
+                .collect(),
+            limits: limits(8),
+        };
+        let fresh = DefinitionInventor
+            .invent(&problem)
+            .expect("fresh unrelated");
+        let remembered = MemoryAssistedInventor
+            .invent(&problem, &store)
+            .expect("memory unrelated fallback");
+        let probe = example(
+            &[(name.as_str(), Value::Int(bound))],
+            Value::Int(bound * bound),
+        );
+        let fresh_exact = predicts_exactly(&fresh, &probe, problem.limits.execution);
+        let memory_exact =
+            predicts_exactly(&remembered.invention, &probe, problem.limits.execution);
+        unrelated_exact += u32::from(fresh_exact && memory_exact);
+        negative_transfers +=
+            u32::from(!memory_exact || remembered.origin != SolveOrigin::FreshSearch);
+    }
+    assert_eq!(unrelated_exact, 100);
+    assert!(negative_transfers < 2);
+    eprintln!(
+        "G2_METRICS fresh_median_ns={fresh_median_ns} memory_median_ns={memory_median_ns} unrelated_exact={unrelated_exact}/100 negative_transfers={negative_transfers}/100"
+    );
 }
 
 fn minimum_demonstrations(

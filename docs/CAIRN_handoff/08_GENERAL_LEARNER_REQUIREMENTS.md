@@ -272,3 +272,15 @@ versus 10 proof nodes. Duplicate, unverified, and pre-promotion claims fail.
 This satisfies G1 on the frozen initial suite. The ledger is not yet a
 canonical CAS artifact, and G2-G6 remain open. See
 docs/experiments/G1_ACTUAL_REUSE_LEDGER_PASS.md.
+
+## 10. ADR-0007 checkpoint: initial G2 pass
+
+On the frozen equal-budget related suite, semantic memory reduced median
+candidate executions from 480 to one, demonstrations from two to one, and
+observed median CPU time from 272.6 ms to 0.553 ms while retaining 5/5 exact
+held-out behavior. On 100 unrelated generated laws, memory rejected all
+inapplicable proposals, fell back to fresh search, and preserved 100/100
+exactness with zero measured negative transfer.
+
+This exceeds the G2 thresholds on the frozen initial suite. G3-G6 remain open
+under ADR-0007. See docs/experiments/G2_CONTINUAL_IMPROVEMENT_PASS.md.

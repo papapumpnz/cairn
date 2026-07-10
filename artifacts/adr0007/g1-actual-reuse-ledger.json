@@ -18,5 +18,5 @@
   "unverified_claim_rejected": true,
   "pre_promotion_claim_rejected": true,
   "known_limitation": "reuse ledger is not yet canonically persisted to CAS",
-  "open_gates": ["G2", "G3", "G4", "G5", "G6"]
+  "open_gates": ["G3", "G4", "G5", "G6"]
 }

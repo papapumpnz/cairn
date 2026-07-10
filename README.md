@@ -110,6 +110,11 @@ task-distinct verified invocation and necessity records, covering 33,600 versus
 10 candidate executions, 48 versus 10 demonstrations, and 52 versus 10 proof
 nodes. See
 [G1_ACTUAL_REUSE_LEDGER_PASS.md](docs/experiments/G1_ACTUAL_REUSE_LEDGER_PASS.md).
+The frozen G2 equal-budget audit passes as well: median candidates are 480
+versus one, demonstrations two versus one, and observed median CPU time
+272.6 ms versus 0.553 ms. A 100-task unrelated audit remained 100% exact with
+zero direct memory acceptance and zero negative transfer. See
+[G2_CONTINUAL_IMPROVEMENT_PASS.md](docs/experiments/G2_CONTINUAL_IMPROVEMENT_PASS.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and proof DAGs, richer ontology invention, one shared orchestrating runtime,
