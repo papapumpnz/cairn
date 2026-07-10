@@ -1,6 +1,6 @@
 use crate::{
     normalize_attributes, AttrKey, AttrValue, Attribute, DerivationId, DerivationRecord,
-    EvidenceWeight, FactId, NodeConstraint, NodeId, NodeKind, RegError, RegLimits,
+    EvidenceWeight, FactId, LogicalTime, NodeConstraint, NodeId, NodeKind, RegError, RegLimits,
     RelationDefinition, RelationId, REG_SEMANTICS_VERSION,
 };
 use cairn_core::{CanonicalEncode, CanonicalError, CanonicalValue};
@@ -12,6 +12,7 @@ struct NodeRecord {
     kind: NodeKind,
     attributes: Vec<Attribute>,
     derivation: DerivationId,
+    logical_time: Option<LogicalTime>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -21,6 +22,7 @@ struct FactRecord {
     attributes: Vec<Attribute>,
     weight: EvidenceWeight,
     derivation: DerivationId,
+    logical_time: Option<LogicalTime>,
 }
 
 /// Deterministic per-relation lookup by argument position and node.
@@ -51,6 +53,7 @@ pub struct NodeRef<'a> {
     pub kind: NodeKind,
     pub attributes: &'a [Attribute],
     pub derivation: DerivationId,
+    pub logical_time: Option<LogicalTime>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -61,6 +64,27 @@ pub struct FactRef<'a> {
     pub attributes: &'a [Attribute],
     pub weight: EvidenceWeight,
     pub derivation: DerivationId,
+    pub logical_time: Option<LogicalTime>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct DerivationArena<'a>(&'a [DerivationRecord]);
+
+impl<'a> DerivationArena<'a> {
+    #[must_use]
+    pub fn len(self) -> usize {
+        self.0.len()
+    }
+
+    #[must_use]
+    pub fn is_empty(self) -> bool {
+        self.0.is_empty()
+    }
+
+    #[must_use]
+    pub fn get(self, id: DerivationId) -> Option<&'a DerivationRecord> {
+        self.0.get(id.0 as usize)
+    }
 }
 
 /// Immutable typed evidence graph.
@@ -72,6 +96,9 @@ pub struct RelGraph {
     derivations: Vec<DerivationRecord>,
     relation_indexes: Vec<RelationIndex>,
     attribute_index: BTreeMap<(AttrKey, AttrValue), Vec<NodeId>>,
+    fact_attribute_index: BTreeMap<(AttrKey, AttrValue), Vec<FactId>>,
+    nodes_by_time: BTreeMap<LogicalTime, Vec<NodeId>>,
+    facts_by_time: BTreeMap<LogicalTime, Vec<FactId>>,
 }
 
 impl RelGraph {
@@ -102,6 +129,7 @@ impl RelGraph {
             kind: node.kind,
             attributes: &node.attributes,
             derivation: node.derivation,
+            logical_time: node.logical_time,
         })
     }
 
@@ -114,6 +142,7 @@ impl RelGraph {
             attributes: &fact.attributes,
             weight: fact.weight,
             derivation: fact.derivation,
+            logical_time: fact.logical_time,
         })
     }
 
@@ -128,6 +157,11 @@ impl RelGraph {
     }
 
     #[must_use]
+    pub fn derivations(&self) -> DerivationArena<'_> {
+        DerivationArena(&self.derivations)
+    }
+
+    #[must_use]
     pub fn relation_index(&self, id: RelationId) -> Option<&RelationIndex> {
         self.relation_indexes.get(id.0 as usize)
     }
@@ -137,6 +171,23 @@ impl RelGraph {
         self.attribute_index
             .get(&(key, value.clone()))
             .map_or(&[], Vec::as_slice)
+    }
+
+    #[must_use]
+    pub fn facts_with_attribute(&self, key: AttrKey, value: &AttrValue) -> &[FactId] {
+        self.fact_attribute_index
+            .get(&(key, value.clone()))
+            .map_or(&[], Vec::as_slice)
+    }
+
+    #[must_use]
+    pub fn nodes_at_time(&self, time: LogicalTime) -> &[NodeId] {
+        self.nodes_by_time.get(&time).map_or(&[], Vec::as_slice)
+    }
+
+    #[must_use]
+    pub fn facts_at_time(&self, time: LogicalTime) -> &[FactId] {
+        self.facts_by_time.get(&time).map_or(&[], Vec::as_slice)
     }
 
     #[must_use]
@@ -188,8 +239,27 @@ impl RelGraphBuilder {
                 derivations: Vec::new(),
                 relation_indexes: Vec::new(),
                 attribute_index: BTreeMap::new(),
+                fact_attribute_index: BTreeMap::new(),
+                nodes_by_time: BTreeMap::new(),
+                facts_by_time: BTreeMap::new(),
             },
             relation_names: BTreeSet::new(),
+        }
+    }
+
+    /// Extend a published snapshot without mutating the original.
+    #[must_use]
+    pub fn from_snapshot(snapshot: &RelGraphSnapshot, limits: RegLimits) -> Self {
+        let graph = snapshot.graph().clone();
+        let relation_names = graph
+            .relations
+            .iter()
+            .map(|relation| relation.name.clone())
+            .collect();
+        Self {
+            limits,
+            graph,
+            relation_names,
         }
     }
 
@@ -265,6 +335,21 @@ impl RelGraphBuilder {
         attributes: Vec<Attribute>,
         derivation: DerivationId,
     ) -> Result<NodeId, RegError> {
+        self.add_node_at(kind, attributes, derivation, None)
+    }
+
+    /// Append a temporally indexed node.
+    ///
+    /// # Errors
+    ///
+    /// Rejects unknown derivations, duplicate attributes, and capacity excess.
+    pub fn add_node_at(
+        &mut self,
+        kind: NodeKind,
+        attributes: Vec<Attribute>,
+        derivation: DerivationId,
+        logical_time: Option<LogicalTime>,
+    ) -> Result<NodeId, RegError> {
         ensure_capacity("nodes", self.graph.nodes.len(), self.limits.maximum_nodes)?;
         self.require_derivation(derivation)?;
         let attributes = normalize_attributes(attributes, self.limits)?;
@@ -280,7 +365,11 @@ impl RelGraphBuilder {
             kind,
             attributes,
             derivation,
+            logical_time,
         });
+        if let Some(time) = logical_time {
+            self.graph.nodes_by_time.entry(time).or_default().push(id);
+        }
         Ok(id)
     }
 
@@ -296,6 +385,23 @@ impl RelGraphBuilder {
         attributes: Vec<Attribute>,
         weight: EvidenceWeight,
         derivation: DerivationId,
+    ) -> Result<FactId, RegError> {
+        self.add_fact_at(relation, arguments, attributes, weight, derivation, None)
+    }
+
+    /// Append a temporally indexed typed relation fact.
+    ///
+    /// # Errors
+    ///
+    /// Rejects unknown IDs, wrong arity/kinds, duplicate attributes, and caps.
+    pub fn add_fact_at(
+        &mut self,
+        relation: RelationId,
+        arguments: Vec<NodeId>,
+        attributes: Vec<Attribute>,
+        weight: EvidenceWeight,
+        derivation: DerivationId,
+        logical_time: Option<LogicalTime>,
     ) -> Result<FactId, RegError> {
         ensure_capacity("facts", self.graph.facts.len(), self.limits.maximum_facts)?;
         self.require_derivation(derivation)?;
@@ -333,6 +439,13 @@ impl RelGraphBuilder {
         }
         let attributes = normalize_attributes(attributes, self.limits)?;
         let id = FactId(to_u32(self.graph.facts.len(), "facts")?);
+        for attribute in &attributes {
+            self.graph
+                .fact_attribute_index
+                .entry((attribute.key, attribute.value.clone()))
+                .or_default()
+                .push(id);
+        }
         let index = &mut self.graph.relation_indexes[relation.0 as usize];
         index.facts.push(id);
         for (position, node) in arguments.iter().enumerate() {
@@ -347,7 +460,11 @@ impl RelGraphBuilder {
             attributes,
             weight,
             derivation,
+            logical_time,
         });
+        if let Some(time) = logical_time {
+            self.graph.facts_by_time.entry(time).or_default().push(id);
+        }
         Ok(id)
     }
 
@@ -443,6 +560,7 @@ fn node_value(value: &NodeRecord) -> CanonicalValue {
             node_kind_value(value.kind),
             attributes_value(&value.attributes),
             CanonicalValue::Unsigned(u64::from(value.derivation.0)),
+            optional_time(value.logical_time),
         ],
     )
 }
@@ -467,6 +585,7 @@ fn fact_value(value: &FactRecord) -> CanonicalValue {
                 }
             },
             CanonicalValue::Unsigned(u64::from(value.derivation.0)),
+            optional_time(value.logical_time),
         ],
     )
 }
@@ -500,6 +619,12 @@ fn attr_value(value: &AttrValue) -> CanonicalValue {
             vec![CanonicalValue::Bytes(value.as_bytes().to_vec())],
         ),
     }
+}
+
+fn optional_time(value: Option<LogicalTime>) -> CanonicalValue {
+    value.map_or(CanonicalValue::Null, |time| {
+        CanonicalValue::Unsigned(time.0)
+    })
 }
 
 fn node_kind_value(kind: NodeKind) -> CanonicalValue {

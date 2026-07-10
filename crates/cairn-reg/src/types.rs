@@ -15,6 +15,10 @@ local_id!(RelationId);
 local_id!(DerivationId);
 local_id!(AttrKey);
 
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct LogicalTime(pub u64);
+
 /// Environment-neutral evidence node categories.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum NodeKind {
@@ -100,6 +104,8 @@ pub struct RegLimits {
     pub maximum_derivations: u32,
     pub maximum_relation_arity: u16,
     pub maximum_attributes_per_record: u16,
+    pub maximum_path_hops: u16,
+    pub maximum_path_visited: u32,
 }
 
 impl Default for RegLimits {
@@ -111,6 +117,8 @@ impl Default for RegLimits {
             maximum_derivations: 4_000_000,
             maximum_relation_arity: 32,
             maximum_attributes_per_record: 256,
+            maximum_path_hops: 1_024,
+            maximum_path_visited: 1_000_000,
         }
     }
 }
@@ -145,6 +153,10 @@ pub enum RegError {
         expected: usize,
         actual: usize,
     },
+    QueryUnboundVariable(u16),
+    PathRequiresBinaryRelation(RelationId),
+    EmptyPathBound,
+    ResultColumnOutOfRange(usize),
 }
 
 impl fmt::Display for RegError {
@@ -195,6 +207,16 @@ impl fmt::Display for RegError {
                     formatter,
                     "query variable {variable} exceeds declared width"
                 )
+            }
+            Self::QueryUnboundVariable(variable) => {
+                write!(formatter, "query variable {variable} is unbound")
+            }
+            Self::PathRequiresBinaryRelation(relation) => {
+                write!(formatter, "path relation {} is not binary", relation.0)
+            }
+            Self::EmptyPathBound => formatter.write_str("path hop bound must be positive"),
+            Self::ResultColumnOutOfRange(column) => {
+                write!(formatter, "result column {column} is out of range")
             }
         }
     }

@@ -1,4 +1,5 @@
-use crate::{FactId, NodeId, RegError, RelGraph, RelationId};
+use crate::{AttrKey, AttrValue, FactId, NodeId, RegError, RelGraph, RelationId};
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Term {
@@ -12,12 +13,36 @@ pub struct RelationPattern {
     pub arguments: Vec<Term>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AttributeFilter {
+    pub variable: u16,
+    pub key: AttrKey,
+    pub value: AttrValue,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PathConstraint {
+    pub relation: RelationId,
+    pub from: Term,
+    pub to: Term,
+    pub maximum_hops: u16,
+    pub maximum_visited: u32,
+}
+
 /// Deterministic conjunctive relation query.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct QueryPlan {
     pub variable_count: u16,
     pub patterns: Vec<RelationPattern>,
+    pub attribute_filters: Vec<AttributeFilter>,
+    pub path_constraints: Vec<PathConstraint>,
     pub result_variables: Vec<u16>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct GroupCount {
+    pub key: Vec<NodeId>,
+    pub count: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -62,6 +87,18 @@ impl QueryPlan {
                 break;
             }
         }
+        bindings.retain(|binding| self.matches_attributes(graph, binding));
+        for constraint in &self.path_constraints {
+            let mut next = Vec::new();
+            for binding in bindings {
+                let from = resolve_term(constraint.from, &binding)?;
+                let to = resolve_term(constraint.to, &binding)?;
+                if bounded_reachable(graph, *constraint, from, to)? {
+                    next.push(binding);
+                }
+            }
+            bindings = next;
+        }
         let mut rows = bindings
             .into_iter()
             .map(|binding| {
@@ -69,7 +106,7 @@ impl QueryPlan {
                     .iter()
                     .map(|variable| {
                         binding[usize::from(*variable)]
-                            .ok_or(RegError::QueryVariableOutOfRange(*variable))
+                            .ok_or(RegError::QueryUnboundVariable(*variable))
                     })
                     .collect::<Result<Vec<_>, _>>()
             })
@@ -87,6 +124,9 @@ impl QueryPlan {
         for variable in &self.result_variables {
             self.validate_variable(*variable)?;
         }
+        for filter in &self.attribute_filters {
+            self.validate_variable(filter.variable)?;
+        }
         for pattern in &self.patterns {
             let definition = graph
                 .relation(pattern.relation)
@@ -99,12 +139,49 @@ impl QueryPlan {
                 });
             }
             for term in &pattern.arguments {
-                if let Term::Variable(variable) = term {
-                    self.validate_variable(*variable)?;
-                }
+                self.validate_term(graph, *term)?;
             }
         }
+        for constraint in &self.path_constraints {
+            let definition = graph
+                .relation(constraint.relation)
+                .ok_or(RegError::UnknownRelation(constraint.relation))?;
+            if definition.arguments.len() != 2 {
+                return Err(RegError::PathRequiresBinaryRelation(constraint.relation));
+            }
+            if constraint.maximum_hops == 0 || constraint.maximum_visited == 0 {
+                return Err(RegError::EmptyPathBound);
+            }
+            self.validate_term(graph, constraint.from)?;
+            self.validate_term(graph, constraint.to)?;
+        }
         Ok(())
+    }
+
+    fn validate_term(&self, graph: &RelGraph, term: Term) -> Result<(), RegError> {
+        match term {
+            Term::Variable(variable) => self.validate_variable(variable),
+            Term::Node(node) if graph.node(node).is_none() => Err(RegError::UnknownNode(node)),
+            Term::Node(_) => Ok(()),
+        }
+    }
+
+    fn matches_attributes(&self, graph: &RelGraph, binding: &[Option<NodeId>]) -> bool {
+        self.attribute_filters.iter().all(|filter| {
+            binding[usize::from(filter.variable)].is_some_and(|node| {
+                graph.node(node).is_some_and(|record| {
+                    record
+                        .attributes
+                        .binary_search_by(|attribute| {
+                            attribute
+                                .key
+                                .cmp(&filter.key)
+                                .then_with(|| attribute.value.cmp(&filter.value))
+                        })
+                        .is_ok()
+                })
+            })
+        })
     }
 
     fn validate_variable(&self, variable: u16) -> Result<(), RegError> {
@@ -113,6 +190,33 @@ impl QueryPlan {
         } else {
             Ok(())
         }
+    }
+}
+
+impl QueryResult {
+    /// Count rows grouped by selected result-column indexes.
+    ///
+    /// # Errors
+    ///
+    /// Rejects a group column outside the result width.
+    pub fn group_count(&self, group_columns: &[usize]) -> Result<Vec<GroupCount>, RegError> {
+        if let Some(column) = group_columns
+            .iter()
+            .copied()
+            .find(|column| *column >= self.columns.len())
+        {
+            return Err(RegError::ResultColumnOutOfRange(column));
+        }
+        let mut counts = BTreeMap::<Vec<NodeId>, u64>::new();
+        for row in &self.rows {
+            let key = group_columns.iter().map(|column| row[*column]).collect();
+            let count = counts.entry(key).or_default();
+            *count = count.saturating_add(1);
+        }
+        Ok(counts
+            .into_iter()
+            .map(|(key, count)| GroupCount { key, count })
+            .collect())
     }
 }
 
@@ -159,4 +263,60 @@ fn unify(
         }
     }
     Some(output)
+}
+
+fn resolve_term(term: Term, binding: &[Option<NodeId>]) -> Result<NodeId, RegError> {
+    match term {
+        Term::Node(node) => Ok(node),
+        Term::Variable(variable) => {
+            binding[usize::from(variable)].ok_or(RegError::QueryUnboundVariable(variable))
+        }
+    }
+}
+
+fn bounded_reachable(
+    graph: &RelGraph,
+    constraint: PathConstraint,
+    from: NodeId,
+    to: NodeId,
+) -> Result<bool, RegError> {
+    if from == to {
+        return Ok(true);
+    }
+    let index = graph
+        .relation_index(constraint.relation)
+        .ok_or(RegError::UnknownRelation(constraint.relation))?;
+    let mut visited = BTreeSet::from([from]);
+    let mut frontier = BTreeSet::from([from]);
+    for _ in 0..constraint.maximum_hops {
+        let mut next = BTreeSet::new();
+        for node in frontier {
+            for fact_id in index.at(0, node) {
+                let fact = graph.fact(*fact_id).ok_or(RegError::Capacity {
+                    resource: "path fact index",
+                    requested: u64::from(fact_id.0),
+                    maximum: graph.fact_count() as u64,
+                })?;
+                let target = fact.arguments[1];
+                if target == to {
+                    return Ok(true);
+                }
+                if visited.insert(target) {
+                    if visited.len() > constraint.maximum_visited as usize {
+                        return Err(RegError::Capacity {
+                            resource: "path visited nodes",
+                            requested: visited.len() as u64,
+                            maximum: u64::from(constraint.maximum_visited),
+                        });
+                    }
+                    next.insert(target);
+                }
+            }
+        }
+        if next.is_empty() {
+            break;
+        }
+        frontier = next;
+    }
+    Ok(false)
 }

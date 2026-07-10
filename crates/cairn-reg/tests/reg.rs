@@ -1,9 +1,10 @@
 use cairn_core::{CanonicalEncode, Hash32};
 use cairn_reg::{
-    AttrKey, AttrValue, Attribute, DerivationId, DerivationKind, DerivationRecord, EvidenceWeight,
-    NodeConstraint, NodeKind, QueryPlan, RegError, RegLimits, RelGraphBuilder, RelationDefinition,
-    RelationPattern, Term,
+    AttrKey, AttrValue, Attribute, AttributeFilter, DerivationId, DerivationKind, DerivationRecord,
+    EvidenceWeight, LogicalTime, NodeConstraint, NodeKind, PathConstraint, QueryPlan, RegError,
+    RegLimits, RelGraphBuilder, RelationDefinition, RelationPattern, Term,
 };
+use std::collections::BTreeSet;
 
 #[test]
 fn typed_relations_reject_wrong_kinds_and_arity() {
@@ -69,6 +70,8 @@ fn conjunctive_join_is_exact_indexed_and_deterministic() {
                 arguments: vec![Term::Variable(1), Term::Variable(2)],
             },
         ],
+        attribute_filters: Vec::new(),
+        path_constraints: Vec::new(),
         result_variables: vec![0, 1, 2],
     };
     let result = plan.execute(graph.graph()).expect("join");
@@ -121,6 +124,8 @@ fn published_snapshots_support_concurrent_deterministic_queries() {
             relation,
             arguments: vec![Term::Node(nodes[0]), Term::Variable(0)],
         }],
+        attribute_filters: Vec::new(),
+        path_constraints: Vec::new(),
         result_variables: vec![0],
     };
     let expected = plan.execute(snapshot.graph()).expect("expected");
@@ -134,6 +139,293 @@ fn published_snapshots_support_concurrent_deterministic_queries() {
             });
         }
     });
+}
+
+#[test]
+fn temporal_and_fact_attribute_indexes_are_exact() {
+    let (mut builder, observed) = builder_with_observation();
+    let relation = builder
+        .declare_relation(RelationDefinition {
+            name: "changes".to_owned(),
+            arguments: vec![NodeConstraint::Any, NodeConstraint::Any],
+        })
+        .expect("relation");
+    let before = builder
+        .add_node_at(NodeKind::State, Vec::new(), observed, Some(LogicalTime(10)))
+        .expect("before");
+    let after = builder
+        .add_node_at(NodeKind::State, Vec::new(), observed, Some(LogicalTime(11)))
+        .expect("after");
+    let fact = builder
+        .add_fact_at(
+            relation,
+            vec![before, after],
+            vec![Attribute {
+                key: AttrKey(9),
+                value: AttrValue::Atom(3),
+            }],
+            EvidenceWeight::Exact,
+            observed,
+            Some(LogicalTime(11)),
+        )
+        .expect("change");
+    let graph = builder.publish();
+    assert_eq!(graph.graph().nodes_at_time(LogicalTime(10)), &[before]);
+    assert_eq!(graph.graph().facts_at_time(LogicalTime(11)), &[fact]);
+    assert_eq!(
+        graph
+            .graph()
+            .facts_with_attribute(AttrKey(9), &AttrValue::Atom(3)),
+        &[fact]
+    );
+    assert_eq!(graph.graph().derivations().len(), 1);
+}
+
+#[test]
+fn bounded_paths_filters_and_aggregates_are_deterministic() {
+    let (mut builder, observed) = builder_with_observation();
+    let relation = builder
+        .declare_relation(RelationDefinition {
+            name: "causally_precedes".to_owned(),
+            arguments: vec![NodeConstraint::Any, NodeConstraint::Any],
+        })
+        .expect("relation");
+    let nodes = [
+        builder
+            .add_node(
+                NodeKind::Event,
+                vec![Attribute {
+                    key: AttrKey(1),
+                    value: AttrValue::Text("cause".to_owned()),
+                }],
+                observed,
+            )
+            .expect("a"),
+        builder
+            .add_node(NodeKind::Event, Vec::new(), observed)
+            .expect("b"),
+        builder
+            .add_node(NodeKind::State, Vec::new(), observed)
+            .expect("c"),
+    ];
+    for arguments in [vec![nodes[0], nodes[1]], vec![nodes[1], nodes[2]]] {
+        builder
+            .add_fact(
+                relation,
+                arguments,
+                Vec::new(),
+                EvidenceWeight::Exact,
+                observed,
+            )
+            .expect("edge");
+    }
+    let graph = builder.publish();
+    let too_short = QueryPlan {
+        variable_count: 0,
+        patterns: Vec::new(),
+        attribute_filters: Vec::new(),
+        path_constraints: vec![PathConstraint {
+            relation,
+            from: Term::Node(nodes[0]),
+            to: Term::Node(nodes[2]),
+            maximum_hops: 1,
+            maximum_visited: 8,
+        }],
+        result_variables: Vec::new(),
+    };
+    assert!(too_short
+        .execute(graph.graph())
+        .expect("bounded miss")
+        .rows
+        .is_empty());
+    let within_bound = QueryPlan {
+        path_constraints: vec![PathConstraint {
+            maximum_hops: 2,
+            ..too_short.path_constraints[0]
+        }],
+        ..too_short
+    };
+    assert_eq!(
+        within_bound
+            .execute(graph.graph())
+            .expect("bounded hit")
+            .rows,
+        vec![Vec::new()]
+    );
+
+    let filtered = QueryPlan {
+        variable_count: 2,
+        patterns: vec![RelationPattern {
+            relation,
+            arguments: vec![Term::Variable(0), Term::Variable(1)],
+        }],
+        attribute_filters: vec![AttributeFilter {
+            variable: 0,
+            key: AttrKey(1),
+            value: AttrValue::Text("cause".to_owned()),
+        }],
+        path_constraints: Vec::new(),
+        result_variables: vec![0, 1],
+    }
+    .execute(graph.graph())
+    .expect("filtered");
+    assert_eq!(filtered.rows, vec![vec![nodes[0], nodes[1]]]);
+    assert_eq!(filtered.group_count(&[0]).expect("count")[0].count, 1);
+}
+
+#[test]
+fn extending_a_snapshot_preserves_snapshot_isolation() {
+    let (mut builder, observed) = builder_with_observation();
+    let original_node = builder
+        .add_node(NodeKind::Observation, Vec::new(), observed)
+        .expect("original");
+    let original = builder.publish();
+    let original_bytes = original.encode_canonical().expect("original bytes");
+
+    let mut extension = RelGraphBuilder::from_snapshot(&original, RegLimits::default());
+    let derived = extension
+        .add_derivation(DerivationRecord {
+            kind: DerivationKind::Hypothesis,
+            operation: Hash32::digest(b"extend"),
+            inputs: vec![observed],
+            parameters: Vec::new(),
+            semantics_version: "test/1".to_owned(),
+        })
+        .expect("derived");
+    let added = extension
+        .add_node(NodeKind::EntityHypothesis, Vec::new(), derived)
+        .expect("added");
+    let extended = extension.publish();
+
+    assert_eq!(original.graph().node_count(), 1);
+    assert!(original.graph().node(original_node).is_some());
+    assert!(original.graph().node(added).is_none());
+    assert_eq!(extended.graph().node_count(), 2);
+    assert_eq!(
+        original.encode_canonical().expect("unchanged"),
+        original_bytes
+    );
+}
+
+#[test]
+fn randomized_joins_match_a_simple_relational_reference() {
+    let mut random = 0x243f_6a88_85a3_08d3_u64;
+    for _case in 0..100 {
+        let (mut builder, observed) = builder_with_observation();
+        let relation = builder
+            .declare_relation(RelationDefinition {
+                name: "linked".to_owned(),
+                arguments: vec![NodeConstraint::Any, NodeConstraint::Any],
+            })
+            .expect("relation");
+        let nodes = (0..24)
+            .map(|_| {
+                builder
+                    .add_node(NodeKind::EntityHypothesis, Vec::new(), observed)
+                    .expect("node")
+            })
+            .collect::<Vec<_>>();
+        let mut edges = Vec::new();
+        for _ in 0..96 {
+            let left = nodes[usize::from(next_random(&mut random) % 24)];
+            let right = nodes[usize::from(next_random(&mut random) % 24)];
+            edges.push((left, right));
+            builder
+                .add_fact(
+                    relation,
+                    vec![left, right],
+                    Vec::new(),
+                    EvidenceWeight::Exact,
+                    observed,
+                )
+                .expect("fact");
+        }
+        let graph = builder.publish();
+        let actual = QueryPlan {
+            variable_count: 3,
+            patterns: vec![
+                RelationPattern {
+                    relation,
+                    arguments: vec![Term::Variable(0), Term::Variable(1)],
+                },
+                RelationPattern {
+                    relation,
+                    arguments: vec![Term::Variable(1), Term::Variable(2)],
+                },
+            ],
+            attribute_filters: Vec::new(),
+            path_constraints: Vec::new(),
+            result_variables: vec![0, 1, 2],
+        }
+        .execute(graph.graph())
+        .expect("query")
+        .rows;
+        let expected = edges
+            .iter()
+            .flat_map(|(left, middle)| {
+                edges.iter().filter_map(move |(candidate, right)| {
+                    (middle == candidate).then_some(vec![*left, *middle, *right])
+                })
+            })
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect::<Vec<_>>();
+        assert_eq!(actual, expected);
+    }
+}
+
+#[test]
+fn hyperedge_order_and_query_caps_fail_closed() {
+    let (mut builder, observed) = builder_with_observation();
+    let relation = builder
+        .declare_relation(RelationDefinition {
+            name: "action_transition".to_owned(),
+            arguments: vec![
+                NodeConstraint::Kind(NodeKind::State),
+                NodeConstraint::Kind(NodeKind::Action),
+                NodeConstraint::Kind(NodeKind::State),
+            ],
+        })
+        .expect("relation");
+    let before = builder
+        .add_node(NodeKind::State, Vec::new(), observed)
+        .expect("before");
+    let action = builder
+        .add_node(NodeKind::Action, Vec::new(), observed)
+        .expect("action");
+    let after = builder
+        .add_node(NodeKind::State, Vec::new(), observed)
+        .expect("after");
+    let fact = builder
+        .add_fact(
+            relation,
+            vec![before, action, after],
+            Vec::new(),
+            EvidenceWeight::Exact,
+            observed,
+        )
+        .expect("fact");
+    let graph = builder.publish();
+    assert_eq!(
+        graph.graph().fact(fact).expect("fact").arguments,
+        &[before, action, after]
+    );
+    let error = QueryPlan {
+        variable_count: 0,
+        patterns: Vec::new(),
+        attribute_filters: Vec::new(),
+        path_constraints: vec![PathConstraint {
+            relation,
+            from: Term::Node(before),
+            to: Term::Node(after),
+            maximum_hops: 1,
+            maximum_visited: 8,
+        }],
+        result_variables: Vec::new(),
+    }
+    .execute(graph.graph())
+    .expect_err("ternary relation is not a path");
+    assert_eq!(error, RegError::PathRequiresBinaryRelation(relation));
 }
 
 #[test]
@@ -248,4 +540,11 @@ fn observed_derivation(builder: &mut RelGraphBuilder) -> DerivationId {
             semantics_version: "test/1".to_owned(),
         })
         .expect("observed derivation")
+}
+
+fn next_random(state: &mut u64) -> u8 {
+    *state ^= *state << 13;
+    *state ^= *state >> 7;
+    *state ^= *state << 17;
+    state.to_le_bytes()[0]
 }
