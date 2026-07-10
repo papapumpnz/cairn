@@ -1,4 +1,4 @@
-use cairn_arc::{attempt_task, parse_task, ArcAdapterError};
+use cairn_arc::{attempt_task, parse_task, run_training_batch, ArcAdapterError};
 use cairn_invent::InventionLimits;
 use cairn_rkl::ExecLimits;
 
@@ -38,4 +38,24 @@ fn malformed_arc_data_is_rejected_at_adapter_boundary() {
       "test": [{"input": [[0]]}]
     }"#;
     assert_eq!(parse_task(ragged), Err(ArcAdapterError::RaggedGrid));
+}
+
+#[test]
+fn batch_runner_scores_only_after_sealing_test_outputs() {
+    let fixtures = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+    let report = run_training_batch(
+        &fixtures,
+        1,
+        InventionLimits {
+            maximum_cost: 5,
+            maximum_candidates: 100_000,
+            maximum_expression_nodes: 10_000,
+            execution: ExecLimits::default(),
+        },
+        ExecLimits::default(),
+    )
+    .expect("batch");
+    assert_eq!(report.selected_tasks, 1);
+    assert_eq!(report.exact_tasks, 1);
+    assert_eq!(report.reports[0].exact_tests, 1);
 }

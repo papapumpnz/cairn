@@ -43,6 +43,10 @@ cannot import the adapter.
 - The first finite-field and ARC adapter path supports learned pointwise
   same-shape constructors only. Shape-changing, relational, entity-level, and
   multi-rule tasks remain future capability, not silently handled special cases.
+- Official benchmark data is pinned by upstream tag, commit, retained license,
+  and per-file hashes. Development imports ARC-AGI-1 training only. The
+  evaluation split remains absent so repeated development cannot consume its
+  score as feedback.
 - Whole-theory reference and bytecode paths share scheduling code. This catches
   expression compiler defects but is not yet the fully separate critical-effect
   reimplementation required for final WP06 acceptance.
@@ -57,6 +61,9 @@ cannot import the adapter.
 - an omitted finite-field constructor transfers to changed shape and values;
 - the quarantined ARC-format fixture is solved without an adapter operation
   label or test-output access.
+- the first ten filename-sorted official training tasks parse successfully;
+  three fail as unsupported shape changes and seven hit the declared search
+  cap, with zero claimed solves.
 
 ## Compatibility
 

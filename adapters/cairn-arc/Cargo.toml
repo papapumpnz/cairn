@@ -11,6 +11,10 @@ default-run = "cairn-arc-attempt"
 name = "cairn-arc-attempt"
 path = "src/bin/cairn-arc-attempt.rs"
 
+[[bin]]
+name = "cairn-arc-batch"
+path = "src/bin/cairn-arc-batch.rs"
+
 [dependencies]
 cairn-field = { path = "../../crates/cairn-field" }
 cairn-invent = { path = "../../crates/cairn-invent" }

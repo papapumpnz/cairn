@@ -1,0 +1,920 @@
+{
+  "adapter_semantics": "1.0.0",
+  "rkl_semantics": "1.1.0",
+  "corpus": "datasets/arc-agi-1-v1.0.2/training",
+  "maximum_tasks": 100,
+  "maximum_cost": 9,
+  "maximum_candidates": 100,
+  "selected_tasks": 100,
+  "parsed_tasks": 100,
+  "attempted_tasks": 0,
+  "exact_tasks": 0,
+  "incorrect_tasks": 0,
+  "unsupported_tasks": 27,
+  "no_theory_tasks": 0,
+  "resource_limited_tasks": 73,
+  "invalid_tasks": 0,
+  "execution_failures": 0,
+  "reports": [
+    {
+      "task": "007bbfb7",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "00d62c1b",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "017c7c7b",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "025d127b",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "045e512c",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "0520fde7",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "05269061",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "05f2a901",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "06df4c85",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "08ed6ac7",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "09629e4f",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "0962bcdd",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "0a938d79",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "0b148d64",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "0ca9ddb6",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "0d3d703e",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "0dfd9992",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "0e206a2e",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "10fcaaa3",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "11852cab",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "1190e5a7",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "137eaa0f",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "150deff5",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "178fcbfb",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "1a07d186",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "1b2d62fb",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "1b60fb0c",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "1bfc4729",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "1c786137",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "1caeab9d",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "1cf80156",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "1e0a9b12",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "1e32b0e9",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "1f0c79e5",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "1f642eb9",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "1f85a75f",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "1f876c06",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "1fad071e",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "2013d3e2",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "2204b7a8",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "22168020",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "22233c11",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "2281f1f4",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "228f6490",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "22eb0ac0",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "234bbc79",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "23581191",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "239be575",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "23b5c85d",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "253bf280",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "25d487eb",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "25d8a9c8",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "25ff71a9",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "264363fd",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "272f95fa",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "27a28665",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "28bf18c6",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "28e73c20",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "29623171",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "29c11459",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "29ec7d0e",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "2bcee788",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "2bee17df",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "2c608aff",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "2dc579da",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "2dd70a9a",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "2dee498d",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "31aa019c",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "321b1fc6",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "32597951",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "3345333e",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "3428a4f5",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "3618c87e",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "3631a71a",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "363442ee",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "36d67576",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "36fdfd69",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "3906de3d",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "39a8645d",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "39e1d7f9",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "3aa6fb7a",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "3ac3eb23",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "3af2c5a8",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "3bd67248",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "3bdb4ada",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "3befdf3e",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "3c9b0459",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "3de23699",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "3e980e27",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "3eda0437",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "3f7978a0",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "40853293",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "4093f84a",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "41e4d17e",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "4258a5f9",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "4290ef0e",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "42a50994",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "4347f46a",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "444801d8",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 100 }))"
+    },
+    {
+      "task": "445eab21",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    }
+  ]
+}

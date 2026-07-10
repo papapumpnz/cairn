@@ -3,7 +3,11 @@
 use cairn_field::{FieldError, FiniteField, PointwiseFieldLearner};
 use cairn_invent::InventionLimits;
 use cairn_rkl::ExecLimits;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::Path;
+
+pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.0.0";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ArcGrid {
@@ -66,6 +70,50 @@ pub struct ArcAttempt {
     pub exact_tests: usize,
     pub training_cells: usize,
     pub learned_expression: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ArcTaskStatus {
+    Exact,
+    Incorrect,
+    UnsupportedShapeChange,
+    NoTheoryWithinBounds,
+    ResourceLimit,
+    InvalidTask,
+    ExecutionFailure,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct ArcTaskReport {
+    pub task: String,
+    pub status: ArcTaskStatus,
+    pub evaluated_tests: usize,
+    pub exact_tests: usize,
+    pub training_cells: usize,
+    pub learned_expression: Option<String>,
+    pub diagnostic: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct ArcBatchReport {
+    pub adapter_semantics: String,
+    pub rkl_semantics: String,
+    pub corpus: String,
+    pub maximum_tasks: usize,
+    pub maximum_cost: u16,
+    pub maximum_candidates: u64,
+    pub selected_tasks: usize,
+    pub parsed_tasks: usize,
+    pub attempted_tasks: usize,
+    pub exact_tasks: usize,
+    pub incorrect_tasks: usize,
+    pub unsupported_tasks: usize,
+    pub no_theory_tasks: usize,
+    pub resource_limited_tasks: usize,
+    pub invalid_tasks: usize,
+    pub execution_failures: usize,
+    pub reports: Vec<ArcTaskReport>,
 }
 
 /// Parse canonical ARC-style JSON while rejecting malformed categorical grids.
@@ -152,6 +200,179 @@ pub fn attempt_task(
         training_cells: learned.training_cells,
         learned_expression: format!("{:?}", learned.proposal.definition.body),
     })
+}
+
+/// Run a deterministic filename-sorted development batch. Expected test
+/// outputs are removed from the task passed to learning and used only after
+/// predictions return.
+///
+/// # Errors
+///
+/// Returns an I/O diagnostic if the corpus directory cannot be enumerated.
+pub fn run_training_batch(
+    directory: &Path,
+    maximum_tasks: usize,
+    invention: InventionLimits,
+    execution: ExecLimits,
+) -> Result<ArcBatchReport, String> {
+    let mut paths = fs::read_dir(directory)
+        .map_err(|error| error.to_string())?
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.extension()
+                .is_some_and(|extension| extension == "json")
+        })
+        .collect::<Vec<_>>();
+    paths.sort();
+    paths.truncate(maximum_tasks);
+    let mut batch = ArcBatchReport {
+        adapter_semantics: ARC_ADAPTER_SEMANTICS_VERSION.to_owned(),
+        rkl_semantics: cairn_rkl::RKL_SEMANTICS_VERSION.to_owned(),
+        corpus: directory.display().to_string(),
+        maximum_tasks,
+        maximum_cost: invention.maximum_cost,
+        maximum_candidates: invention.maximum_candidates,
+        selected_tasks: paths.len(),
+        parsed_tasks: 0,
+        attempted_tasks: 0,
+        exact_tasks: 0,
+        incorrect_tasks: 0,
+        unsupported_tasks: 0,
+        no_theory_tasks: 0,
+        resource_limited_tasks: 0,
+        invalid_tasks: 0,
+        execution_failures: 0,
+        reports: Vec::with_capacity(paths.len()),
+    };
+    for path in paths {
+        let task_name = path
+            .file_stem()
+            .and_then(|name| name.to_str())
+            .unwrap_or("invalid-filename")
+            .to_owned();
+        let task = fs::read(&path)
+            .map_err(|_| ArcAdapterError::Json)
+            .and_then(|bytes| parse_task(&bytes));
+        let Ok(task) = task else {
+            record_report(
+                &mut batch,
+                ArcTaskReport {
+                    task: task_name,
+                    status: ArcTaskStatus::InvalidTask,
+                    evaluated_tests: 0,
+                    exact_tests: 0,
+                    training_cells: 0,
+                    learned_expression: None,
+                    diagnostic: Some("parse or input validation failed".to_owned()),
+                },
+            );
+            continue;
+        };
+        batch.parsed_tasks += 1;
+        let report = evaluate_task(task_name, task, invention, execution);
+        record_report(&mut batch, report);
+    }
+    Ok(batch)
+}
+
+fn evaluate_task(
+    task_name: String,
+    task: ArcTask,
+    invention: InventionLimits,
+    execution: ExecLimits,
+) -> ArcTaskReport {
+    let expected = task
+        .test
+        .iter()
+        .map(|case| case.output.clone())
+        .collect::<Vec<_>>();
+    let sealed = ArcTask {
+        train: task.train,
+        test: task
+            .test
+            .into_iter()
+            .map(|case| ArcTestCase {
+                input: case.input,
+                output: None,
+            })
+            .collect(),
+    };
+    match attempt_task(&sealed, invention, execution) {
+        Ok(attempt) => {
+            let evaluated = expected.iter().filter(|item| item.is_some()).count();
+            let exact = attempt
+                .predictions
+                .iter()
+                .zip(&expected)
+                .filter(|(prediction, expected)| expected.as_ref() == Some(*prediction))
+                .count();
+            ArcTaskReport {
+                task: task_name,
+                status: if evaluated > 0 && exact == evaluated {
+                    ArcTaskStatus::Exact
+                } else {
+                    ArcTaskStatus::Incorrect
+                },
+                evaluated_tests: evaluated,
+                exact_tests: exact,
+                training_cells: attempt.training_cells,
+                learned_expression: Some(attempt.learned_expression),
+                diagnostic: None,
+            }
+        }
+        Err(error) => {
+            let (status, diagnostic) = classify_error(&error);
+            ArcTaskReport {
+                task: task_name,
+                status,
+                evaluated_tests: 0,
+                exact_tests: 0,
+                training_cells: 0,
+                learned_expression: None,
+                diagnostic: Some(diagnostic),
+            }
+        }
+    }
+}
+
+fn record_report(batch: &mut ArcBatchReport, report: ArcTaskReport) {
+    match report.status {
+        ArcTaskStatus::Exact => {
+            batch.attempted_tasks += 1;
+            batch.exact_tasks += 1;
+        }
+        ArcTaskStatus::Incorrect => {
+            batch.attempted_tasks += 1;
+            batch.incorrect_tasks += 1;
+        }
+        ArcTaskStatus::UnsupportedShapeChange => batch.unsupported_tasks += 1,
+        ArcTaskStatus::NoTheoryWithinBounds => batch.no_theory_tasks += 1,
+        ArcTaskStatus::ResourceLimit => batch.resource_limited_tasks += 1,
+        ArcTaskStatus::InvalidTask => batch.invalid_tasks += 1,
+        ArcTaskStatus::ExecutionFailure => batch.execution_failures += 1,
+    }
+    batch.reports.push(report);
+}
+
+fn classify_error(error: &ArcAdapterError) -> (ArcTaskStatus, String) {
+    let status = match error {
+        ArcAdapterError::ShapeChangeUnsupported => ArcTaskStatus::UnsupportedShapeChange,
+        ArcAdapterError::Field(FieldError::Invention(
+            cairn_invent::InventionError::NoDefinition { .. },
+        )) => ArcTaskStatus::NoTheoryWithinBounds,
+        ArcAdapterError::Field(FieldError::Invention(
+            cairn_invent::InventionError::CandidateCapacity { .. },
+        )) => ArcTaskStatus::ResourceLimit,
+        ArcAdapterError::Json
+        | ArcAdapterError::EmptyTraining
+        | ArcAdapterError::EmptyTest
+        | ArcAdapterError::EmptyGrid
+        | ArcAdapterError::RaggedGrid
+        | ArcAdapterError::InvalidCategoricalValue(_) => ArcTaskStatus::InvalidTask,
+        ArcAdapterError::Field(_) => ArcTaskStatus::ExecutionFailure,
+    };
+    (status, format!("{error:?}"))
 }
 
 fn grid(rows: Vec<Vec<u8>>) -> Result<ArcGrid, ArcAdapterError> {

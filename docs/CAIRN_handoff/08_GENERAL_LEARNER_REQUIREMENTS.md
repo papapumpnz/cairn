@@ -182,7 +182,9 @@ previously documented bounded initial GLL-1 through GLL-4 results. In particular
 - the finite-field gate is one pointwise constructor family, not the multiple
   unrelated families required for final GLL-1;
 - cross-domain GLL-5 still lacks vector graphics through one orchestrator;
-- GLL-6 structure is enforced, but no official ARC corpus has been attempted;
+- GLL-6 structure is enforced. ARC-AGI-1 v1.0.2 training data is now pinned and
+  an initial frozen ten-task batch has been run; it yielded zero exact solves,
+  three explicit shape-change capability gaps, and seven search-cap results;
 - the verifier is synthesis-free but does not yet independently reimplement
   every critical rule/effect/renderer semantic required by WP06.
 

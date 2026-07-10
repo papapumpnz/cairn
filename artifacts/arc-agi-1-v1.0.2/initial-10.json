@@ -1,0 +1,110 @@
+{
+  "adapter_semantics": "1.0.0",
+  "rkl_semantics": "1.1.0",
+  "corpus": "datasets/arc-agi-1-v1.0.2/training",
+  "maximum_tasks": 10,
+  "maximum_cost": 9,
+  "maximum_candidates": 1000,
+  "selected_tasks": 10,
+  "parsed_tasks": 10,
+  "attempted_tasks": 0,
+  "exact_tasks": 0,
+  "incorrect_tasks": 0,
+  "unsupported_tasks": 3,
+  "no_theory_tasks": 0,
+  "resource_limited_tasks": 7,
+  "invalid_tasks": 0,
+  "execution_failures": 0,
+  "reports": [
+    {
+      "task": "007bbfb7",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "00d62c1b",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 1000 }))"
+    },
+    {
+      "task": "017c7c7b",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "025d127b",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 1000 }))"
+    },
+    {
+      "task": "045e512c",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 1000 }))"
+    },
+    {
+      "task": "0520fde7",
+      "status": "unsupported_shape_change",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "ShapeChangeUnsupported"
+    },
+    {
+      "task": "05269061",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 1000 }))"
+    },
+    {
+      "task": "05f2a901",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 1000 }))"
+    },
+    {
+      "task": "06df4c85",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 1000 }))"
+    },
+    {
+      "task": "08ed6ac7",
+      "status": "resource_limit",
+      "evaluated_tests": 0,
+      "exact_tests": 0,
+      "training_cells": 0,
+      "learned_expression": null,
+      "diagnostic": "Field(Invention(CandidateCapacity { maximum: 1000 }))"
+    }
+  ]
+}

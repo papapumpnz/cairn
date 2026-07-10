@@ -55,9 +55,11 @@ Implemented today:
 - a generic finite-field frontend whose initial gate invents a missing
   pointwise constructor and transfers it exactly to changed geometry, values,
   counts, and positions;
-- a quarantined `adapters/cairn-arc` JSON adapter and CLI. Its first adapter
-  fixture was solved by the generic constructor learner, but no official ARC
-  corpus has yet been evaluated and no ARC capability claim is made;
+- a quarantined `adapters/cairn-arc` JSON adapter, single-task CLI, and bounded
+  batch runner. The official ARC-AGI-1 v1.0.2 training corpus is provenance-
+  pinned under `datasets/`; its evaluation split is intentionally absent. The
+  first frozen official batch produced honest unsupported/resource-limit
+  results and no exact solves, so no ARC capability claim is made;
 - domain-neutral task-local definition invention from input/output
   demonstrations. The frozen initial GLL-1 suite autonomously synthesized five
   omitted executable concepts and replayed 5,835 varied predictions exactly,
@@ -90,7 +92,8 @@ This establishes bounded task-level symbolic learning, not general learning.
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and proof DAGs, richer ontology invention, one shared orchestrating runtime,
-vector-domain integration, official ARC evaluation, and knowledge learning
+vector-domain integration, ARC evaluation beyond the development training
+split, and knowledge learning
 remain targets. See the
 [GLL-1 evidence report](docs/experiments/GLL1_OMITTED_CONCEPT_INVENTION.md).
 The continual-learning result is documented in the
@@ -105,6 +108,8 @@ The failure, architecture correction, and five passing reruns are recorded in
 [FIVE_LATENT_EXPERIMENTS.md](docs/experiments/FIVE_LATENT_EXPERIMENTS.md).
 The new static-learning slice and its limitations are recorded in
 [INITIAL_STATIC_LEARNING_PIPELINE.md](docs/experiments/INITIAL_STATIC_LEARNING_PIPELINE.md).
+The first official-corpus run is documented in
+[ARC_AGI_1_INITIAL_OFFICIAL_RUN.md](docs/experiments/ARC_AGI_1_INITIAL_OFFICIAL_RUN.md).
 
 The normative target and claim boundary are in
 [`08_GENERAL_LEARNER_REQUIREMENTS.md`](docs/CAIRN_handoff/08_GENERAL_LEARNER_REQUIREMENTS.md).
@@ -117,6 +122,9 @@ cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 cargo test --locked --workspace --all-targets --all-features
 cargo test --locked --workspace --doc
 cargo run --locked -p cairn-check -- check .
+cargo run --locked -p cairn-arc --bin cairn-arc-batch -- \
+  datasets/arc-agi-1-v1.0.2/training 10 1000 \
+  artifacts/arc-agi-1-v1.0.2/initial-10.json
 bash scripts/validate_schemas.sh
 bash scripts/wp00_acceptance.sh artifacts/wp00-acceptance
 bash scripts/wp03_acceptance.sh artifacts/wp03-acceptance
