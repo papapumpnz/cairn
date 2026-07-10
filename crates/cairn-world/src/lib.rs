@@ -1,5 +1,9 @@
 //! Bounded, modality-neutral action-conditioned world learning.
 
+mod latent;
+
+pub use latent::*;
+
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt;
 
