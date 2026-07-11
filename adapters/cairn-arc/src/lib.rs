@@ -253,6 +253,28 @@ pub fn lower_learning_problem(
     })
 }
 
+/// Lower the training demonstrations into the same generic scalar invention
+/// problem used by the local causal frontend. This diagnostic boundary exposes
+/// no expected test output and is shared with redacted curriculum analysis.
+///
+/// # Errors
+///
+/// Rejects invalid finite fields, shape changes, or demonstrations outside the
+/// local observation basis.
+pub fn lower_local_invention_problem(
+    task: &ArcTask,
+    limits: InventionLimits,
+) -> Result<cairn_invent::InventionProblem, ArcAdapterError> {
+    let training = task
+        .train
+        .iter()
+        .map(|pair| Ok((lower(&pair.input)?, lower(&pair.output)?)))
+        .collect::<Result<Vec<_>, ArcAdapterError>>()?;
+    LocalFieldLearner
+        .learning_problem(&training, limits)
+        .map_err(ArcAdapterError::Field)
+}
+
 /// Lower and independently decode every carried observation into relational
 /// evidence. Adapter records remain outside the returned graph semantics.
 ///

@@ -9,6 +9,7 @@ repository.workspace = true
 
 [dependencies]
 cairn-core = { path = "../cairn-core" }
+cairn-curriculum = { path = "../cairn-curriculum" }
 cairn-distill = { path = "../cairn-distill" }
 serde_json = { version = "=1.0.133", default-features = false, features = ["std"] }
 

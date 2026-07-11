@@ -387,11 +387,15 @@ impl LocalFieldLearner {
         if !changed {
             return Err(FieldError::NoCorrespondence);
         }
-        let (demonstrations, parameters) = if basic_supported {
+        let basic_deterministic =
+            demonstrations_are_deterministic(&basic_demonstrations, &basic_local_parameters());
+        let (demonstrations, parameters) = if basic_supported && basic_deterministic {
             (basic_demonstrations, basic_local_parameters())
         } else {
             let (relational, _, relational_supported) = collect_local_demonstrations(pairs, true)?;
-            if !relational_supported {
+            if !relational_supported
+                || !demonstrations_are_deterministic(&relational, &local_parameters())
+            {
                 return Err(FieldError::NoCorrespondence);
             }
             (relational, local_parameters())
@@ -478,6 +482,28 @@ impl LocalFieldLearner {
             values,
         })
     }
+}
+
+fn demonstrations_are_deterministic(
+    demonstrations: &[BindingExample],
+    parameters: &[Binder],
+) -> bool {
+    let mut outcomes = BTreeMap::<Vec<Value>, Value>::new();
+    demonstrations.iter().all(|example| {
+        let Some(inputs) = parameters
+            .iter()
+            .map(|parameter| example.inputs.get(&parameter.name).cloned())
+            .collect::<Option<Vec<_>>>()
+        else {
+            return false;
+        };
+        if let Some(known) = outcomes.get(&inputs) {
+            known == &example.output
+        } else {
+            outcomes.insert(inputs, example.output.clone());
+            true
+        }
+    })
 }
 
 fn local_parameters() -> Vec<Binder> {

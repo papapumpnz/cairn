@@ -65,6 +65,8 @@ counterexamples for missing representational structures, then require actual
 proof-trace use and a memory-off ablation before promotion is credited. Adding
 more guessed geometric laws is rejected as the next strategy.
 
+This next step is implemented in `GAP_DRIVEN_FAILURE_CURRICULUM.md`.
+
 ## Reproduction
 
 ```text

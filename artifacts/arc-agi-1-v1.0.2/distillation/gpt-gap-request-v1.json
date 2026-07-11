@@ -1,0 +1,390 @@
+{
+  "input": [
+    {
+      "content": "Return one schema-valid, untrusted teaching packet. Generate non-benchmark synthetic lesson families, counterexamples, variation axes, and candidate mechanisms addressing the redacted structural failure cores. Do not provide benchmark tasks, identifiers, grids, answers, hidden reasoning, or memorized solutions.",
+      "role": "system"
+    },
+    {
+      "content": "Construct a general cross-domain curriculum for these redacted failure cores. Require at least two independent families per proposed mechanism and include hard negative cases. Simple one-, two-, and tested three-role scalar explanations are absent. Prioritize hierarchical entity relations, variable-arity constructors, bounded recursion, and conditional role composition across unrelated domains.\n[\n  {\n    \"semantics_version\": \"1.0.0\",\n    \"failure\": {\n      \"candidate_capacity\": {\n        \"maximum\": 1000\n      }\n    },\n    \"parameter_types\": [\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\"\n    ],\n    \"return_type\": \"integer\",\n    \"demonstrations\": 198,\n    \"varying_parameters\": 12,\n    \"distinct_output_classes\": 4,\n    \"constant_explanation_possible\": false,\n    \"direct_projection_candidates\": 0,\n    \"single_parameter_explanations\": 0,\n    \"exact_two_parameter_families\": [],\n    \"exact_three_parameter_families\": [],\n    \"determinism\": \"deterministic\",\n    \"minimum_dependency_arity_lower_bound\": 2,\n    \"redaction\": \"content_free\"\n  },\n  {\n    \"semantics_version\": \"1.0.0\",\n    \"failure\": {\n      \"candidate_capacity\": {\n        \"maximum\": 1000\n      }\n    },\n    \"parameter_types\": [\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\"\n    ],\n    \"return_type\": \"integer\",\n    \"demonstrations\": 326,\n    \"varying_parameters\": 13,\n    \"distinct_output_classes\": 3,\n    \"constant_explanation_possible\": false,\n    \"direct_projection_candidates\": 0,\n    \"single_parameter_explanations\": 0,\n    \"exact_two_parameter_families\": [],\n    \"exact_three_parameter_families\": [],\n    \"determinism\": \"deterministic\",\n    \"minimum_dependency_arity_lower_bound\": 2,\n    \"redaction\": \"content_free\"\n  },\n  {\n    \"semantics_version\": \"1.0.0\",\n    \"failure\": {\n      \"candidate_capacity\": {\n        \"maximum\": 1000\n      }\n    },\n    \"parameter_types\": [\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\"\n    ],\n    \"return_type\": \"integer\",\n    \"demonstrations\": 792,\n    \"varying_parameters\": 13,\n    \"distinct_output_classes\": 6,\n    \"constant_explanation_possible\": false,\n    \"direct_projection_candidates\": 0,\n    \"single_parameter_explanations\": 0,\n    \"exact_two_parameter_families\": [],\n    \"exact_three_parameter_families\": [],\n    \"determinism\": \"deterministic\",\n    \"minimum_dependency_arity_lower_bound\": 2,\n    \"redaction\": \"content_free\"\n  },\n  {\n    \"semantics_version\": \"1.0.0\",\n    \"failure\": {\n      \"candidate_capacity\": {\n        \"maximum\": 1000\n      }\n    },\n    \"parameter_types\": [\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\"\n    ],\n    \"return_type\": \"integer\",\n    \"demonstrations\": 77,\n    \"varying_parameters\": 19,\n    \"distinct_output_classes\": 9,\n    \"constant_explanation_possible\": false,\n    \"direct_projection_candidates\": 0,\n    \"single_parameter_explanations\": 0,\n    \"exact_two_parameter_families\": [],\n    \"exact_three_parameter_families\": [],\n    \"determinism\": \"deterministic\",\n    \"minimum_dependency_arity_lower_bound\": 2,\n    \"redaction\": \"content_free\"\n  },\n  {\n    \"semantics_version\": \"1.0.0\",\n    \"failure\": {\n      \"candidate_capacity\": {\n        \"maximum\": 1000\n      }\n    },\n    \"parameter_types\": [\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\"\n    ],\n    \"return_type\": \"integer\",\n    \"demonstrations\": 200,\n    \"varying_parameters\": 18,\n    \"distinct_output_classes\": 4,\n    \"constant_explanation_possible\": false,\n    \"direct_projection_candidates\": 0,\n    \"single_parameter_explanations\": 0,\n    \"exact_two_parameter_families\": [],\n    \"exact_three_parameter_families\": [],\n    \"determinism\": \"deterministic\",\n    \"minimum_dependency_arity_lower_bound\": 2,\n    \"redaction\": \"content_free\"\n  },\n  {\n    \"semantics_version\": \"1.0.0\",\n    \"failure\": {\n      \"candidate_capacity\": {\n        \"maximum\": 1000\n      }\n    },\n    \"parameter_types\": [\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\"\n    ],\n    \"return_type\": \"integer\",\n    \"demonstrations\": 271,\n    \"varying_parameters\": 19,\n    \"distinct_output_classes\": 4,\n    \"constant_explanation_possible\": false,\n    \"direct_projection_candidates\": 0,\n    \"single_parameter_explanations\": 0,\n    \"exact_two_parameter_families\": [],\n    \"exact_three_parameter_families\": [],\n    \"determinism\": \"deterministic\",\n    \"minimum_dependency_arity_lower_bound\": 2,\n    \"redaction\": \"content_free\"\n  },\n  {\n    \"semantics_version\": \"1.0.0\",\n    \"failure\": {\n      \"candidate_capacity\": {\n        \"maximum\": 1000\n      }\n    },\n    \"parameter_types\": [\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\"\n    ],\n    \"return_type\": \"integer\",\n    \"demonstrations\": 300,\n    \"varying_parameters\": 17,\n    \"distinct_output_classes\": 7,\n    \"constant_explanation_possible\": false,\n    \"direct_projection_candidates\": 0,\n    \"single_parameter_explanations\": 0,\n    \"exact_two_parameter_families\": [],\n    \"exact_three_parameter_families\": [],\n    \"determinism\": \"deterministic\",\n    \"minimum_dependency_arity_lower_bound\": 2,\n    \"redaction\": \"content_free\"\n  },\n  {\n    \"semantics_version\": \"1.0.0\",\n    \"failure\": {\n      \"candidate_capacity\": {\n        \"maximum\": 1000\n      }\n    },\n    \"parameter_types\": [\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\",\n      \"integer\"\n    ],\n    \"return_type\": \"integer\",\n    \"demonstrations\": 300,\n    \"varying_parameters\": 17,\n    \"distinct_output_classes\": 9,\n    \"constant_explanation_possible\": false,\n    \"direct_projection_candidates\": 0,\n    \"single_parameter_explanations\": 0,\n    \"exact_two_parameter_families\": [],\n    \"exact_three_parameter_families\": [],\n    \"determinism\": \"deterministic\",\n    \"minimum_dependency_arity_lower_bound\": 2,\n    \"redaction\": \"content_free\"\n  }\n]",
+      "role": "user"
+    }
+  ],
+  "max_output_tokens": 16000,
+  "model": "offline-teacher",
+  "store": false,
+  "text": {
+    "format": {
+      "name": "cairn_teacher_packet",
+      "schema": {
+        "$defs": {
+          "counterexample": {
+            "additionalProperties": false,
+            "properties": {
+              "forbidden_output": {
+                "maximum": 1000000,
+                "minimum": -1000000,
+                "type": "integer"
+              },
+              "inputs": {
+                "additionalProperties": {
+                  "maximum": 1000000,
+                  "minimum": -1000000,
+                  "type": "integer"
+                },
+                "maxProperties": 256,
+                "minProperties": 1,
+                "type": "object"
+              },
+              "mechanism_name": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "reason": {
+                "maxLength": 4096,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "mechanism_name",
+              "inputs",
+              "forbidden_output",
+              "reason"
+            ],
+            "type": "object"
+          },
+          "intent": {
+            "additionalProperties": false,
+            "properties": {
+              "held_out_utterances": {
+                "items": {
+                  "maxLength": 4096,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 10000,
+                "type": "array"
+              },
+              "intent": {
+                "enum": [
+                  "GenerateProgram"
+                ]
+              },
+              "language": {
+                "enum": [
+                  "Python"
+                ]
+              },
+              "operation": {
+                "enum": [
+                  "AddNumbers",
+                  "IllustrativeFunction"
+                ]
+              },
+              "utterance": {
+                "maxLength": 4096,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "utterance",
+              "intent",
+              "language",
+              "operation",
+              "held_out_utterances"
+            ],
+            "type": "object"
+          },
+          "knowledge_claim": {
+            "additionalProperties": false,
+            "properties": {
+              "evidence": {
+                "items": {
+                  "maxLength": 4096,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 10000,
+                "minItems": 1,
+                "type": "array"
+              },
+              "object": {
+                "maxLength": 4096,
+                "minLength": 1,
+                "type": "string"
+              },
+              "predicate": {
+                "maxLength": 1024,
+                "minLength": 1,
+                "type": "string"
+              },
+              "subject": {
+                "maxLength": 1024,
+                "minLength": 1,
+                "type": "string"
+              },
+              "verification_method": {
+                "maxLength": 1024,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "subject",
+              "predicate",
+              "object",
+              "verification_method",
+              "evidence"
+            ],
+            "type": "object"
+          },
+          "mechanism": {
+            "additionalProperties": false,
+            "properties": {
+              "examples": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "inputs": {
+                      "additionalProperties": {
+                        "maximum": 1000000,
+                        "minimum": -1000000,
+                        "type": "integer"
+                      },
+                      "maxProperties": 256,
+                      "minProperties": 1,
+                      "type": "object"
+                    },
+                    "output": {
+                      "maximum": 1000000,
+                      "minimum": -1000000,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "inputs",
+                    "output"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 100000,
+                "minItems": 1,
+                "type": "array"
+              },
+              "literals": {
+                "items": {
+                  "maximum": 1000000,
+                  "minimum": -1000000,
+                  "type": "integer"
+                },
+                "maxItems": 256,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "name": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "parameters": {
+                "items": {
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 256,
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "name",
+              "parameters",
+              "examples",
+              "literals"
+            ],
+            "type": "object"
+          },
+          "procedure": {
+            "additionalProperties": false,
+            "properties": {
+              "goal": {
+                "maxLength": 4096,
+                "minLength": 1,
+                "type": "string"
+              },
+              "name": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "parameters": {
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 256,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "postconditions": {
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 10000,
+                "type": "array"
+              },
+              "preconditions": {
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 10000,
+                "type": "array"
+              },
+              "steps": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "depends_on": {
+                      "items": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "maxItems": 10000,
+                      "type": "array",
+                      "uniqueItems": true
+                    },
+                    "id": {
+                      "maxLength": 256,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "operation": {
+                      "maxLength": 4096,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "operation",
+                    "depends_on"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 10000,
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "required": [
+              "name",
+              "goal",
+              "parameters",
+              "steps",
+              "preconditions",
+              "postconditions"
+            ],
+            "type": "object"
+          }
+        },
+        "$id": "https://cairn.local/schemas/teacher-packet.schema.json",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "counterexamples": {
+            "items": {
+              "$ref": "#/$defs/counterexample"
+            },
+            "maxItems": 100000,
+            "type": "array"
+          },
+          "domain": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "knowledge_claims": {
+            "items": {
+              "$ref": "#/$defs/knowledge_claim"
+            },
+            "maxItems": 10000,
+            "type": "array"
+          },
+          "mechanism_lessons": {
+            "items": {
+              "$ref": "#/$defs/mechanism"
+            },
+            "maxItems": 10000,
+            "type": "array"
+          },
+          "origin": {
+            "additionalProperties": false,
+            "properties": {
+              "identifier": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "identifier"
+            ],
+            "type": "object"
+          },
+          "packet_version": {
+            "const": "1.0"
+          },
+          "procedures": {
+            "items": {
+              "$ref": "#/$defs/procedure"
+            },
+            "maxItems": 10000,
+            "type": "array"
+          },
+          "semantic_intents": {
+            "items": {
+              "$ref": "#/$defs/intent"
+            },
+            "maxItems": 10000,
+            "type": "array"
+          },
+          "uncertainties": {
+            "items": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "maxItems": 10000,
+            "type": "array"
+          }
+        },
+        "required": [
+          "packet_version",
+          "domain",
+          "origin",
+          "semantic_intents",
+          "mechanism_lessons",
+          "knowledge_claims",
+          "procedures",
+          "counterexamples",
+          "uncertainties"
+        ],
+        "title": "CAIRN untrusted structured teacher packet",
+        "type": "object"
+      },
+      "strict": true,
+      "type": "json_schema"
+    }
+  }
+}

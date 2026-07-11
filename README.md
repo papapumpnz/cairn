@@ -277,6 +277,14 @@ seconds. This is a successful distillation/admission test but a failed ARC
 improvement experiment. It rules out broad guessed spatial priors as the next
 route and motivates failure-core-driven curricula and stricter retrieval. See
 [OFFLINE_DUAL_TEACHER_ARC_TRANSFER.md](docs/experiments/OFFLINE_DUAL_TEACHER_ARC_TRANSFER.md).
+The next gap-driven slice now emits content-free learning failure cores and
+offline request spools for both teacher formats. A first-40 analysis found one
+causally insufficient local observation core; the generic field frontend now
+detects such collisions and escalates to richer relational evidence before
+search. That core disappears after the change, while ARC remains 17/40 under
+the same 1,000-candidate budget. The remaining eight cores reject direct and
+the tested two-/three-role scalar families, focusing the next curriculum on
+hierarchical relations and composition rather than more guessed local laws.
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and durable proof-DAG artifact storage, arbitrary internal-subgraph compilation,

@@ -632,3 +632,21 @@ admission but fails D2 transfer and compute improvement. The mechanisms do not
 count as useful learned persistent knowledge under G1 until actual reuse is
 shown. No Anthropic knowledge was ingested; only its offline spool contract is
 implemented and tested.
+
+Gap-driven distillation now requires a content-free `LearningFailureCore`.
+Permitted fields describe only type classes, counts, determinism, anonymous
+mechanism-family matches, and exhausted resource bounds. Names, raw values,
+observations, task identifiers, and answers are prohibited. A causally
+insufficient core must trigger representation or latent-context curriculum work
+before wider search.
+
+On the first 40 frozen training tasks, nine distinct cores were extracted. One
+showed different outcomes under identical 13-feature observations. Adding a
+generic determinism gate caused the field frontend to escalate to existing
+relational evidence, and that impossible core disappeared. A synthetic
+non-benchmark row-occupancy family verifies changed-geometry transfer. The ARC
+result remains 17/40 exact, 23 resource-limited, and zero incorrect at the same
+1,000-candidate budget. The remaining eight cores match no tested simple
+one-/two-/three-role family, so the next offline curriculum is explicitly
+focused on hierarchical relations, variable arity, recursion, and role
+composition.

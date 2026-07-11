@@ -7,5 +7,10 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[dependencies]
+cairn-invent = { path = "../cairn-invent" }
+cairn-rkl = { path = "../cairn-rkl" }
+serde = { version = "=1.0.217", default-features = false, features = ["derive", "std"] }
+
 [lints]
 workspace = true

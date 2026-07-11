@@ -46,6 +46,14 @@ Provider-shaped wire formats share one `TeacherPacket` compiler and trust
 lifecycle. Provider identity changes provenance only; it never changes
 verification strength or promotion policy.
 
+Gap-driven jobs may contain only redacted `LearningFailureCore` summaries:
+type classes, demonstration and variation counts, deterministic-collision
+status, exact anonymous mechanism-family matches, and exhausted bounds. Task
+identifiers, variable names, observation payloads, literal values, expected
+answers, and complete examples are forbidden. If identical available evidence
+has conflicting outcomes, curriculum generation must target missing causal
+context before proposing more formula search.
+
 ## Consequences
 
 The system can provide a normal chat surface before open-domain language is

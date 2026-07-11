@@ -48,6 +48,25 @@ fn visible_west(input: &FiniteField) -> FiniteField {
     }
 }
 
+fn row_occupancy(input: &FiniteField) -> FiniteField {
+    let rows = usize::try_from(input.shape[0]).expect("small");
+    let columns = usize::try_from(input.shape[1]).expect("small");
+    let mut values = vec![0; input.values.len()];
+    for row in 0..rows {
+        let occupied = input.values[row * columns..(row + 1) * columns]
+            .iter()
+            .filter(|value| **value != 0)
+            .count();
+        for column in 0..columns {
+            values[row * columns + column] = i64::try_from(occupied).expect("small");
+        }
+    }
+    FiniteField {
+        shape: input.shape.clone(),
+        values,
+    }
+}
+
 #[test]
 fn invents_local_law_and_transfers_geometry_values_and_positions() {
     let first = field(3, 5, &[(6, 2), (8, 4)]);
@@ -108,5 +127,43 @@ fn invents_long_range_relational_propagation() {
     assert_eq!(
         format!("{:?}", theory.proposal.definition.body),
         "Var(VarName(\"visible_west\"))"
+    );
+}
+
+#[test]
+fn escalates_when_basic_observations_are_not_causally_sufficient() {
+    let first = field(5, 10, &[(0, 7), (20, 4), (29, 5)]);
+    let second = field(5, 10, &[(0, 3), (9, 8), (20, 6)]);
+    let pairs = [
+        (first.clone(), row_occupancy(&first)),
+        (second.clone(), row_occupancy(&second)),
+    ];
+    let limits = InventionLimits {
+        maximum_cost: 3,
+        maximum_candidates: 10_000,
+        maximum_expression_nodes: 1_000,
+        execution: ExecLimits::default(),
+    };
+    let problem = LocalFieldLearner
+        .learning_problem(&pairs, limits)
+        .expect("relational problem");
+    let row_count = cairn_rkl::VarName("row_occupied_count".to_owned());
+    assert!(problem
+        .demonstrations
+        .iter()
+        .all(|example| example.inputs.get(&row_count) == Some(&example.output)));
+    let theory = LocalFieldLearner
+        .learn(&pairs, limits)
+        .expect("relational evidence resolves basic observation collision");
+    let held_out = field(6, 10, &[(2, 9), (31, 2), (35, 4), (57, 7)]);
+    assert_eq!(
+        LocalFieldLearner
+            .predict(&theory, &held_out, ExecLimits::default())
+            .expect("held-out relational prediction"),
+        row_occupancy(&held_out)
+    );
+    assert_eq!(
+        format!("{:?}", theory.proposal.definition.body),
+        "Var(VarName(\"row_occupied_count\"))"
     );
 }

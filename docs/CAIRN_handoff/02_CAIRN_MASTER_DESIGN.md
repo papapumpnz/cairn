@@ -190,6 +190,22 @@ trust boundary passed, but the transfer hypothesis failed. Future curricula
 must target generic unresolved failure cores and demonstrate proof-trace use,
 not merely add plausible spatial formulas.
 
+Failure-core semantics 1.0.0 now provides that feedback loop. It reduces any
+failed `InventionProblem` to content-free type/arity, variation, output-class,
+determinism, anonymous mechanism-family, and resource-bound evidence. It cannot
+retain task IDs, variable names, observations, literals, grids, or answers. The
+same core feeds both offline teacher envelopes.
+
+The first frozen sample produced nine distinct cores. One contained conflicting
+outputs for identical 13-feature observations, proving that search could not
+solve it. The generic field frontend now checks observational determinism and
+escalates from basic to long-range relational evidence before synthesis. The
+conflicting core disappears, and a non-ARC row-occupancy family transfers over
+changed geometry and values. The remaining eight cores are deterministic but
+match none of the tested one-, two-, or three-role scalar families. ARC remains
+17/40 at 1,000 candidates, so this is a successful self-diagnosis and
+representation correction, not a benchmark-score gain.
+
 ## 1. Requirements
 
 ### 1.1 Hard constraints

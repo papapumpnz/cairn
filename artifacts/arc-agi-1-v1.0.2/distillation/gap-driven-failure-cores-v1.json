@@ -1,0 +1,312 @@
+[
+  {
+    "semantics_version": "1.0.0",
+    "failure": {
+      "candidate_capacity": {
+        "maximum": 1000
+      }
+    },
+    "parameter_types": [
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer"
+    ],
+    "return_type": "integer",
+    "demonstrations": 198,
+    "varying_parameters": 12,
+    "distinct_output_classes": 4,
+    "constant_explanation_possible": false,
+    "direct_projection_candidates": 0,
+    "single_parameter_explanations": 0,
+    "exact_two_parameter_families": [],
+    "exact_three_parameter_families": [],
+    "determinism": "deterministic",
+    "minimum_dependency_arity_lower_bound": 2,
+    "redaction": "content_free"
+  },
+  {
+    "semantics_version": "1.0.0",
+    "failure": {
+      "candidate_capacity": {
+        "maximum": 1000
+      }
+    },
+    "parameter_types": [
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer"
+    ],
+    "return_type": "integer",
+    "demonstrations": 326,
+    "varying_parameters": 13,
+    "distinct_output_classes": 3,
+    "constant_explanation_possible": false,
+    "direct_projection_candidates": 0,
+    "single_parameter_explanations": 0,
+    "exact_two_parameter_families": [],
+    "exact_three_parameter_families": [],
+    "determinism": "deterministic",
+    "minimum_dependency_arity_lower_bound": 2,
+    "redaction": "content_free"
+  },
+  {
+    "semantics_version": "1.0.0",
+    "failure": {
+      "candidate_capacity": {
+        "maximum": 1000
+      }
+    },
+    "parameter_types": [
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer"
+    ],
+    "return_type": "integer",
+    "demonstrations": 792,
+    "varying_parameters": 13,
+    "distinct_output_classes": 6,
+    "constant_explanation_possible": false,
+    "direct_projection_candidates": 0,
+    "single_parameter_explanations": 0,
+    "exact_two_parameter_families": [],
+    "exact_three_parameter_families": [],
+    "determinism": "deterministic",
+    "minimum_dependency_arity_lower_bound": 2,
+    "redaction": "content_free"
+  },
+  {
+    "semantics_version": "1.0.0",
+    "failure": {
+      "candidate_capacity": {
+        "maximum": 1000
+      }
+    },
+    "parameter_types": [
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer"
+    ],
+    "return_type": "integer",
+    "demonstrations": 77,
+    "varying_parameters": 19,
+    "distinct_output_classes": 9,
+    "constant_explanation_possible": false,
+    "direct_projection_candidates": 0,
+    "single_parameter_explanations": 0,
+    "exact_two_parameter_families": [],
+    "exact_three_parameter_families": [],
+    "determinism": "deterministic",
+    "minimum_dependency_arity_lower_bound": 2,
+    "redaction": "content_free"
+  },
+  {
+    "semantics_version": "1.0.0",
+    "failure": {
+      "candidate_capacity": {
+        "maximum": 1000
+      }
+    },
+    "parameter_types": [
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer"
+    ],
+    "return_type": "integer",
+    "demonstrations": 200,
+    "varying_parameters": 18,
+    "distinct_output_classes": 4,
+    "constant_explanation_possible": false,
+    "direct_projection_candidates": 0,
+    "single_parameter_explanations": 0,
+    "exact_two_parameter_families": [],
+    "exact_three_parameter_families": [],
+    "determinism": "deterministic",
+    "minimum_dependency_arity_lower_bound": 2,
+    "redaction": "content_free"
+  },
+  {
+    "semantics_version": "1.0.0",
+    "failure": {
+      "candidate_capacity": {
+        "maximum": 1000
+      }
+    },
+    "parameter_types": [
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer"
+    ],
+    "return_type": "integer",
+    "demonstrations": 271,
+    "varying_parameters": 19,
+    "distinct_output_classes": 4,
+    "constant_explanation_possible": false,
+    "direct_projection_candidates": 0,
+    "single_parameter_explanations": 0,
+    "exact_two_parameter_families": [],
+    "exact_three_parameter_families": [],
+    "determinism": "deterministic",
+    "minimum_dependency_arity_lower_bound": 2,
+    "redaction": "content_free"
+  },
+  {
+    "semantics_version": "1.0.0",
+    "failure": {
+      "candidate_capacity": {
+        "maximum": 1000
+      }
+    },
+    "parameter_types": [
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer"
+    ],
+    "return_type": "integer",
+    "demonstrations": 300,
+    "varying_parameters": 17,
+    "distinct_output_classes": 7,
+    "constant_explanation_possible": false,
+    "direct_projection_candidates": 0,
+    "single_parameter_explanations": 0,
+    "exact_two_parameter_families": [],
+    "exact_three_parameter_families": [],
+    "determinism": "deterministic",
+    "minimum_dependency_arity_lower_bound": 2,
+    "redaction": "content_free"
+  },
+  {
+    "semantics_version": "1.0.0",
+    "failure": {
+      "candidate_capacity": {
+        "maximum": 1000
+      }
+    },
+    "parameter_types": [
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer",
+      "integer"
+    ],
+    "return_type": "integer",
+    "demonstrations": 300,
+    "varying_parameters": 17,
+    "distinct_output_classes": 9,
+    "constant_explanation_possible": false,
+    "direct_projection_candidates": 0,
+    "single_parameter_explanations": 0,
+    "exact_two_parameter_families": [],
+    "exact_three_parameter_families": [],
+    "determinism": "deterministic",
+    "minimum_dependency_arity_lower_bound": 2,
+    "redaction": "content_free"
+  }
+]
