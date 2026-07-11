@@ -175,3 +175,22 @@ WP25, WP34
 ## Handoff rule
 
 A downstream agent starts only from a tagged interface milestone, not from an uncommitted branch. Temporary mock implementations are permitted behind traits, but acceptance tests must run against the real dependency before the package is declared complete.
+
+## New capability lane: technical chat and verified distillation
+
+The implementation dependency order is:
+
+```text
+controlled intent/dialogue/code AST/realizer
+-> structured teacher-packet compiler
+-> independent local validators
+-> peer/transfer-gated shared registry
+-> consolidation and teacher-independence curriculum
+-> non-ARC-to-ARC memory ablation
+```
+
+Logical package targets are `cairn-language`, `cairn-dialogue`,
+`cairn-cognition`, `cairn-knowledge`, `cairn-tools`, `cairn-realiser`, and
+`cairn-distill`. The initial bounded implementation co-locates intent, dialogue,
+typed Python AST, and realization in `cairn-language`; split them only at stable
+public contracts. No package in this lane may depend on an ARC adapter.

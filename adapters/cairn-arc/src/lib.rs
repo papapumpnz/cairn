@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.14.0";
+pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.15.0";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ArcGrid {
@@ -296,9 +296,26 @@ pub fn attempt_task(
     invention: InventionLimits,
     execution: ExecLimits,
 ) -> Result<ArcAttempt, ArcAdapterError> {
+    attempt_task_with_runtime(task, invention, execution, &CognitionRuntime::new())
+}
+
+/// Attempt through a caller-supplied cognition runtime whose verified memory
+/// may propose general mechanisms. Memory cannot observe expected test outputs
+/// and every proposal is replayed on all current demonstrations.
+///
+/// # Errors
+///
+/// Returns malformed adapter evidence, unsupported geometry, bounded learning,
+/// or execution failures.
+pub fn attempt_task_with_runtime(
+    task: &ArcTask,
+    invention: InventionLimits,
+    execution: ExecLimits,
+    runtime: &CognitionRuntime,
+) -> Result<ArcAttempt, ArcAdapterError> {
     let experience =
         lower_relational_experience(task, "urn:cairn:adapter-task:sealed", RegLimits::default())?;
-    let admitted = CognitionRuntime::new()
+    let admitted = runtime
         .admit_experience(&experience.problem)
         .map_err(ArcAdapterError::Runtime)?;
     let relational_nodes = experience
@@ -376,7 +393,8 @@ pub fn attempt_task(
     if let Some(attempt) = attempt_residual(task, &training, invention, execution, evidence)? {
         return Ok(attempt);
     }
-    if let Some(attempt) = attempt_local(task, &training, invention, execution, evidence)? {
+    if let Some(attempt) = attempt_local(task, &training, invention, execution, evidence, runtime)?
+    {
         return Ok(attempt);
     }
     attempt_pointwise(task, &training, invention, execution, evidence)
@@ -431,10 +449,17 @@ fn attempt_local(
     invention: InventionLimits,
     execution: ExecLimits,
     evidence: AttemptEvidence,
+    runtime: &CognitionRuntime,
 ) -> Result<Option<ArcAttempt>, ArcAdapterError> {
-    let Ok(learned) = LocalFieldLearner.learn(training, invention) else {
+    let Ok(problem) = LocalFieldLearner.learning_problem(training, invention) else {
         return Ok(None);
     };
+    let Ok(outcome) = runtime.learn(&problem) else {
+        return Ok(None);
+    };
+    let origin = outcome.origin;
+    let search_work = outcome.metrics.total_search_work;
+    let learned = LocalFieldLearner.from_invention(outcome.invention);
     let predictions = task
         .test
         .iter()
@@ -464,7 +489,10 @@ fn attempt_local(
         generic_observations: evidence.observations,
         relational_nodes: evidence.relational_nodes,
         relational_facts: evidence.relational_facts,
-        learned_expression: format!("local_transition={:?}", learned.proposal.definition.body),
+        learned_expression: format!(
+            "local_transition={:?}; origin={origin:?}; search_work={search_work}",
+            learned.proposal.definition.body
+        ),
     }))
 }
 

@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cairn.local/schemas/teacher-packet.schema.json",
+  "title": "CAIRN untrusted structured teacher packet",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["packet_version", "domain", "origin", "semantic_intents", "mechanism_lessons", "uncertainties"],
+  "properties": {
+    "packet_version": {"const": "1.0"},
+    "domain": {"type": "string", "minLength": 1, "maxLength": 128},
+    "origin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "identifier"],
+      "properties": {
+        "kind": {"type": "string", "minLength": 1, "maxLength": 64},
+        "identifier": {"type": "string", "minLength": 1, "maxLength": 256}
+      }
+    },
+    "semantic_intents": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/intent"},
+      "maxItems": 10000
+    },
+    "mechanism_lessons": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/mechanism"},
+      "maxItems": 10000
+    },
+    "uncertainties": {
+      "type": "array",
+      "items": {"type": "string", "maxLength": 4096},
+      "maxItems": 10000
+    }
+  },
+  "$defs": {
+    "intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["utterance", "intent", "language", "operation", "held_out_utterances"],
+      "properties": {
+        "utterance": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "intent": {"enum": ["GenerateProgram"]},
+        "language": {"enum": ["Python"]},
+        "operation": {"enum": ["AddNumbers", "IllustrativeFunction"]},
+        "held_out_utterances": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1, "maxLength": 4096},
+          "maxItems": 10000
+        }
+      }
+    },
+    "mechanism": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "parameters", "examples", "literals"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1, "maxLength": 256},
+        "parameters": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1, "maxLength": 256},
+          "minItems": 1,
+          "maxItems": 256,
+          "uniqueItems": true
+        },
+        "examples": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["inputs", "output"],
+            "properties": {
+              "inputs": {
+                "type": "object",
+                "additionalProperties": {"type": "integer", "minimum": -1000000, "maximum": 1000000},
+                "minProperties": 1,
+                "maxProperties": 256
+              },
+              "output": {"type": "integer", "minimum": -1000000, "maximum": 1000000}
+            }
+          },
+          "minItems": 1,
+          "maxItems": 100000
+        },
+        "literals": {
+          "type": "array",
+          "items": {"type": "integer", "minimum": -1000000, "maximum": 1000000},
+          "maxItems": 256,
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

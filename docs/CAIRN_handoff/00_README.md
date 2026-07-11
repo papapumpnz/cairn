@@ -40,6 +40,21 @@ claimed result. It cannot substitute for the general-learning gates.
 Interactive learning, continual memory, and non-ARC vector-graphics integration
 are developed alongside static induction rather than after it.
 
+A normal chatbot interface is now an explicit product and research target. The
+first target is a CPU-only, continually learning, proof-carrying software
+engineering chatbot: controlled language compilation, dialogue state, typed
+code synthesis, local execution, knowledge provenance, tools, and response
+realization surround the same cognition runtime. Broad open-domain conversation
+remains a later research target and is not implied by the initial interface.
+
+Bootstrap knowledge may originate from a stronger external teacher only as
+offline structured teaching packets. CAIRN compiles these to its own typed
+claims, procedures, language mappings, mechanisms, skills, tests, and
+counterexamples; independent validators and swarm peers determine acceptance.
+The deployed answer path remains transformer-free and CPU-only. Verified
+non-ARC knowledge may be retrieved during ARC evaluation, but must be rebound
+and replayed on current demonstrations and may never encode benchmark answers.
+
 ## Ground-up distinction
 
 SCEM persisted surface programs and labels. MOSAIC enumerated a fixed compositional language. CAIRN does neither.

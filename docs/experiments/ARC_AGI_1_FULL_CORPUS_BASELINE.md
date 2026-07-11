@@ -133,3 +133,18 @@ non-ARC frozen experiment reduces four fresh candidates to one verified replay
 and 21 examples to three. This changes no adapter semantics or official result:
 the complete score remains 32/400. Official evaluation tasks are not promoted
 into memory. See `CONTINUAL_LOCAL_LAW_REUSE.md`.
+
+## Distilled non-ARC proposal checkpoint
+
+Adapter 1.15.0 accepts a caller-supplied generic `CognitionRuntime` and routes
+local-law invention through common mechanism memory. A clean offline
+spatial-sensor packet independently yields `output := north`, passes local and
+two-peer replay plus 12 non-ARC transfers, and is offered to pinned official
+task `25ff71a9`. At an equal one-candidate budget, blank memory fails and the
+distilled-memory run is exact with one `MemoryProposal` execution.
+
+This demonstrates clean knowledge transfer and search/capability gain at the
+frozen tight budget. It does not update the full-corpus headline: adapter 1.15.0
+has not yet completed a new 400-task run, so the last complete result remains
+32/400 under 1.14.0. The first-20 regression remains 17/20 exact with zero
+incorrect accepts.

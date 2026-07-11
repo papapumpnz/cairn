@@ -2,14 +2,14 @@
   "schema_version": "1.0",
   "bundle": "CAIRN_ARCHITECTURE_HANDOFF",
   "architecture": "CAIRN — Causal Analogical Induction over Relational Networks",
-  "generated_utc": "2026-07-11T05:03:20Z",
+  "generated_utc": "2026-07-11T06:16:41Z",
   "hash_algorithm": "SHA-256",
   "manifest_excludes": [
     "manifest.json",
     "manifest.sha256"
   ],
-  "file_count": 62,
-  "total_bytes": 397251,
+  "file_count": 63,
+  "total_bytes": 415627,
   "source_archives": [
     {
       "name": "mosasic_experiments.zip",
@@ -27,8 +27,8 @@
   "files": [
     {
       "path": "00_README.md",
-      "bytes": 3369,
-      "sha256": "450c96f17736082536072c3baa529c13859dcf9d56b9d2ef79ad170552be6f22"
+      "bytes": 4360,
+      "sha256": "3f7103106398925bbe9fe84e255885a3895ff1c3bc0247c04c94234290f9fb99"
     },
     {
       "path": "01_REVIEW_FINDINGS.md",
@@ -37,38 +37,38 @@
     },
     {
       "path": "02_CAIRN_MASTER_DESIGN.md",
-      "bytes": 73216,
-      "sha256": "42b73623a3f209fb336404bb137afd8137a48c710abbd8921ea8cd40b6a7a22e"
+      "bytes": 75747,
+      "sha256": "6dc55c94839253f2474b86bb7a7473fcdaa3bc6fc56d1c93209c7192a884be04"
     },
     {
       "path": "03_CAIRN_INTERFACES.md",
-      "bytes": 18589,
-      "sha256": "c3f41bdf01b964397de664b066f7159b52f1a2382ed0042f7bfc9998dc6f66a6"
+      "bytes": 21540,
+      "sha256": "04346856f2c32908b9b7ff82d8e1ab74baf7b6dcc16eea6a39d619564b0faf67"
     },
     {
       "path": "04_CAIRN_EXPERIMENT_LADDER.md",
-      "bytes": 18558,
-      "sha256": "acee761a81216991d7940bfd7823be486a465b79706ea17e1e76ad7eb3502efd"
+      "bytes": 20302,
+      "sha256": "4492ff00d3fb7a282acba5cd0af438facf25a077d0ee2c2e02b16f4e623ab698"
     },
     {
       "path": "05_CAIRN_SWARM_PROTOCOL.md",
-      "bytes": 8021,
-      "sha256": "6c110323b618a4b7ef992df355819a0a114bd60a1b64123cd01b679fcd726ba7"
+      "bytes": 10472,
+      "sha256": "6cd413b5f1093d1582c68bea7a9f3f1d09f1edfea12569e4442a99983b6c9075"
     },
     {
       "path": "06_CAIRN_AGENT_OPERATING_LAW.md",
-      "bytes": 6923,
-      "sha256": "1a849783e21b4905509ca26092516473a4b71da621c7531094e3534d8bce0ed1"
+      "bytes": 7145,
+      "sha256": "0d9bdec834dfb7154020d0ed50436d423efa92694ae94159f73032f36b8e7f0a"
     },
     {
       "path": "07_CAIRN_RISKS_AND_KILL_CRITERIA.md",
-      "bytes": 9920,
-      "sha256": "072cb782a7af8301fad9e8d2d2b12fe061c3badde9ea53c2cb7d9083688a8bb8"
+      "bytes": 11891,
+      "sha256": "a20b45404d1e190c5f7eded4e43a8ce3541f88e6f8df8a141adccb9f53737071"
     },
     {
       "path": "08_GENERAL_LEARNER_REQUIREMENTS.md",
-      "bytes": 28233,
-      "sha256": "017d26f462c220bfe80218b34485b634c04ebcce36eb0375cdebeec6bdd64595"
+      "bytes": 29905,
+      "sha256": "30369a358384807be5828cd0aaa0847867e59be9935b01b746f9f56a281c1e95"
     },
     {
       "path": "BIBLIOGRAPHY.md",
@@ -77,8 +77,8 @@
     },
     {
       "path": "HANDOFF_INDEX.md",
-      "bytes": 6141,
-      "sha256": "5cb893ee5e93c347e68665ef28975b2a6d056df0d961601444817fefc0975d48"
+      "bytes": 6876,
+      "sha256": "8b88a983f44eaebfeff9e8d9a72db00c4cdb98be5d1f7352f23e3c5133ec767b"
     },
     {
       "path": "SOURCE_ARCHIVE_RECORD.md",
@@ -124,6 +124,11 @@
       "path": "schemas/learning-problem.schema.json",
       "bytes": 4191,
       "sha256": "d779e596abec6cd6df9028429073cab164dbd6e08fd7ad5f4cd9015d881ca2f4"
+    },
+    {
+      "path": "schemas/teacher-packet.schema.json",
+      "bytes": 3108,
+      "sha256": "642babe2a7d83be8de639b8afb397ee5502b0bfeb4aea4cbd18c6b7c4bcc0b72"
     },
     {
       "path": "schemas/theory-ir.schema.json",

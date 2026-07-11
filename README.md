@@ -5,6 +5,14 @@ transformer-free self-compressing causal theory learner. Its principal output is
 an expanding, independently verified language of executable mechanisms; answers
 and plans are consequences of applying those mechanisms to current evidence.
 
+The product target now also includes a normal technical-chat interface. The
+initial slice compiles prompts to explicit intent, retains dialogue goals,
+constructs a typed Python AST, executes examples, and only then realizes code
+and explanation. A closed offline teacher-packet pipeline can bootstrap
+language mappings and executable lessons, but the teacher is never in the
+answer path: local verification, independent swarm peers, changed-context
+transfer, provenance, and revocation gate shared knowledge.
+
 ARC is one quarantined evaluation adapter. It is not the project's developmental
 centre or sufficient evidence of general learning.
 
@@ -19,6 +27,11 @@ end-to-end static-learning vertical slice spanning WP05-WP07, WP09,
 WP14-WP15, WP17-WP19, and WP22. These are functional starts, not full work
 package acceptance.
 Implemented today:
+
+- `cairn-chat`, a controlled CPU-only technical chat CLI whose initial Python
+  response is built from a typed AST and executable examples;
+- `cairn-distill`, a closed offline teacher-packet compiler with local replay,
+  two-peer receipts, transfer gating, provenance, and revocation state;
 
 - a pinned Rust workspace;
 - the repository operating law and architecture-layer manifest;
@@ -235,6 +248,13 @@ examples to three, then predicted 35/35 cells after geometry, value, and
 position changes. This is bounded continual reuse, not a general-intelligence
 claim and not an ARC score increase. See
 [CONTINUAL_LOCAL_LAW_REUSE.md](docs/experiments/CONTINUAL_LOCAL_LAW_REUSE.md).
+The first controlled chatbot and offline distillation slice now passes as well:
+the exact prompt “Give me a basic Python function” produces a verified typed
+addition function, an offline lesson survives teacher removal and two-peer
+swarm transfer, and a clean non-ARC spatial lesson lets one pinned ARC task solve
+under a one-candidate budget where blank memory fails. This is a tight-budget
+transfer result, not a new 400-task score. See
+[BASIC_CHAT_DISTILLATION.md](docs/experiments/BASIC_CHAT_DISTILLATION.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and durable proof-DAG artifact storage, arbitrary internal-subgraph compilation,

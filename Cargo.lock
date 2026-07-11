@@ -32,8 +32,10 @@ name = "cairn-arc"
 version = "0.1.0"
 dependencies = [
  "cairn-core",
+ "cairn-distill",
  "cairn-field",
  "cairn-invent",
+ "cairn-memory",
  "cairn-reg",
  "cairn-rkl",
  "cairn-runtime",
@@ -115,6 +117,18 @@ name = "cairn-curriculum"
 version = "0.1.0"
 
 [[package]]
+name = "cairn-distill"
+version = "0.1.0"
+dependencies = [
+ "cairn-core",
+ "cairn-invent",
+ "cairn-language",
+ "cairn-rkl",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "cairn-entity"
 version = "0.1.0"
 dependencies = [
@@ -163,6 +177,13 @@ dependencies = [
 
 [[package]]
 name = "cairn-knowledge"
+version = "0.1.0"
+dependencies = [
+ "cairn-core",
+]
+
+[[package]]
+name = "cairn-language"
 version = "0.1.0"
 dependencies = [
  "cairn-core",

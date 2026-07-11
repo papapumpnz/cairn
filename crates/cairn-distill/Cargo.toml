@@ -1,0 +1,19 @@
+[package]
+name = "cairn-distill"
+description = "Structured teacher-packet compilation and proof-carrying swarm transfer for CAIRN"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+cairn-core = { path = "../cairn-core" }
+cairn-invent = { path = "../cairn-invent" }
+cairn-language = { path = "../cairn-language" }
+cairn-rkl = { path = "../cairn-rkl" }
+serde = { version = "=1.0.217", default-features = false, features = ["derive", "std"] }
+serde_json = { version = "=1.0.133", default-features = false, features = ["std"] }
+
+[lints]
+workspace = true

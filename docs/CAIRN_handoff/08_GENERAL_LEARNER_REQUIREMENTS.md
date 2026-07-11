@@ -561,3 +561,31 @@ held-out field exactly. This is a concrete continual-learning result for a
 mechanism used by the live static frontend, not an ARC-specific operation. It
 does not change the official ARC score by itself and is not evidence of general
 intelligence.
+
+## 22. Chatbot, distillation, and swarm-transfer capability
+
+The product target now includes a normal conversational interface, initially a
+structured technical and coding assistant. This does not relax the general
+learning claim. Language understanding, dialogue state, declarative knowledge,
+typed code/tool synthesis, response planning, and controlled realization are
+new mandatory lanes around the same causal cognition runtime.
+
+External-model bootstrap is behavioral and symbolic, never weight or logit
+distillation. Offline structured packets may propose language mappings, typed
+claims, procedures, mechanisms, skills, curricula, tests, alternatives, and
+counterexamples. CAIRN must compile, verify, decompose, anti-unify, challenge,
+transfer-test, and revoke them using its own representations. The external
+teacher is absent from production and from the teacher-independence evaluation.
+
+Swarm learning is a first-class continual loop: discoveries and failures become
+immutable proof-carrying artifacts; specialist peers replay, falsify, transfer
+test, consolidate, and publish them; other agents retrieve by typed need and
+rebind locally. Conclusions never transfer as truth. Shared facts, procedures,
+mechanisms, skills, negative constraints, and search policies retain distinct
+validators and support boundaries.
+
+Verified non-ARC knowledge is available to ARC only as a proposal source. The
+decisive transfer experiment freezes ARC first, learns from unrelated domains,
+then measures exactness, CPU, candidate count, actual proof-trace use, ablation,
+and negative transfer. A score increase without causal use of clean transferred
+knowledge is not counted.

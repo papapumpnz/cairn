@@ -177,6 +177,10 @@ A change to these requires an architecture decision record:
 - learning-loop ownership or gate semantics;
 - core/adapter boundary;
 - knowledge provenance or contradiction semantics.
+- language-intent or dialogue-state semantics;
+- teacher-packet schemas or distillation trust transitions;
+- swarm peer-verification, transfer, or revocation policy;
+- executable response-artifact verification boundaries.
 
 ## 16. Honest stopping rule
 

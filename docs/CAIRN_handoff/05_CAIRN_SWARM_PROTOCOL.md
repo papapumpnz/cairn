@@ -302,3 +302,52 @@ Every accepted artifact records producer lineage. Benchmark reports attribute:
 - CPU consumed by role.
 
 A capability claim requires unique solved tasks, time reduction, core reduction, or falsification value. Message count is not capability.
+
+## 15. Shared knowledge transfer
+
+Agents publish facts, procedures, mechanisms, skills, search-policy fragments,
+entity definitions, world theories, counterexamples, failure constraints,
+benchmarks, and compiled equivalents as distinct payload kinds. They never
+publish private caches, embeddings, process memory, solver objects, or mutable
+hidden state.
+
+Lifecycle:
+
+```text
+proposed -> locally verified -> peer verified -> provisional
+         -> transfer tested -> swarm accepted -> compiled
+         -> deprecated or revoked
+```
+
+The author cannot count as a peer. Acceptance requires deterministic replay,
+two independent transfer/reproduction roles for the initial policy, an
+adversarial falsification attempt, explicit support geometry, and no unresolved
+critical contradiction. Conflicts coexist in a belief set and trigger targeted
+tests; merge order never overwrites evidence.
+
+Transfer is pull-first through typed `KnowledgeNeed` requests ranked by type
+compatibility, applicability, proof strength, support overlap, resource cost,
+known failures, and measured transfer history. Push carries hashes and metadata
+only for revocations, security corrections, semantics changes, and broadly
+valuable verified mechanisms. Offline agents reconcile manifests, proofs,
+verification journals, and revocations by content hash.
+
+Reputation is scoped by domain, artifact type, semantics version, and validation
+role. It affects scheduling, never truth. Imported artifacts remain proposals
+and must bind roles, simulate effects, and replay against current evidence.
+
+Swarm-transfer evaluation compares isolated agents, answer sharing, fact and
+procedure sharing, proof-carrying mechanism sharing, and full consolidation at
+equal aggregate CPU. Reports include duplicate work avoided, candidate and
+action savings, cross-agent/domain reuse, negative transfer, verification
+failure, propagation latency, and memory per useful artifact.
+
+## 16. Teacher-originated artifacts
+
+Teacher packets enter through a dedicated offline orchestrator and retain their
+origin forever. No swarm worker may invoke an external model in the production
+answer path. Schema validation precedes decoding; code is parsed to a typed AST,
+sandboxed, resource bounded, and verified before any execution. Teacher
+confidence, signatures, and peer votes cannot replace proof replay. Revocation
+must reach every accepted-artifact frontier before affected knowledge can be
+used again.

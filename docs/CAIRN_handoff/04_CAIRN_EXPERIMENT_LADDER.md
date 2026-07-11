@@ -568,3 +568,37 @@ with action efficiency at or near the benchmark's human baseline
 without environment-specific harness logic
 using the same general-purpose CAIRN API and memory system
 ```
+
+## C0 — verified technical-chat response
+
+Given “Give me a basic Python function”, the system must compile an explicit
+intent, choose a documented ambiguity policy, construct a typed Python AST,
+execute at least two examples, and render source only after verification. An
+unknown request must clarify rather than fabricate a task. No external model is
+available during the test.
+
+## D0 — basic symbolic distillation
+
+A frozen offline teacher packet provides a paraphrase mapping and executable
+scalar examples. Required result: closed-schema parsing, typed compilation,
+dual-executor verification, permanent origin, two distinct peer verifiers,
+changed-context transfer evidence, swarm acceptance, and successful use after
+the raw packet and teacher are removed. Author self-verification must fail.
+
+## D1 — consolidated teacher independence
+
+Across at least three varied domains, compare raw examples with consolidated
+mechanisms. Teacher access is removed. Required evidence: unseen wording,
+changed values/entities/cardinalities, one novel composition, incorrect-use
+detection, repair, cross-agent transfer, lower search/sample cost, and negative
+transfer below 2%.
+
+## D2 — non-ARC knowledge transfer to ARC
+
+Freeze an ARC set before distillation. Compare blank memory with memory learned
+only from programming, vector, sequence, and interactive examples. Imported
+mechanisms must appear in proof traces, be rebound and replayed on every current
+demonstration, reduce candidate executions or improve exact solves, and cause
+no false acceptance. Complete ARC pairs, identifiers, and structurally identical
+teacher puzzles are forbidden. Run the same ablation with transferred artifacts
+removed to establish causal contribution.

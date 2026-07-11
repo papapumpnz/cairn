@@ -348,3 +348,38 @@ Independently of the ARC stopping rule, CAIRN is not a demonstrated general
 learner until GLL-1 through GLL-6 pass. Failure of a gate narrows the claim and
 redirects development to the named learning loop; it is never compensated by a
 higher benchmark score in another domain.
+
+## 17. Chat facade outruns verified capability
+
+Signal: fluent prose hides unknown intent, code is emitted from raw text, or
+dialogue context silently changes executable requirements. Mitigation: explicit
+intent/ambiguity graphs, typed artifacts, clarification policy, and verifier
+before realization. Kill criterion: any accepted executable response bypasses
+typed construction or fails its declared tests. Disable that answer class.
+
+## 18. Distillation becomes teacher imitation or dependence
+
+Signal: raw answers are stored, teacher access is required at runtime, held-out
+wording fails, or teacher errors reach persistent memory. Mitigation: closed
+packets, decomposition, external execution/proof, adversarial examples,
+anti-unification, origin retention, and teacher-removal gates. Kill criterion:
+after one compiler/retrieval revision, consolidated memory does not outperform
+raw examples on teacher-independent transfer or causes any critical false
+acceptance. Freeze that distillation channel.
+
+## 19. Swarm transfer amplifies error or traffic
+
+Signal: authors self-certify, artifacts propagate without support boundaries,
+global reputation overrides evidence, duplicate work rises, or revocations lag.
+Mitigation: immutable CAS, role-scoped verification, pull-based needs, two-peer
+and transfer gates, counterexample registry, and revocation frontier. Kill
+criterion: full sharing fails to reduce median work versus isolated agents at
+equal aggregate CPU, or negative transfer exceeds 2% after one routing revision.
+
+## 20. Distilled knowledge contaminates ARC
+
+Signal: teacher material contains task IDs, complete grids, answer mappings, or
+evaluation-shaped constants. Mitigation: non-ARC generation domains, provenance
+lint, frozen evaluation, proposal-only retrieval, current-task replay, and
+memory-off/ablation comparisons. Kill criterion: any ARC exact result depends on
+contaminated or non-replayable knowledge. Invalidate the run and revoke lineage.

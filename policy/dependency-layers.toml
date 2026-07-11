@@ -50,6 +50,14 @@ allow_unsafe_modules = []
 layer = "evidence"
 allow_unsafe_modules = []
 
+[crates.cairn-language]
+layer = "language"
+allow_unsafe_modules = []
+
+[crates.cairn-distill]
+layer = "memory"
+allow_unsafe_modules = []
+
 [crates.cairn-bytecode]
 layer = "execution"
 allow_unsafe_modules = []

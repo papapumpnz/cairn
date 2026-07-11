@@ -112,6 +112,53 @@ skills count as invented only when synthesized from that substrate and shown to
 compress independent theories, predict held-out situations, rebind, and reduce
 future learning cost under ablation.
 
+### 0.3 Technical-chatbot, distillation, and shared-knowledge boundary
+
+The initial product target is a verified software-engineering chatbot, not an
+unrestricted prose model. Six logical runtimes surround cognition:
+
+```text
+cairn-language -> semantic intent graphs
+cairn-dialogue -> multi-turn goals, references, preferences, artifacts
+cairn-cognition -> theories, plans, mechanisms, and skills
+cairn-knowledge -> sourced facts, documentation, episodes, contradictions
+cairn-tools -> sandboxed typed tool and code execution
+cairn-realiser -> controlled answer plans and readable responses
+```
+
+Language compilation never solves the task. Code generation proceeds through a
+contract and typed AST, executable examples, resource checks, and independent
+verification before source rendering. The initial controlled realizer may sound
+less fluid than a neural chatbot; correctness, provenance, and continual
+learning take precedence over unrestricted prose breadth.
+
+External teachers transfer no weights or hidden representations. A dedicated
+offline distillation orchestrator requests schema-constrained packets containing
+intent annotations, typed claims, procedures, candidate mechanisms,
+implementations, tests, counterexamples, variation axes, and uncertainties.
+Raw packets retain origin provenance and are untrusted. The compiler decomposes
+them into CAIRN-native artifacts; validators replay executable claims; the
+consolidator anti-unifies multiple successful examples; falsifiers challenge
+support boundaries; and only transfer-tested artifacts may reach shared memory.
+
+```text
+teacher -> packet -> compile -> verify -> consolidate -> peer/transfer test
+        -> shared memory -> autonomous CPU runtime -> new evidence
+```
+
+Distillation channels remain separate: language, declarative knowledge,
+procedures, mechanisms, skills, curricula, and counterexamples have different
+validators. Teacher confidence is never verification. Raw chain-of-thought,
+benchmark answer sets, opaque prose rules, and verbatim response memorisation
+are prohibited ingestion targets.
+
+Swarm transfer is by immutable content-addressed value. Every artifact carries
+author, parents, semantics version, origin, evidence, support geometry,
+applicability, known failures, resource profile, trust lifecycle, and revocation
+state. Authors cannot act as their own peer verifier; voting never substitutes
+for replay. Agents pull relevant knowledge by typed need and may push only
+critical revocations, security corrections, and high-value metadata.
+
 ## 1. Requirements
 
 ### 1.1 Hard constraints

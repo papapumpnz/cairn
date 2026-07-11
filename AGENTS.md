@@ -195,6 +195,16 @@ Benchmark-shaped concepts such as ARC task, training pair, test grid, ARC
 colour, ARC operation, corpus split, and answer formatting belong only in the
 corresponding adapter or quarantined benchmark package.
 
+The product boundary also includes a controlled technical-chat interface and a
+symbolic distillation boundary. External teachers are offline proposal sources
+only: no teacher model, remote model call, weights, logits, hidden reasoning, or
+generated answer may enter the production response path. Teacher packets must
+be schema closed, provenance bound, compiled to typed CAIRN artifacts, replayed
+locally, peer verified, transfer tested, and revocable. Chat responses that
+contain executable artifacts must be generated from typed representations and
+verified before realization. Swarm agents exchange immutable artifacts by
+value; opaque process state and global reputation scores are prohibited.
+
 Do not claim general learning until all gates in
 `08_GENERAL_LEARNER_REQUIREMENTS.md` pass. An ARC score alone cannot satisfy a
 general-learning gate.

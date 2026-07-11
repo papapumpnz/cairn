@@ -688,3 +688,87 @@ certificate hash
 This metrics schema is mandatory before any full benchmark sweep. Reports must
 separate task learning, continual learning, and interactive causal learning so
 an improvement in one loop cannot conceal the absence of another.
+
+## 22. Language, dialogue, and response contracts
+
+```rust
+pub struct UserIntent {
+    pub speech_act: SpeechAct,
+    pub objective: GoalExpression,
+    pub constraints: Vec<Constraint>,
+    pub referenced_entities: Vec<EntityReference>,
+    pub requested_output: OutputSpecification,
+    pub uncertainty: Vec<Ambiguity>,
+}
+
+pub struct DialogueState {
+    pub current_goal: Option<GoalExpression>,
+    pub established_facts: Vec<GroundedFact>,
+    pub unresolved_questions: Vec<Ambiguity>,
+    pub user_preferences: Vec<Preference>,
+    pub prior_artifacts: Vec<ArtifactReference>,
+}
+
+pub struct CognitiveRequest {
+    pub intent: UserIntent,
+    pub dialogue_context: DialogueContext,
+    pub available_tools: Vec<ToolDefinition>,
+    pub relevant_knowledge: Vec<KnowledgeClaim>,
+}
+
+pub struct CognitiveResponse {
+    pub answer_plan: AnswerPlan,
+    pub artifacts: Vec<GeneratedArtifact>,
+    pub tool_requests: Vec<ToolInvocation>,
+    pub unresolved_ambiguities: Vec<Ambiguity>,
+    pub confidence: Rational,
+    pub proof: Option<DerivationCertificate>,
+}
+```
+
+The implemented initial slice lives in `cairn-language`: controlled intent,
+dialogue goal retention, typed Python AST construction, executable examples,
+and deterministic response realization. Logical runtime boundaries will split
+as their contracts grow; no language crate may depend on an ARC adapter.
+
+## 23. Structured distillation and swarm transfer contracts
+
+```rust
+pub struct DistillationJob {
+    pub domain: Domain,
+    pub learning_objective: LearningObjective,
+    pub difficulty: Difficulty,
+    pub required_variations: Vec<VariationAxis>,
+    pub required_artifacts: Vec<ArtifactKind>,
+    pub validation_plan: ValidationPlan,
+    pub seed: u64,
+}
+
+pub struct KnowledgeArtifact {
+    pub artifact_id: ContentHash,
+    pub artifact_type: ArtifactType,
+    pub semantics_version: SemanticsVersion,
+    pub payload: ArtifactPayload,
+    pub author_agent: AgentId,
+    pub parent_artifacts: Vec<ContentHash>,
+    pub evidence: Vec<EvidenceReference>,
+    pub proof: Option<VerificationCertificate>,
+    pub support: SupportGeometry,
+    pub applicability: Formula,
+    pub known_failures: Vec<Counterexample>,
+    pub resource_profile: ResourceProfile,
+    pub trust_state: TrustState,
+    pub origin: KnowledgeOrigin,
+}
+```
+
+Trust progresses through teacher-proposed, locally verified, peer verified,
+transfer tested, swarm accepted, compiled, deprecated, and revoked states.
+`cairn-distill` implements the first closed packet, compiler, local verifier,
+two-peer gate, transfer gate, and revocation-capable registry. Provider calls and
+batch orchestration remain outside the trusted runtime.
+
+Metrics add teacher packets accepted/rejected, claims and procedures verified,
+mechanisms anti-unified, teacher-independent cases, cross-agent and cross-domain
+reuse, duplicate work avoided, propagation latency, revocations, and negative
+transfer. Origin is permanent metadata.

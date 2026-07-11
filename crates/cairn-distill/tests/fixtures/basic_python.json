@@ -1,0 +1,30 @@
+{
+  "packet_version": "1.0",
+  "domain": "software_engineering",
+  "origin": {
+    "kind": "teacher_model",
+    "identifier": "offline-structured-teacher-fixture"
+  },
+  "semantic_intents": [
+    {
+      "utterance": "fashion a py callable that totals two values",
+      "intent": "GenerateProgram",
+      "language": "Python",
+      "operation": "AddNumbers",
+      "held_out_utterances": []
+    }
+  ],
+  "mechanism_lessons": [
+    {
+      "name": "teacher_proposed_sum",
+      "parameters": ["left", "right"],
+      "examples": [
+        {"inputs": {"left": 2, "right": 3}, "output": 5},
+        {"inputs": {"left": -4, "right": 1}, "output": -3},
+        {"inputs": {"left": 7, "right": 6}, "output": 13}
+      ],
+      "literals": [0, 1]
+    }
+  ],
+  "uncertainties": ["floating-point exceptional values are not covered"]
+}
