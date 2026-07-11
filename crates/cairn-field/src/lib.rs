@@ -14,8 +14,9 @@ use cairn_reg::{
     RelationDefinition, RelationId,
 };
 use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
+use cairn_theory::{ContrastExample, ContrastPredicateInventor};
 use std::cmp::Reverse;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FiniteField {
@@ -38,6 +39,8 @@ pub enum FieldError {
     ResidualConflict,
     NoCorrespondence,
     OutOfBounds,
+    NoEntity,
+    AmbiguousEntity,
 }
 
 #[derive(Clone, Debug)]
@@ -344,6 +347,172 @@ impl PointwiseFieldLearner {
             values,
         })
     }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct LearnedLocalFieldTheory {
+    pub proposal: DefinitionProposal,
+    pub training_cells: usize,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct LocalFieldLearner;
+
+impl LocalFieldLearner {
+    /// Invent one local transition law from a cell, its bounded 8-neighborhood,
+    /// coordinates, and extents. Out-of-bounds observations use the current
+    /// modal-value hypothesis and complete replay remains mandatory.
+    ///
+    /// # Errors
+    ///
+    /// Rejects invalid geometry or bounded RKL invention failure.
+    pub fn learn(
+        &self,
+        pairs: &[(FiniteField, FiniteField)],
+        limits: InventionLimits,
+    ) -> Result<LearnedLocalFieldTheory, FieldError> {
+        if pairs.is_empty() {
+            return Err(FieldError::Invention(InventionError::EmptyDemonstrations));
+        }
+        let mut demonstrations = Vec::new();
+        let mut changed = false;
+        let mut locally_supported = true;
+        for (input, output) in pairs {
+            input.validate()?;
+            output.validate()?;
+            if input.shape != output.shape || input.shape.len() != 2 {
+                return Err(FieldError::Cardinality);
+            }
+            for (index, output_value) in output.values.iter().enumerate() {
+                let inputs = local_bindings(input, index)?;
+                let neighborhood = local_parameters()
+                    .into_iter()
+                    .take(9)
+                    .filter_map(|parameter| match inputs.get(&parameter.name) {
+                        Some(Value::Int(value)) => Some(*value),
+                        _ => None,
+                    })
+                    .collect::<BTreeSet<_>>();
+                changed |= input.values[index] != *output_value;
+                locally_supported &=
+                    neighborhood.contains(output_value) || (-2..=2).contains(output_value);
+                demonstrations.push(BindingExample {
+                    inputs,
+                    output: Value::Int(*output_value),
+                });
+            }
+        }
+        if !changed || !locally_supported {
+            return Err(FieldError::NoCorrespondence);
+        }
+        let outcome = DefinitionInventor
+            .invent(&InventionProblem {
+                definition_name: "invented_local_transition".to_owned(),
+                parameters: local_parameters(),
+                return_type: output_integer(),
+                literals: (-2..=2).map(Value::Int).collect(),
+                demonstrations,
+                limits,
+            })
+            .map_err(FieldError::Invention)?;
+        Ok(LearnedLocalFieldTheory {
+            proposal: outcome.proposal,
+            training_cells: outcome.admission.training_examples,
+        })
+    }
+
+    /// Execute the frozen local law over a changed finite observation.
+    ///
+    /// # Errors
+    ///
+    /// Rejects invalid inputs or non-integer/failed predictions.
+    pub fn predict(
+        &self,
+        theory: &LearnedLocalFieldTheory,
+        input: &FiniteField,
+        limits: cairn_rkl::ExecLimits,
+    ) -> Result<FiniteField, FieldError> {
+        input.validate()?;
+        let values = (0..input.values.len())
+            .map(|index| {
+                match DefinitionInventor
+                    .predict(&theory.proposal, &local_bindings(input, index)?, limits)
+                    .map_err(FieldError::Invention)?
+                {
+                    Value::Int(value) => Ok(value),
+                    _ => Err(FieldError::Prediction),
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(FiniteField {
+            shape: input.shape.clone(),
+            values,
+        })
+    }
+}
+
+fn local_parameters() -> Vec<Binder> {
+    [
+        "center",
+        "north",
+        "south",
+        "west",
+        "east",
+        "north_west",
+        "north_east",
+        "south_west",
+        "south_east",
+        "row",
+        "column",
+        "rows",
+        "columns",
+    ]
+    .into_iter()
+    .map(|name| Binder {
+        name: VarName(name.to_owned()),
+        ty: input_integer(),
+    })
+    .collect()
+}
+
+fn local_bindings(field: &FiniteField, index: usize) -> Result<RuntimeEnvironment, FieldError> {
+    let rows = usize::try_from(field.shape[0]).map_err(|_| FieldError::Capacity)?;
+    let columns = usize::try_from(field.shape[1]).map_err(|_| FieldError::Capacity)?;
+    let row = index / columns;
+    let column = index % columns;
+    let background = modal_value(field);
+    let sample = |row_offset: isize, column_offset: isize| {
+        let candidate_row = row.checked_add_signed(row_offset);
+        let candidate_column = column.checked_add_signed(column_offset);
+        match (candidate_row, candidate_column) {
+            (Some(candidate_row), Some(candidate_column))
+                if candidate_row < rows && candidate_column < columns =>
+            {
+                field.values[candidate_row * columns + candidate_column]
+            }
+            _ => background,
+        }
+    };
+    let values = [
+        field.values[index],
+        sample(-1, 0),
+        sample(1, 0),
+        sample(0, -1),
+        sample(0, 1),
+        sample(-1, -1),
+        sample(-1, 1),
+        sample(1, -1),
+        sample(1, 1),
+        i64::try_from(row).map_err(|_| FieldError::Capacity)?,
+        i64::try_from(column).map_err(|_| FieldError::Capacity)?,
+        i64::from(field.shape[0]),
+        i64::from(field.shape[1]),
+    ];
+    let mut environment = RuntimeEnvironment::new();
+    for (parameter, value) in local_parameters().into_iter().zip(values) {
+        environment.insert(parameter.name, Value::Int(value));
+    }
+    Ok(environment)
 }
 
 /// A learned output constructor expressed as four ordinary RKL scalar
@@ -796,6 +965,245 @@ fn affine_cost(expression: &AffineExpression) -> u16 {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct LearnedEntityFrameTheory {
+    pub selector: DefinitionProposal,
+    pub positive_frames: usize,
+    pub negative_frames: usize,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct EntityFrameLearner;
+
+impl EntityFrameLearner {
+    /// Invent a predicate selecting one connected entity frame, requiring its
+    /// bounded rendering to replay every demonstrated output exactly.
+    ///
+    /// # Errors
+    ///
+    /// Rejects missing/ambiguous target frames, absent contrast, bounded
+    /// predicate invention failure, or non-unique selection at prediction.
+    pub fn learn(
+        &self,
+        pairs: &[(FiniteField, FiniteField)],
+        limits: InventionLimits,
+    ) -> Result<LearnedEntityFrameTheory, FieldError> {
+        let mut examples = Vec::new();
+        let mut positives = 0_usize;
+        let mut negatives = 0_usize;
+        for (input, output) in pairs {
+            input.validate()?;
+            output.validate()?;
+            let frames = entity_frames(input)?;
+            let matching = frames
+                .iter()
+                .filter(|frame| render_frame(input, frame).as_ref() == Ok(output))
+                .count();
+            if matching == 0 {
+                return Err(FieldError::NoEntity);
+            }
+            if matching != 1 {
+                return Err(FieldError::AmbiguousEntity);
+            }
+            for frame in frames {
+                let selected = render_frame(input, &frame).as_ref() == Ok(output);
+                positives += usize::from(selected);
+                negatives += usize::from(!selected);
+                examples.push(ContrastExample {
+                    features: frame_features(&frame),
+                    selected,
+                });
+            }
+        }
+        if positives == 0 || negatives == 0 {
+            return Err(FieldError::NoEntity);
+        }
+        let selector = ContrastPredicateInventor
+            .invent(
+                "invented_entity_selector",
+                &frame_feature_types(),
+                &examples,
+                vec![Value::Int(0), Value::Int(1)],
+                limits,
+            )
+            .map_err(|_| FieldError::NoEntity)?;
+        Ok(LearnedEntityFrameTheory {
+            selector: selector.proposal,
+            positive_frames: positives,
+            negative_frames: negatives,
+        })
+    }
+
+    /// Apply the invented selector to new entity hypotheses and render the
+    /// uniquely selected bounded observation.
+    ///
+    /// # Errors
+    ///
+    /// Rejects invalid evidence, selector execution failure, or zero/multiple
+    /// selected frames.
+    pub fn predict(
+        &self,
+        theory: &LearnedEntityFrameTheory,
+        input: &FiniteField,
+        limits: cairn_rkl::ExecLimits,
+    ) -> Result<FiniteField, FieldError> {
+        input.validate()?;
+        let selected = entity_frames(input)?
+            .into_iter()
+            .filter_map(|frame| {
+                let mut environment = RuntimeEnvironment::new();
+                for (name, value) in frame_features(&frame) {
+                    environment.insert(name, value);
+                }
+                match DefinitionInventor.predict(&theory.selector, &environment, limits) {
+                    Ok(Value::Bool(true)) => Some(Ok(frame)),
+                    Ok(Value::Bool(false)) => None,
+                    _ => Some(Err(FieldError::Prediction)),
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        if selected.len() != 1 {
+            return Err(FieldError::AmbiguousEntity);
+        }
+        render_frame(input, &selected[0])
+    }
+}
+
+#[derive(Clone, Debug)]
+struct EntityFrame {
+    min_row: usize,
+    min_column: usize,
+    rows: usize,
+    columns: usize,
+    cell_count: usize,
+    distinct_values: usize,
+    touches_boundary: bool,
+}
+
+fn entity_frames(field: &FiniteField) -> Result<Vec<EntityFrame>, FieldError> {
+    if field.shape.len() != 2 {
+        return Err(FieldError::Cardinality);
+    }
+    let rows = usize::try_from(field.shape[0]).map_err(|_| FieldError::Capacity)?;
+    let columns = usize::try_from(field.shape[1]).map_err(|_| FieldError::Capacity)?;
+    let background = modal_value(field);
+    let mut unseen = field
+        .values
+        .iter()
+        .enumerate()
+        .filter_map(|(index, value)| (*value != background).then_some(index))
+        .collect::<BTreeSet<_>>();
+    let mut frames = Vec::new();
+    while let Some(seed) = unseen.pop_first() {
+        let mut members = BTreeSet::from([seed]);
+        let mut queue = VecDeque::from([seed]);
+        while let Some(index) = queue.pop_front() {
+            let row = index / columns;
+            let column = index % columns;
+            for neighbor in [
+                (row > 0).then(|| index - columns),
+                (row + 1 < rows).then(|| index + columns),
+                (column > 0).then(|| index - 1),
+                (column + 1 < columns).then(|| index + 1),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                if unseen.remove(&neighbor) {
+                    members.insert(neighbor);
+                    queue.push_back(neighbor);
+                }
+            }
+        }
+        let min_row = members
+            .iter()
+            .map(|index| index / columns)
+            .min()
+            .unwrap_or(0);
+        let max_row = members
+            .iter()
+            .map(|index| index / columns)
+            .max()
+            .unwrap_or(0);
+        let min_column = members
+            .iter()
+            .map(|index| index % columns)
+            .min()
+            .unwrap_or(0);
+        let max_column = members
+            .iter()
+            .map(|index| index % columns)
+            .max()
+            .unwrap_or(0);
+        frames.push(EntityFrame {
+            min_row,
+            min_column,
+            rows: max_row - min_row + 1,
+            columns: max_column - min_column + 1,
+            cell_count: members.len(),
+            distinct_values: members
+                .iter()
+                .map(|index| field.values[*index])
+                .collect::<BTreeSet<_>>()
+                .len(),
+            touches_boundary: min_row == 0
+                || min_column == 0
+                || max_row + 1 == rows
+                || max_column + 1 == columns,
+        });
+    }
+    Ok(frames)
+}
+
+fn render_frame(field: &FiniteField, frame: &EntityFrame) -> Result<FiniteField, FieldError> {
+    let columns = usize::try_from(field.shape[1]).map_err(|_| FieldError::Capacity)?;
+    let mut values = Vec::with_capacity(frame.rows.saturating_mul(frame.columns));
+    for row in frame.min_row..frame.min_row + frame.rows {
+        for column in frame.min_column..frame.min_column + frame.columns {
+            values.push(field.values[row * columns + column]);
+        }
+    }
+    Ok(FiniteField {
+        shape: vec![
+            u32::try_from(frame.rows).map_err(|_| FieldError::Capacity)?,
+            u32::try_from(frame.columns).map_err(|_| FieldError::Capacity)?,
+        ],
+        values,
+    })
+}
+
+fn frame_feature_types() -> Vec<(VarName, Type)> {
+    [
+        "min_row",
+        "min_column",
+        "rows",
+        "columns",
+        "cell_count",
+        "distinct_values",
+        "touches_boundary",
+    ]
+    .into_iter()
+    .map(|name| (VarName(name.to_owned()), coordinate_integer()))
+    .collect()
+}
+
+fn frame_features(frame: &EntityFrame) -> BTreeMap<VarName, Value> {
+    let values = [
+        frame.min_row,
+        frame.min_column,
+        frame.rows,
+        frame.columns,
+        frame.cell_count,
+        frame.distinct_values,
+        usize::from(frame.touches_boundary),
+    ];
+    frame_feature_types()
+        .into_iter()
+        .zip(values)
+        .map(|((name, _), value)| (name, Value::Int(i64::try_from(value).unwrap_or(i64::MAX))))
+        .collect()
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct LearnedResidualConstructor {
     pub proposal: DefinitionProposal,
     pub background: i64,
@@ -1014,6 +1422,17 @@ fn coordinate_bindings(
         environment.insert(parameter.name, Value::Int(value));
     }
     Ok(environment)
+}
+
+fn modal_value(field: &FiniteField) -> i64 {
+    let mut frequencies = BTreeMap::new();
+    for value in &field.values {
+        *frequencies.entry(*value).or_insert(0_usize) += 1;
+    }
+    frequencies
+        .iter()
+        .max_by_key(|(value, count)| (**count, Reverse(**value)))
+        .map_or(0, |(value, _)| *value)
 }
 
 fn content_bounds(field: &FiniteField) -> [u32; 4] {

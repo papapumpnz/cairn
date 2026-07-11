@@ -11,8 +11,8 @@ use cairn_core::{
     TaskId,
 };
 use cairn_field::{
-    FieldError, FieldEvidence, FiniteField, PointwiseFieldLearner, RemappedFieldLearner,
-    ResidualConstructorInventor,
+    EntityFrameLearner, FieldError, FieldEvidence, FiniteField, LocalFieldLearner,
+    PointwiseFieldLearner, RemappedFieldLearner, ResidualConstructorInventor,
 };
 use cairn_invent::InventionLimits;
 use cairn_reg::RegLimits;
@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.7.0";
+pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.10.0";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ArcGrid {
@@ -366,12 +366,106 @@ pub fn attempt_task(
         .iter()
         .any(|(input, output)| input.shape != output.shape)
     {
+        if let Some(attempt) =
+            attempt_entity_frame(task, &training, invention, execution, evidence)?
+        {
+            return Ok(attempt);
+        }
         return attempt_remapped(task, &training, invention, execution, evidence);
     }
     if let Some(attempt) = attempt_residual(task, &training, invention, execution, evidence)? {
         return Ok(attempt);
     }
+    if let Some(attempt) = attempt_local(task, &training, invention, execution, evidence)? {
+        return Ok(attempt);
+    }
     attempt_pointwise(task, &training, invention, execution, evidence)
+}
+
+fn attempt_entity_frame(
+    task: &ArcTask,
+    training: &[(FiniteField, FiniteField)],
+    invention: InventionLimits,
+    execution: ExecLimits,
+    evidence: AttemptEvidence,
+) -> Result<Option<ArcAttempt>, ArcAdapterError> {
+    let Ok(learned) = EntityFrameLearner.learn(training, invention) else {
+        return Ok(None);
+    };
+    let predictions = task
+        .test
+        .iter()
+        .map(|case| {
+            let input = lower(&case.input)?;
+            EntityFrameLearner
+                .predict(&learned, &input, execution)
+                .map_err(ArcAdapterError::Field)
+                .and_then(|prediction| raise(&prediction))
+        })
+        .collect::<Result<Vec<_>, ArcAdapterError>>()?;
+    let evaluated_tests = task
+        .test
+        .iter()
+        .filter(|case| case.output.is_some())
+        .count();
+    let exact_tests = predictions
+        .iter()
+        .zip(&task.test)
+        .filter(|(prediction, case)| case.output.as_ref() == Some(*prediction))
+        .count();
+    Ok(Some(ArcAttempt {
+        predictions,
+        evaluated_tests,
+        exact_tests,
+        training_cells: learned.positive_frames + learned.negative_frames,
+        generic_observations: evidence.observations,
+        relational_nodes: evidence.relational_nodes,
+        relational_facts: evidence.relational_facts,
+        learned_expression: format!("entity_selector={:?}", learned.selector.definition.body),
+    }))
+}
+
+fn attempt_local(
+    task: &ArcTask,
+    training: &[(FiniteField, FiniteField)],
+    invention: InventionLimits,
+    execution: ExecLimits,
+    evidence: AttemptEvidence,
+) -> Result<Option<ArcAttempt>, ArcAdapterError> {
+    let Ok(learned) = LocalFieldLearner.learn(training, invention) else {
+        return Ok(None);
+    };
+    let predictions = task
+        .test
+        .iter()
+        .map(|case| {
+            let input = lower(&case.input)?;
+            LocalFieldLearner
+                .predict(&learned, &input, execution)
+                .map_err(ArcAdapterError::Field)
+                .and_then(|prediction| raise(&prediction))
+        })
+        .collect::<Result<Vec<_>, ArcAdapterError>>()?;
+    let evaluated_tests = task
+        .test
+        .iter()
+        .filter(|case| case.output.is_some())
+        .count();
+    let exact_tests = predictions
+        .iter()
+        .zip(&task.test)
+        .filter(|(prediction, case)| case.output.as_ref() == Some(*prediction))
+        .count();
+    Ok(Some(ArcAttempt {
+        predictions,
+        evaluated_tests,
+        exact_tests,
+        training_cells: learned.training_cells,
+        generic_observations: evidence.observations,
+        relational_nodes: evidence.relational_nodes,
+        relational_facts: evidence.relational_facts,
+        learned_expression: format!("local_transition={:?}", learned.proposal.definition.body),
+    }))
 }
 
 fn attempt_residual(

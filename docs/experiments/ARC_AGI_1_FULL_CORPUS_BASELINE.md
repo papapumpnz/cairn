@@ -74,3 +74,31 @@ The requested 80% threshold is 320/400. Current exact coverage is 29/400, a gap
 of 291 tasks. ARC-1 is not passed. The result demonstrates one transferable
 constructor class and an honest complete-corpus measurement; it does not
 demonstrate general intelligence.
+
+## Entity and local-law experiments
+
+An executable contrast predicate learned to select one connected entity frame
+across unseen sizes, colors, and layouts. It added zero ARC solves, establishing
+that entity selection alone does not cover the remaining relational
+construction gap.
+
+A bounded local causal learner then synthesized output values from typed
+8-neighborhood observations. It added two fixed-budget exact tasks:
+
+- `25ff71a9`: `output := north`;
+- `a79310a0`: `output := min(north, 2)`.
+
+The result is 31/400 exact, 369 resource-limited, and zero incorrect accepted
+theories under adapter 1.10.0. An evidence-derived routing gate retained the
+same accuracy while completing in 360.36 seconds, materially below the initial
+unguided local run.
+
+Additional raw reports:
+
+- `artifacts/arc-agi-1-v1.0.2/full-400-entity-v1.8.0.json`;
+- `artifacts/arc-agi-1-v1.0.2/full-400-local-v1.9.0.json`;
+- `artifacts/arc-agi-1-v1.0.2/full-400-local-routed-v1.10.0.json`.
+
+The revised gap to 80% is 289 tasks. The next required general mechanism is
+multi-entity relational construction, not additional benchmark-specific
+operators.

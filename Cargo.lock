@@ -140,6 +140,7 @@ dependencies = [
  "cairn-memory",
  "cairn-reg",
  "cairn-rkl",
+ "cairn-theory",
  "cairn-verifier",
 ]
 

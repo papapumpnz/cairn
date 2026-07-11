@@ -60,6 +60,13 @@ not accepted semantics by appearance alone. This supports general transpose and
 content-relative extraction, but not creation of novel values, non-affine
 layouts, multi-entity selection, or recursive construction.
 
+The same frontend now proposes connected entity frames and learns their role by
+contrast over generic geometry/content features; no fixed selector such as
+smallest, largest, or square is supplied. A local causal learner separately
+induces cell transitions from bounded neighborhood observations. Proposal
+routing uses only demonstrated output support, allowing learned local laws to
+improve capability without unconditionally doubling search.
+
 ### 0.1 General-learning claim boundary
 
 CAIRN is not considered a general learner merely because it can represent or

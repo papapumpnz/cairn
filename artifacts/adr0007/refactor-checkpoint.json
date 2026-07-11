@@ -23,7 +23,8 @@
     "selected": 400,
     "baseline_exact": 27,
     "generic_affine_exact": 29,
-    "accuracy_parts_per_million": 72500,
+    "generic_local_exact": 31,
+    "accuracy_parts_per_million": 77500,
     "required_exact_for_80_percent": 320,
     "threshold_passed": false,
     "incorrect_accepted_theories": 0
@@ -73,6 +74,11 @@
   "generic_affine_field_constructor": true,
   "generic_residual_constructor_shared_path": true,
   "residual_full_corpus_gain": 0,
+  "contrast_entity_selector": true,
+  "entity_selector_full_corpus_gain": 0,
+  "generic_local_transition_learner": true,
+  "local_transition_full_corpus_gain": 2,
+  "routed_full_corpus_elapsed_seconds": 360.36,
   "consolidation_checkpoint": {
     "episodes": 2,
     "cohorts": 1,

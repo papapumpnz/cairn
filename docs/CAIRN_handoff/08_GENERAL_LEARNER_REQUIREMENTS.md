@@ -497,3 +497,25 @@ the fixed 1,000-candidate full audit rises to 29/400 exact (7.25%) with zero
 incorrect accepted theories. The 80% criterion requires 320 exact tasks, so it
 is emphatically not passed. See
 docs/experiments/ARC_AGI_1_FULL_CORPUS_BASELINE.md.
+
+## 19. Entity selection and local causal-law checkpoint
+
+Generic component perception now proposes connected frames from modal-complement
+evidence. Across independent finite-diagram families, positive and negative
+frames drive synthesis of an executable selector that transfers to unseen
+component size, color, and layout. The selector route adds no fixed-budget ARC
+solve, a retained negative result showing that selection without subsequent
+relational construction is insufficient.
+
+`LocalFieldLearner` observes a cell, its bounded 8-neighborhood, coordinates,
+and extents, then synthesizes one RKL transition law with exact replay. It
+learns a horizontal propagation law outside ARC and transfers across new
+geometry, values, and positions. On the complete pinned corpus it adds two exact
+tasks through `north` and `min(north, 2)`, moving the score from 29/400 to
+31/400 with zero incorrect accepted theories.
+
+Unguided local search was too costly. A demonstration-derived support gate now
+runs it only when outputs are grounded by observed neighborhood values or the
+tiny arithmetic literal basis. Accuracy remains 31/400 while the complete run
+takes 360.36 seconds rather than roughly eleven minutes. This is measurable
+search-breadth learning/routing, but 7.75% remains far below the 80% threshold.

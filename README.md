@@ -213,6 +213,13 @@ transpose and content-relative crop families and adds two exact ARC solves at
 the fixed budget with no incorrect accepted theories, bringing the full result
 to 29/400 (7.25%). The required 80% threshold is 320/400 and is not close. See
 [ARC_AGI_1_FULL_CORPUS_BASELINE.md](docs/experiments/ARC_AGI_1_FULL_CORPUS_BASELINE.md).
+Generic connected-frame hypotheses and contrast-driven entity selection now
+transfer across changed component size, color, and layout, although they add no
+fixed-budget ARC solve by themselves. A separate local-law learner observes a
+bounded 8-neighborhood and synthesizes an RKL transition. It adds two exact
+full-corpus solves (`north` and `min(north, 2)`), reaching 31/400 with zero
+incorrect theories. An evidence routing gate preserves those gains while
+reducing the full run to 360 seconds. This remains 7.75%, not an ARC pass.
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and durable proof-DAG artifact storage, arbitrary internal-subgraph compilation,
