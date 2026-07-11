@@ -1,4 +1,5 @@
 use crate::{CanonicalEncode, CanonicalError, CanonicalValue, Hash32};
+use std::collections::BTreeSet;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ObservationId(pub Hash32);
@@ -57,6 +58,20 @@ pub struct LearningProblem {
     pub demonstrations: Vec<Demonstration>,
     pub requested_predictions: Vec<PredictionRequest>,
     pub attempt_limit: u8,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CollectionDemonstration {
+    pub input: Vec<i64>,
+    pub output: BTreeSet<i64>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CollectionProcedureProblem {
+    pub maximum_cardinality: u32,
+    pub demonstrations: Vec<CollectionDemonstration>,
+    pub prediction_input: Vec<i64>,
+    pub maximum_predictions: usize,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

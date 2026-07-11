@@ -216,6 +216,18 @@ two independent peer recompilations. Fixed-cardinality-only packets and
 duplicate values under the current set semantics are rejected. This establishes
 bounded collection distillation, not arbitrary hierarchy or ARC transfer.
 
+Memory semantics 1.2.0 closes the first proposal-use loop for whole theories.
+Verified teacher collection theories enter procedural memory as provisional,
+with source episode proofs and replay counts but zero claimed reuse. The common
+cognition runtime accepts a collection problem, executes each reusable theory
+against every current demonstration, rejects contradictions, deduplicates
+semantically identical predictions, and returns at most the requested bound.
+A sequence/set adapter reuses the offline theory after two changed
+demonstrations and predicts an unseen cardinality 8 in one proposal. Blank
+memory fails and a competing `output := input + 1` family refutes the proposal.
+This is actual non-ARC downstream reuse; persistence and ARC entity binding
+remain open.
+
 ## 1. Requirements
 
 ### 1.1 Hard constraints

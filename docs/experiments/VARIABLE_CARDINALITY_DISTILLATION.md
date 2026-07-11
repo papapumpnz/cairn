@@ -1,7 +1,7 @@
 # Variable-cardinality offline distillation
 
-Status: bounded non-scalar invention and transfer pass; downstream ARC reuse
-open.
+Status: bounded non-scalar invention, transfer, and sequence-runtime reuse pass;
+downstream ARC reuse open.
 
 ## Motivation
 
@@ -60,9 +60,36 @@ ordering, filtering, grouping, nesting, variable output cardinality, relational
 joins, or a higher-order operation parameter. It is provisional and has no ARC
 proof-trace use.
 
+## Procedural proposal reuse
+
+Memory semantics 1.2.0 adds a provisional lifecycle for checked whole theories.
+Import records the verified source episodes and cases but sets actual reuse to
+zero and does not mark the theory persistent.
+
+The generic cognition runtime now accepts collection demonstrations and a
+requested collection prediction. Each procedural module must execute and match
+every current demonstration before it may predict. Outputs from equivalent
+modules are deduplicated and the caller supplies a prediction bound.
+
+A separate sequence/set adapter supplies two new demonstrations at
+cardinalities 3 and 6, then requests cardinality 8:
+
+- blank procedural memory returns `NoVerifiedProposal`;
+- distilled procedural memory replays both demonstrations;
+- one module is attempted and one prediction is produced;
+- all eight held-out values are exact;
+- a structurally similar `output := input + 1` task refutes the imported
+  proposal and produces no prediction.
+
+This is the first actual downstream use of a distilled whole theory. The module
+remains provisional because a single use does not satisfy persistent promotion,
+and the sequence adapter currently uses unique set-like values rather than
+ordered duplicate-preserving sequences.
+
 ## Reproduction
 
 ```text
 cargo test -p cairn-distill --test collection_distillation -- --nocapture
 cargo test -p cairn-distill --test bootstrap
+cargo test -p cairn-bench --test distilled_collection_transfer -- --nocapture
 ```

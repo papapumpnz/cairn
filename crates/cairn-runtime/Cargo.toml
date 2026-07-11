@@ -12,11 +12,9 @@ cairn-core = { path = "../cairn-core" }
 cairn-invent = { path = "../cairn-invent" }
 cairn-knowledge = { path = "../cairn-knowledge" }
 cairn-memory = { path = "../cairn-memory" }
+cairn-rkl = { path = "../cairn-rkl" }
 cairn-skill = { path = "../cairn-skill" }
 cairn-world = { path = "../cairn-world" }
-
-[dev-dependencies]
-cairn-rkl = { path = "../cairn-rkl" }
 
 [lints]
 workspace = true

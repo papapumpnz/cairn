@@ -658,3 +658,11 @@ The initial non-ARC GPT-authored packet learns from sizes 2, 4, and 5, verifies
 11 source elements, and transfers to size 7 after two peer replays. It remains
 provisional, supports unique set-like elements only, and does not satisfy the
 hierarchical or ARC-transfer gate by itself.
+
+The learned collection theory now crosses the runtime boundary as a provisional
+procedural proposal under memory semantics 1.2.0. On a new sequence/set task,
+two changed demonstrations are replayed before an unseen eight-element
+prediction is accepted. Blank-memory ablation has no proposal; an alternative
+`input + 1` task rejects the imported theory. This supplies one measured actual
+reuse event without granting persistence. ARC reuse still requires a generic
+entity-collection binding and render contract.

@@ -16,7 +16,7 @@ use cairn_verifier::{VerifiedCompression, VerifiedProceduralPromotion, VerifiedP
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
-pub const MEMORY_SEMANTICS_VERSION: &str = "1.1.0";
+pub const MEMORY_SEMANTICS_VERSION: &str = "1.2.0";
 const MAXIMUM_REBOUND_PROPOSALS: usize = 1_024;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -437,6 +437,7 @@ pub struct ProceduralMechanismModule {
     source_proofs: BTreeSet<Hash32>,
     verified_cases: u64,
     actual_reuse_count: u32,
+    status: ModuleStatus,
 }
 
 impl ProceduralMechanismModule {
@@ -453,6 +454,11 @@ impl ProceduralMechanismModule {
     #[must_use]
     pub const fn support(&self) -> &MechanismSupportGeometry {
         &self.support
+    }
+
+    #[must_use]
+    pub const fn status(&self) -> ModuleStatus {
+        self.status
     }
 }
 
@@ -476,6 +482,49 @@ impl ProceduralMechanismStore {
         Self {
             modules: BTreeMap::new(),
         }
+    }
+
+    /// Admit a checked whole theory as a provisional proposal source. This
+    /// records source verification but deliberately cannot claim downstream
+    /// reuse or persistence.
+    ///
+    /// # Errors
+    ///
+    /// Rejects empty source evidence, empty verification, duplicate theories,
+    /// and canonicalization failures.
+    pub fn insert_provisional(
+        &mut self,
+        theory: CheckedTheory,
+        support: MechanismSupportGeometry,
+        source_proofs: BTreeSet<Hash32>,
+        verified_cases: u64,
+    ) -> Result<Hash32, ProceduralStoreError> {
+        if source_proofs.is_empty() {
+            return Err(ProceduralStoreError::ProofMismatch);
+        }
+        if verified_cases == 0 {
+            return Err(ProceduralStoreError::EmptyVerification);
+        }
+        let bytes = theory
+            .encode_canonical()
+            .map_err(|_| ProceduralStoreError::Canonicalization)?;
+        let id = Hash32::digest(&bytes);
+        if self.modules.contains_key(&id) {
+            return Err(ProceduralStoreError::Duplicate);
+        }
+        self.modules.insert(
+            id,
+            ProceduralMechanismModule {
+                id,
+                theory,
+                support,
+                source_proofs,
+                verified_cases,
+                actual_reuse_count: 0,
+                status: ModuleStatus::Provisional,
+            },
+        );
+        Ok(id)
     }
 
     /// Persist a complete checked theory only under a token bound to its
@@ -516,6 +565,7 @@ impl ProceduralMechanismStore {
                 source_proofs: token.source_proofs().clone(),
                 verified_cases: token.verified_cases(),
                 actual_reuse_count: token.actual_reuse_count(),
+                status: ModuleStatus::Persistent,
             },
         );
         Ok(id)
@@ -533,6 +583,15 @@ impl ProceduralMechanismStore {
 
     pub fn modules(&self) -> impl Iterator<Item = &ProceduralMechanismModule> {
         self.modules.values()
+    }
+
+    pub fn reusable_modules(&self) -> impl Iterator<Item = &ProceduralMechanismModule> {
+        self.modules.values().filter(|module| {
+            matches!(
+                module.status,
+                ModuleStatus::Provisional | ModuleStatus::Persistent | ModuleStatus::Compiled
+            )
+        })
     }
 }
 

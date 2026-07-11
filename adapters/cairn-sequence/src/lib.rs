@@ -1,7 +1,9 @@
 //! Sequence segment relations lowered to generic typed examples.
 
+use cairn_core::{CollectionDemonstration, CollectionProcedureProblem};
 use cairn_invent::{BindingExample, InventionLimits, InventionProblem};
 use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
+use std::collections::BTreeSet;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SegmentShift {
@@ -11,6 +13,12 @@ pub struct SegmentShift {
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct SequenceAdapter;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CollectionSequenceExample {
+    pub input: Vec<i64>,
+    pub output: Vec<i64>,
+}
 
 impl SequenceAdapter {
     #[must_use]
@@ -68,6 +76,29 @@ impl SequenceAdapter {
                 })
                 .collect(),
             limits,
+        }
+    }
+
+    /// Lower unique sequence elements to the generic procedural collection
+    /// contract without consulting cognition or learned memory.
+    #[must_use]
+    pub fn lower_collection(
+        &self,
+        maximum_cardinality: u32,
+        examples: &[CollectionSequenceExample],
+        prediction_input: Vec<i64>,
+    ) -> CollectionProcedureProblem {
+        CollectionProcedureProblem {
+            maximum_cardinality,
+            demonstrations: examples
+                .iter()
+                .map(|example| CollectionDemonstration {
+                    input: example.input.clone(),
+                    output: example.output.iter().copied().collect::<BTreeSet<_>>(),
+                })
+                .collect(),
+            prediction_input,
+            maximum_predictions: 2,
         }
     }
 }

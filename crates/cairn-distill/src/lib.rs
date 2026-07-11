@@ -20,7 +20,8 @@ use cairn_mechanism::{
     SupportGeometry as MechanismSupport,
 };
 use cairn_memory::{
-    MechanismStore, PromotionError, PromotionRunner, SupportGeometry as MemorySupport,
+    MechanismStore, ProceduralMechanismStore, ProceduralStoreError, PromotionError,
+    PromotionRunner, SupportGeometry as MemorySupport,
 };
 use cairn_rkl::{
     Binder, Effect, Expr, IntRange, ReferenceTheoryExecutor, RuntimeEnvironment, TheoryExecLimits,
@@ -305,6 +306,7 @@ pub enum DistillationError {
     CollectionInvention(CollectionInventionError),
     InvalidCollectionLesson,
     CollectionReplay,
+    ProceduralStore(ProceduralStoreError),
     LanguageReplay,
     UnknownArtifact,
     DuplicateArtifact,
@@ -528,6 +530,46 @@ impl DistillationVerifier {
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct PersistentDistillationPromoter;
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct CollectionDistillationProposer;
+
+impl CollectionDistillationProposer {
+    /// Convert verified collection theories into provisional procedural memory.
+    /// Import cannot claim persistence; current-task replay and measured reuse
+    /// remain mandatory.
+    ///
+    /// # Errors
+    ///
+    /// Rejects empty collection packets or procedural-store admission failure.
+    pub fn propose(
+        &self,
+        packet: &VerifiedTeacherPacket,
+        support: &MechanismSupport,
+    ) -> Result<ProceduralMechanismStore, DistillationError> {
+        if packet.collection_mechanisms().is_empty() {
+            return Err(DistillationError::InvalidCollectionLesson);
+        }
+        let mut store = ProceduralMechanismStore::new();
+        for learned in packet.collection_mechanisms() {
+            let verified_cases = learned
+                .observed_cardinalities
+                .iter()
+                .copied()
+                .map(|count| u64::try_from(count).unwrap_or(u64::MAX))
+                .sum();
+            store
+                .insert_provisional(
+                    learned.theory.clone(),
+                    support.clone(),
+                    learned.source_episodes.clone(),
+                    verified_cases,
+                )
+                .map_err(DistillationError::ProceduralStore)?;
+        }
+        Ok(store)
+    }
+}
 
 impl PersistentDistillationPromoter {
     /// Promote independently invented packet mechanisms through both the

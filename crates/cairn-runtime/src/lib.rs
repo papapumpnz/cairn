@@ -1,10 +1,14 @@
 //! Online version-space maintenance; permanent promotion belongs elsewhere.
 
-use cairn_core::{Hash32, LearningProblem, ObservationId, TaskId};
+use cairn_core::{CollectionProcedureProblem, Hash32, LearningProblem, ObservationId, TaskId};
 use cairn_invent::{InventionError, InventionProblem};
 use cairn_knowledge::KnowledgeBase;
 use cairn_memory::{
     MechanismStore, MemoryAssistedInventor, MemorySolveOutcome, ProceduralMechanismStore,
+};
+use cairn_rkl::{
+    ReferenceTheoryExecutor, RuntimeEnvironment, TheoryExecLimits, TheoryExecutionRequest, Type,
+    TypeEnvironment, Value,
 };
 use cairn_skill::{Condition, Skill, SkillPlan, SkillPlanError, SkillPlanner};
 use cairn_world::{
@@ -44,6 +48,28 @@ pub struct InteractiveLearningOutcome {
     pub transition_theory: TransitionTheory,
     pub goal_theory: GoalTheory,
     pub plan: Plan,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CollectionPrediction {
+    pub module: Hash32,
+    pub output: BTreeSet<i64>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CollectionSolveOutcome {
+    pub predictions: Vec<CollectionPrediction>,
+    pub proposals_attempted: u64,
+    pub demonstration_replays: u64,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ProceduralSolveError {
+    EmptyDemonstrations,
+    EmptyPrediction,
+    EmptyBound,
+    DuplicateInput,
+    NoVerifiedProposal,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -118,6 +144,63 @@ impl CognitionRuntime {
     /// Returns bounded invention, checking, replay, or resource failures.
     pub fn learn(&self, problem: &InventionProblem) -> Result<MemorySolveOutcome, InventionError> {
         MemoryAssistedInventor.invent(problem, &self.memory)
+    }
+
+    /// Replay provisional or persistent whole-theory proposals against every
+    /// current collection demonstration before producing bounded predictions.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed collection evidence, empty bounds, or absence of a
+    /// proposal that exactly replays all current demonstrations.
+    pub fn solve_collection(
+        &self,
+        problem: &CollectionProcedureProblem,
+    ) -> Result<CollectionSolveOutcome, ProceduralSolveError> {
+        validate_collection_problem(problem)?;
+        let mut proposals_attempted = 0_u64;
+        let mut demonstration_replays = 0_u64;
+        let mut predictions = Vec::new();
+        let mut observed_outputs = BTreeSet::new();
+        for module in self.procedures.reusable_modules() {
+            proposals_attempted = proposals_attempted.saturating_add(1);
+            let mut exact = true;
+            for demonstration in &problem.demonstrations {
+                demonstration_replays = demonstration_replays.saturating_add(1);
+                let Some(output) = execute_collection(module.theory(), &demonstration.input) else {
+                    exact = false;
+                    break;
+                };
+                if output != demonstration.output {
+                    exact = false;
+                    break;
+                }
+            }
+            if !exact {
+                continue;
+            }
+            let Some(output) = execute_collection(module.theory(), &problem.prediction_input)
+            else {
+                continue;
+            };
+            if observed_outputs.insert(output.clone()) {
+                predictions.push(CollectionPrediction {
+                    module: module.id(),
+                    output,
+                });
+            }
+            if predictions.len() == problem.maximum_predictions {
+                break;
+            }
+        }
+        if predictions.is_empty() {
+            return Err(ProceduralSolveError::NoVerifiedProposal);
+        }
+        Ok(CollectionSolveOutcome {
+            predictions,
+            proposals_attempted,
+            demonstration_replays,
+        })
     }
 
     /// Admit one modality-neutral experience envelope before any proposal
@@ -233,6 +316,84 @@ fn check_references(
         }
     }
     Ok(())
+}
+
+fn validate_collection_problem(
+    problem: &CollectionProcedureProblem,
+) -> Result<(), ProceduralSolveError> {
+    if problem.demonstrations.is_empty() {
+        return Err(ProceduralSolveError::EmptyDemonstrations);
+    }
+    if problem.prediction_input.is_empty() {
+        return Err(ProceduralSolveError::EmptyPrediction);
+    }
+    if problem.maximum_cardinality == 0 || problem.maximum_predictions == 0 {
+        return Err(ProceduralSolveError::EmptyBound);
+    }
+    let valid = |values: &[i64]| {
+        !values.is_empty()
+            && values.len() <= problem.maximum_cardinality as usize
+            && values.iter().copied().collect::<BTreeSet<_>>().len() == values.len()
+    };
+    if !valid(&problem.prediction_input)
+        || problem.demonstrations.iter().any(|demonstration| {
+            !valid(&demonstration.input)
+                || demonstration.output.is_empty()
+                || demonstration.output.len() > problem.maximum_cardinality as usize
+        })
+    {
+        return Err(ProceduralSolveError::DuplicateInput);
+    }
+    Ok(())
+}
+
+fn execute_collection(theory: &cairn_rkl::CheckedTheory, input: &[i64]) -> Option<BTreeSet<i64>> {
+    let binder = theory.theory().inputs.first()?;
+    if theory.theory().inputs.len() != 1 {
+        return None;
+    }
+    let Type::List { element, maximum } = &binder.ty else {
+        return None;
+    };
+    if !matches!(element.as_ref(), Type::Int(_)) || input.len() > *maximum as usize {
+        return None;
+    }
+    let mut types = TypeEnvironment::new();
+    types.insert(binder.name.clone(), binder.ty.clone());
+    let mut values = RuntimeEnvironment::new();
+    values.insert(
+        binder.name.clone(),
+        Value::Set {
+            element_type: (**element).clone(),
+            maximum: *maximum,
+            values: input.iter().copied().map(Value::Int).collect(),
+        },
+    );
+    let trace = ReferenceTheoryExecutor
+        .execute(
+            theory,
+            &TheoryExecutionRequest {
+                types,
+                values,
+                initial_facts: BTreeSet::new(),
+                initial_state: BTreeMap::new(),
+            },
+            TheoryExecLimits {
+                expression: cairn_rkl::ExecLimits::default(),
+                maximum_bindings: u64::from(*maximum),
+                maximum_rule_firings: u64::from(*maximum),
+            },
+        )
+        .ok()?;
+    trace
+        .rendered
+        .facts
+        .into_iter()
+        .map(|value| match value {
+            Value::Int(value) => Some(value),
+            _ => None,
+        })
+        .collect()
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

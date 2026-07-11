@@ -52,6 +52,7 @@ version = "0.1.0"
 dependencies = [
  "cairn-core",
  "cairn-curriculum",
+ "cairn-distill",
  "cairn-gridworld",
  "cairn-invent",
  "cairn-mechanism",
@@ -261,6 +262,7 @@ dependencies = [
 name = "cairn-sequence"
 version = "0.1.0"
 dependencies = [
+ "cairn-core",
  "cairn-invent",
  "cairn-rkl",
 ]

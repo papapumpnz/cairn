@@ -8,6 +8,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+cairn-core = { path = "../../crates/cairn-core" }
 cairn-invent = { path = "../../crates/cairn-invent" }
 cairn-rkl = { path = "../../crates/cairn-rkl" }
 

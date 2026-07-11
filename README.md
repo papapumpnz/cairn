@@ -292,6 +292,13 @@ quantified `ForEach` theory, replays all 11 source elements, survives two peer
 recompilations, and transfers to an unseen seven-element collection. This is
 non-scalar learned structure, but not yet an ARC improvement or arbitrary
 hierarchical mechanism induction.
+Memory semantics 1.2.0 now carries those checked theories as provisional
+procedural proposals. The general runtime replays every current collection
+demonstration before prediction. A separate sequence/set adapter reuses the
+offline theory on changed examples and an unseen eight-element input in one
+proposal; blank memory fails and a different collection law is correctly
+rejected. No ARC claim is made because ARC does not yet expose a valid entity
+collection binding for this theory.
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and durable proof-DAG artifact storage, arbitrary internal-subgraph compilation,
