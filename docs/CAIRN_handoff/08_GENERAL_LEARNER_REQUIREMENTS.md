@@ -246,6 +246,14 @@ paths without adapter types. The official ARC regression remains 17/20 after
 the integration, demonstrating that orchestration did not alter the quarantined
 adapter baseline. See docs/experiments/UNIFIED_COGNITION_RUNTIME.md.
 
+The named historical finite-field schema catalog is now physically located
+inside `adapters/cairn-arc`, together with its twenty regression tests. The
+general `cairn-field` crate contains observation, relational-evidence, pointwise
+invention, and residual-invention facilities only. A source audit prevents
+representative legacy transformation names from returning to the general crate.
+The unchanged 17/20 legacy score remains non-learning adapter evidence. See
+docs/experiments/ARC_LEGACY_SCHEMA_QUARANTINE.md.
+
 ## 5. Proof-backed knowledge learning
 
 The knowledge subsystem stores:

@@ -9,13 +9,15 @@
     "selected": 20,
     "exact": 17,
     "resource_limited": 3,
-    "adapter_semantics": "1.4.0",
+    "adapter_semantics": "1.5.0",
     "generic_experience_admission": true,
     "generic_observations": 150,
     "relational_evidence_emission": true,
     "relational_evidence_nodes": 23114,
     "relational_evidence_facts": 70550,
-    "shared_mechanism_backend": false
+    "shared_mechanism_backend": false,
+    "legacy_schema_location": "adapters/cairn-arc/src/legacy_schema.rs",
+    "named_legacy_schemas_in_general_field_crate": false
   },
   "new_boundaries": [
     "cairn-mechanism",

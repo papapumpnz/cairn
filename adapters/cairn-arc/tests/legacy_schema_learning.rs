@@ -1,4 +1,5 @@
-use cairn_field::{FieldSchemaLearner, FieldTransformation, FiniteField};
+use cairn_arc::{FieldSchemaLearner, FieldTransformation};
+use cairn_field::FiniteField;
 
 fn field(rows: u32, columns: u32, values: &[i64]) -> FiniteField {
     FiniteField {
@@ -18,7 +19,7 @@ fn from_rows(rows: &[&[i64]]) -> FiniteField {
     )
 }
 
-fn learns(pairs: &[(FiniteField, FiniteField)]) -> cairn_field::LearnedFieldTheory {
+fn learns(pairs: &[(FiniteField, FiniteField)]) -> cairn_arc::LearnedFieldTheory {
     FieldSchemaLearner.learn(pairs).expect("learned schema")
 }
 
@@ -201,7 +202,7 @@ fn learns_span_completion_over_frontend_supplied_panels() {
     );
     let transposed_input = transpose(&input);
     let transposed_output = transpose(&output);
-    let direct = cairn_field::LearnedFieldTheory {
+    let direct = cairn_arc::LearnedFieldTheory {
         transformation: FieldTransformation::PanelSpanCompletion { background: 0 },
         demonstrations_replayed: 0,
         candidates_evaluated: 0,

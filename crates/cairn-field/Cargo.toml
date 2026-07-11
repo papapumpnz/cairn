@@ -1,6 +1,6 @@
 [package]
 name = "cairn-field"
-description = "Generic finite-field frontend and learned pointwise theory gate"
+description = "Generic finite-field observation, evidence, and invention frontend"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

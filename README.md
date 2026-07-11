@@ -178,6 +178,11 @@ definition and whole-theory memory, action-conditioned world/goal learning,
 exact planning, and conditional learned-skill composition. The official ARC
 regression remains 17/20 after this integration. See
 [UNIFIED_COGNITION_RUNTIME.md](docs/experiments/UNIFIED_COGNITION_RUNTIME.md).
+The historical named field-schema catalog has moved physically out of the
+general `cairn-field` crate and into the quarantined ARC adapter. Its 20 tests
+and 17/20 official regression remain intact, but none of those results count as
+mechanism learning. See
+[ARC_LEGACY_SCHEMA_QUARANTINE.md](docs/experiments/ARC_LEGACY_SCHEMA_QUARANTINE.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and proof DAGs, richer ontology invention, one shared orchestrating runtime,

@@ -1,5 +1,5 @@
 {
-  "adapter_semantics": "1.4.0",
+  "adapter_semantics": "1.5.0",
   "rkl_semantics": "1.1.0",
   "corpus": "datasets/arc-agi-1-v1.0.2/training",
   "maximum_tasks": 20,

@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "date": "2026-07-11",
+  "status": "physical_quarantine_pass",
+  "general_intelligence_claim": false,
+  "adapter_semantics": "1.5.0",
+  "legacy_schema_location": "adapters/cairn-arc/src/legacy_schema.rs",
+  "legacy_schema_in_general_field_crate": false,
+  "legacy_schema_tests_passed": 20,
+  "legacy_schema_tests_total": 20,
+  "official_first_ten_exact": 10,
+  "official_first_ten_total": 10,
+  "official_first_twenty_exact": 17,
+  "official_first_twenty_total": 20,
+  "resource_limited": 3,
+  "legacy_results_count_as_learning": false
+}

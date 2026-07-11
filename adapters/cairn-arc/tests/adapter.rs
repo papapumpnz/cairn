@@ -76,3 +76,18 @@ fn batch_runner_scores_only_after_sealing_test_outputs() {
     assert_eq!(report.exact_tasks, 1);
     assert_eq!(report.reports[0].exact_tests, 1);
 }
+
+#[test]
+fn named_legacy_transformations_are_physically_quarantined() {
+    let general_field = include_str!("../../../crates/cairn-field/src/lib.rs");
+    let legacy_adapter = include_str!("../src/legacy_schema.rs");
+    for name in [
+        "FieldTransformation",
+        "MarkerRayBroadcast",
+        "RotationalCompletion",
+        "TemplateRayRepeat",
+    ] {
+        assert!(!general_field.contains(name));
+        assert!(legacy_adapter.contains(name));
+    }
+}

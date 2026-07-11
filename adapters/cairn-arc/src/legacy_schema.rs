@@ -1,4 +1,4 @@
-use crate::{FieldError, FiniteField};
+use cairn_field::{FieldError, FiniteField};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 pub type SymbolNeighborhoodRule = (i64, i64, Vec<(isize, isize)>);

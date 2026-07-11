@@ -1,13 +1,16 @@
 //! ARC-specific parsing and encoding quarantined from CAIRN cognition crates.
 
+mod legacy_schema;
+
+pub use legacy_schema::{
+    Direction, FieldSchemaError, FieldSchemaLearner, FieldTransformation, LearnedFieldTheory,
+};
+
 use cairn_core::{
     Demonstration, Hash32, Intervention, LearningProblem, PredictionRequest, SourceReference,
     TaskId,
 };
-use cairn_field::{
-    FieldError, FieldEvidence, FieldSchemaError, FieldSchemaLearner, FiniteField,
-    PointwiseFieldLearner,
-};
+use cairn_field::{FieldError, FieldEvidence, FiniteField, PointwiseFieldLearner};
 use cairn_invent::InventionLimits;
 use cairn_reg::RegLimits;
 use cairn_rkl::ExecLimits;
@@ -16,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.4.0";
+pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.5.0";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ArcGrid {
