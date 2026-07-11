@@ -67,6 +67,13 @@ induces cell transitions from bounded neighborhood observations. Proposal
 routing uses only demonstrated output support, allowing learned local laws to
 improve capability without unconditionally doubling search.
 
+Long-range observation summaries—nearest visible value along each axis and
+axis occupancy—are computed lazily only after basic local evidence is
+insufficient. They remain observation features rather than named operations;
+the learned RKL definition decides whether and how they matter. Repeated
+full-corpus timing shows synthesis, not perception, is now the dominant cost,
+motivating learned grammar priors and proof-fragment retrieval.
+
 ### 0.1 General-learning claim boundary
 
 CAIRN is not considered a general learner merely because it can represent or

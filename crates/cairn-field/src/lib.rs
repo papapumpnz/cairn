@@ -374,41 +374,31 @@ impl LocalFieldLearner {
         if pairs.is_empty() {
             return Err(FieldError::Invention(InventionError::EmptyDemonstrations));
         }
-        let mut demonstrations = Vec::new();
-        let mut changed = false;
-        let mut locally_supported = true;
         for (input, output) in pairs {
             input.validate()?;
             output.validate()?;
             if input.shape != output.shape || input.shape.len() != 2 {
                 return Err(FieldError::Cardinality);
             }
-            for (index, output_value) in output.values.iter().enumerate() {
-                let inputs = local_bindings(input, index)?;
-                let neighborhood = local_parameters()
-                    .into_iter()
-                    .take(9)
-                    .filter_map(|parameter| match inputs.get(&parameter.name) {
-                        Some(Value::Int(value)) => Some(*value),
-                        _ => None,
-                    })
-                    .collect::<BTreeSet<_>>();
-                changed |= input.values[index] != *output_value;
-                locally_supported &=
-                    neighborhood.contains(output_value) || (-2..=2).contains(output_value);
-                demonstrations.push(BindingExample {
-                    inputs,
-                    output: Value::Int(*output_value),
-                });
-            }
         }
-        if !changed || !locally_supported {
+        let (basic_demonstrations, changed, basic_supported) =
+            collect_local_demonstrations(pairs, false)?;
+        if !changed {
             return Err(FieldError::NoCorrespondence);
         }
+        let (demonstrations, parameters) = if basic_supported {
+            (basic_demonstrations, basic_local_parameters())
+        } else {
+            let (relational, _, relational_supported) = collect_local_demonstrations(pairs, true)?;
+            if !relational_supported {
+                return Err(FieldError::NoCorrespondence);
+            }
+            (relational, local_parameters())
+        };
         let outcome = DefinitionInventor
             .invent(&InventionProblem {
                 definition_name: "invented_local_transition".to_owned(),
-                parameters: local_parameters(),
+                parameters,
                 return_type: output_integer(),
                 literals: (-2..=2).map(Value::Int).collect(),
                 demonstrations,
@@ -433,10 +423,21 @@ impl LocalFieldLearner {
         limits: cairn_rkl::ExecLimits,
     ) -> Result<FiniteField, FieldError> {
         input.validate()?;
+        let background = modal_value(input);
+        let relational = theory
+            .proposal
+            .definition
+            .parameters
+            .iter()
+            .any(|parameter| parameter.name.0.starts_with("visible_"));
         let values = (0..input.values.len())
             .map(|index| {
                 match DefinitionInventor
-                    .predict(&theory.proposal, &local_bindings(input, index)?, limits)
+                    .predict(
+                        &theory.proposal,
+                        &local_bindings(input, index, background, relational)?,
+                        limits,
+                    )
                     .map_err(FieldError::Invention)?
                 {
                     Value::Int(value) => Ok(value),
@@ -462,6 +463,12 @@ fn local_parameters() -> Vec<Binder> {
         "north_east",
         "south_west",
         "south_east",
+        "visible_north",
+        "visible_south",
+        "visible_west",
+        "visible_east",
+        "row_occupied_count",
+        "column_occupied_count",
         "row",
         "column",
         "rows",
@@ -475,12 +482,75 @@ fn local_parameters() -> Vec<Binder> {
     .collect()
 }
 
-fn local_bindings(field: &FiniteField, index: usize) -> Result<RuntimeEnvironment, FieldError> {
+fn basic_local_parameters() -> Vec<Binder> {
+    local_parameters()
+        .into_iter()
+        .filter(|parameter| {
+            !matches!(
+                parameter.name.0.as_str(),
+                "visible_north"
+                    | "visible_south"
+                    | "visible_west"
+                    | "visible_east"
+                    | "row_occupied_count"
+                    | "column_occupied_count"
+            )
+        })
+        .collect()
+}
+
+fn collect_local_demonstrations(
+    pairs: &[(FiniteField, FiniteField)],
+    relational: bool,
+) -> Result<(Vec<BindingExample>, bool, bool), FieldError> {
+    let mut demonstrations = Vec::new();
+    let mut changed = false;
+    let mut supported = true;
+    let support_count = if relational { 13 } else { 9 };
+    let parameters = if relational {
+        local_parameters()
+    } else {
+        basic_local_parameters()
+    };
+    for (input, output) in pairs {
+        let background = modal_value(input);
+        for (index, output_value) in output.values.iter().enumerate() {
+            let inputs = local_bindings(input, index, background, relational)?;
+            let observed = local_parameters()
+                .into_iter()
+                .take(support_count)
+                .filter_map(|parameter| match inputs.get(&parameter.name) {
+                    Some(Value::Int(value)) => Some(*value),
+                    _ => None,
+                })
+                .collect::<BTreeSet<_>>();
+            changed |= input.values[index] != *output_value;
+            supported &= observed.contains(output_value) || (-2..=2).contains(output_value);
+            let mut filtered = RuntimeEnvironment::new();
+            for parameter in &parameters {
+                if let Some(value) = inputs.get(&parameter.name) {
+                    filtered.insert(parameter.name.clone(), value.clone());
+                }
+            }
+            demonstrations.push(BindingExample {
+                inputs: filtered,
+                output: Value::Int(*output_value),
+            });
+        }
+    }
+    Ok((demonstrations, changed, supported))
+}
+
+fn local_bindings(
+    field: &FiniteField,
+    index: usize,
+    background: i64,
+    relational: bool,
+) -> Result<RuntimeEnvironment, FieldError> {
     let rows = usize::try_from(field.shape[0]).map_err(|_| FieldError::Capacity)?;
     let columns = usize::try_from(field.shape[1]).map_err(|_| FieldError::Capacity)?;
     let row = index / columns;
     let column = index % columns;
-    let background = modal_value(field);
     let sample = |row_offset: isize, column_offset: isize| {
         let candidate_row = row.checked_add_signed(row_offset);
         let candidate_column = column.checked_add_signed(column_offset);
@@ -493,7 +563,28 @@ fn local_bindings(field: &FiniteField, index: usize) -> Result<RuntimeEnvironmen
             _ => background,
         }
     };
-    let values = [
+    let visible = |row_step: isize, column_step: isize| {
+        let mut candidate_row = row;
+        let mut candidate_column = column;
+        loop {
+            let Some(next_row) = candidate_row.checked_add_signed(row_step) else {
+                return background;
+            };
+            let Some(next_column) = candidate_column.checked_add_signed(column_step) else {
+                return background;
+            };
+            if next_row >= rows || next_column >= columns {
+                return background;
+            }
+            candidate_row = next_row;
+            candidate_column = next_column;
+            let value = field.values[candidate_row * columns + candidate_column];
+            if value != background {
+                return value;
+            }
+        }
+    };
+    let basic_values = [
         field.values[index],
         sample(-1, 0),
         sample(1, 0),
@@ -509,8 +600,33 @@ fn local_bindings(field: &FiniteField, index: usize) -> Result<RuntimeEnvironmen
         i64::from(field.shape[1]),
     ];
     let mut environment = RuntimeEnvironment::new();
-    for (parameter, value) in local_parameters().into_iter().zip(values) {
+    for (parameter, value) in basic_local_parameters().into_iter().zip(basic_values) {
         environment.insert(parameter.name, Value::Int(value));
+    }
+    if relational {
+        let row_occupied = field.values[row * columns..(row + 1) * columns]
+            .iter()
+            .filter(|value| **value != background)
+            .count();
+        let column_occupied = (0..rows)
+            .filter(|candidate_row| field.values[candidate_row * columns + column] != background)
+            .count();
+        for (name, value) in [
+            ("visible_north", visible(-1, 0)),
+            ("visible_south", visible(1, 0)),
+            ("visible_west", visible(0, -1)),
+            ("visible_east", visible(0, 1)),
+            (
+                "row_occupied_count",
+                i64::try_from(row_occupied).map_err(|_| FieldError::Capacity)?,
+            ),
+            (
+                "column_occupied_count",
+                i64::try_from(column_occupied).map_err(|_| FieldError::Capacity)?,
+            ),
+        ] {
+            environment.insert(VarName(name.to_owned()), Value::Int(value));
+        }
     }
     Ok(environment)
 }

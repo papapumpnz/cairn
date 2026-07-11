@@ -519,3 +519,19 @@ runs it only when outputs are grounded by observed neighborhood values or the
 tiny arithmetic literal basis. Accuracy remains 31/400 while the complete run
 takes 360.36 seconds rather than roughly eleven minutes. This is measurable
 search-breadth learning/routing, but 7.75% remains far below the 80% threshold.
+
+## 20. Long-range relational observation checkpoint
+
+The local learner now has optional nearest-visible values in four directions
+and row/column occupancy aggregates. On a non-ARC table family it invents a
+long-range carry-forward law and transfers across unseen dimensions, values,
+and positions. No propagation, ray, or fill operator is supplied.
+
+On the complete ARC training audit, the new evidence supports one additional
+exact law, `max(center, visible_north)`, reaching 32/400 (8.0%) with zero
+incorrect accepted theories. Eager relational expansion took 446.27 seconds.
+Two routing refinements retained accuracy but did not reduce synthesis cost;
+lazy relational perception finally reduced elapsed time to 414.16 seconds.
+This is still slower than the 360.36-second 31-task vocabulary, so the next
+cost improvement must come from learned proposal ordering or reusable proof
+fragments rather than additional frontend summaries.

@@ -23,8 +23,8 @@
     "selected": 400,
     "baseline_exact": 27,
     "generic_affine_exact": 29,
-    "generic_local_exact": 31,
-    "accuracy_parts_per_million": 77500,
+    "generic_local_exact": 32,
+    "accuracy_parts_per_million": 80000,
     "required_exact_for_80_percent": 320,
     "threshold_passed": false,
     "incorrect_accepted_theories": 0
@@ -79,6 +79,9 @@
   "generic_local_transition_learner": true,
   "local_transition_full_corpus_gain": 2,
   "routed_full_corpus_elapsed_seconds": 360.36,
+  "generic_relational_observation_summaries": true,
+  "relational_local_full_corpus_gain": 1,
+  "lazy_relational_elapsed_seconds": 414.16,
   "consolidation_checkpoint": {
     "episodes": 2,
     "cohorts": 1,

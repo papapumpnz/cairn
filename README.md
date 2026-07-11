@@ -220,6 +220,12 @@ bounded 8-neighborhood and synthesizes an RKL transition. It adds two exact
 full-corpus solves (`north` and `min(north, 2)`), reaching 31/400 with zero
 incorrect theories. An evidence routing gate preserves those gains while
 reducing the full run to 360 seconds. This remains 7.75%, not an ARC pass.
+Relational summaries now expose nearest visible values and axis occupancy only
+when basic local evidence is insufficient. The learner transfers a long-range
+carry-forward law outside ARC and adds one official exact theory,
+`max(center, visible_north)`, reaching 32/400 with zero incorrect theories.
+Lazy relational perception reduces the expanded run from 446 to 414 seconds,
+but does not yet regain the earlier smaller-vocabulary cost envelope.
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and durable proof-DAG artifact storage, arbitrary internal-subgraph compilation,

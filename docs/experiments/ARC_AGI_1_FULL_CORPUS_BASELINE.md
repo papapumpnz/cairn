@@ -102,3 +102,25 @@ Additional raw reports:
 The revised gap to 80% is 289 tasks. The next required general mechanism is
 multi-entity relational construction, not additional benchmark-specific
 operators.
+
+## Long-range relational evidence
+
+Nearest-visible values along each axis and axis occupancy were added as lazy,
+generic observation summaries. A non-ARC carry-forward family validates exact
+transfer across changed geometry, values, and positions. The complete corpus
+then gained one exact theory:
+
+- `d037b0a7`: `output := max(center, visible_north)`.
+
+Accuracy is now 32/400 (8.0%) with zero incorrect theories. The implementation
+sequence also preserves negative performance evidence:
+
+| Semantics | Exact | Elapsed seconds | Change |
+|---|---:|---:|---|
+| 1.11.0 | 32 | 446.27 | eager relational summaries |
+| 1.12.0 | 32 | 444.53 | contextual grammar split |
+| 1.13.0 | 32 | 452.81 | stricter ray-support route |
+| 1.14.0 | 32 | 414.16 | lazy relational perception |
+
+Raw reports use matching `full-400-*-v1.*.json` names under
+`artifacts/arc-agi-1-v1.0.2/`. The remaining gap to 80% is 288 tasks.
