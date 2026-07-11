@@ -1,4 +1,4 @@
-use cairn_core::Hash32;
+use cairn_core::{CollectionDemonstration, CollectionProcedureProblem, Hash32};
 use cairn_invent::InventionLimits;
 use cairn_mechanism::{
     CardinalityRange, DerivationCertificate, DomainClass, InventionEvidence, Mechanism, Signature,
@@ -14,7 +14,10 @@ use cairn_rkl::{
 };
 use cairn_runtime::CognitionRuntime;
 use cairn_theory::{CollectionMechanismInventor, CollectionTrace};
-use cairn_verifier::PromotionVerifier;
+use cairn_verifier::{
+    CounterfactualReuseMetrics, ProceduralExperimentBaseline, ProceduralPromotionConsolidator,
+    PromotionVerifier,
+};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[test]
@@ -160,6 +163,86 @@ fn quantified_collection_theory_is_canonically_verified_and_persisted() {
     );
 }
 
+#[test]
+fn independent_replays_automatically_consolidate_into_procedural_promotion() {
+    let first = learn_collection(&[
+        trace("auto-first-a", &[-3, 2], &[-5, 5]),
+        trace("auto-first-b", &[-4, -1, 0, 5], &[-7, -1, 1, 11]),
+    ]);
+    let second = learn_collection(&[
+        trace("auto-second-a", &[-8, 6], &[-15, 13]),
+        trace("auto-second-b", &[-9, -5, 2], &[-17, -9, 5]),
+    ]);
+    let mechanism = mechanism(&first, &second);
+    let problems = [
+        collection_problem(&[-6, -1, 4], &[-11, -1, 9], &[-10, 0, 7]),
+        collection_problem(&[-11, 3], &[-21, 7], &[-7, -2, 5, 12]),
+    ];
+    let expected = [
+        BTreeSet::from([-19, 1, 15]),
+        BTreeSet::from([-13, -3, 11, 25]),
+    ];
+    let receipts = problems
+        .iter()
+        .zip(&expected)
+        .enumerate()
+        .map(|(index, (problem, expected))| {
+            PromotionVerifier
+                .verify_collection_reuse(
+                    &first.theory,
+                    problem,
+                    expected,
+                    Hash32::digest(format!("automatic-reuse-{index}").as_bytes()),
+                    CounterfactualReuseMetrics {
+                        blank_solved: false,
+                        candidate_executions_without: 100,
+                        candidate_executions_with: 1,
+                        examples_without: 4,
+                        examples_with: 1,
+                        proof_nodes_without: 20,
+                        proof_nodes_with: 3,
+                    },
+                )
+                .expect("independent receipt")
+        })
+        .collect::<Vec<_>>();
+    let token = ProceduralPromotionConsolidator
+        .consolidate(
+            &mechanism,
+            &first.theory,
+            ProceduralExperimentBaseline {
+                target_absent_from_named_vocabulary: true,
+                source_code_changes: 0,
+                initial_success_parts_per_million: 0,
+                uncompressed_cost: 40,
+                compressed_cost: 10,
+                false_acceptances_without: 0,
+                false_acceptances_with: 0,
+            },
+            &receipts,
+        )
+        .expect("automatic promotion certificate");
+    let mut store = ProceduralMechanismStore::new();
+    let id = store
+        .insert_provisional(
+            first.theory,
+            mechanism.support,
+            mechanism.proof.source_proofs,
+            mechanism.proof.verified_cases,
+        )
+        .expect("provisional");
+    for receipt in &receipts {
+        store
+            .record_verifier_receipt(id, receipt)
+            .expect("receipt import");
+    }
+    assert!(store.apply_verified_promotion(id, &token));
+    assert_eq!(
+        store.modules().next().expect("module").status(),
+        ModuleStatus::Persistent
+    );
+}
+
 fn execute(theory: &CheckedTheory, values: &[i64]) -> cairn_rkl::TheoryExecutionTrace {
     let collection_type = Type::List {
         element: Box::new(Type::Int(cairn_rkl::IntRange {
@@ -260,5 +343,21 @@ fn trace(episode: &str, inputs: &[i64], outputs: &[i64]) -> CollectionTrace {
         episode: Hash32::digest(episode.as_bytes()),
         inputs: inputs.to_vec(),
         outputs: outputs.to_vec(),
+    }
+}
+
+fn collection_problem(
+    input: &[i64],
+    output: &[i64],
+    prediction_input: &[i64],
+) -> CollectionProcedureProblem {
+    CollectionProcedureProblem {
+        maximum_cardinality: 32,
+        demonstrations: vec![CollectionDemonstration {
+            input: input.to_vec(),
+            output: output.iter().copied().collect(),
+        }],
+        prediction_input: prediction_input.to_vec(),
+        maximum_predictions: 1,
     }
 }

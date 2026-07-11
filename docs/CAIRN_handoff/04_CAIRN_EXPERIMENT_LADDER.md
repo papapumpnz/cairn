@@ -9,6 +9,13 @@ rebinding pass. The frozen ARC-AGI-1 first 20 remain 17 exact, 3
 resource-limited, and 0 incorrect. This advances reuse and composition evidence,
 not the general-intelligence or ARC completion gates.
 
+2026-07-12: order-sensitive depth-three composition, automatic promotion
+consolidation, relational entity collection transfer, explicit render bindings,
+and frontier-generated causal curricula pass bounded tests. Non-ARC structural
+memory improves ARC-40 from 17/40 to 18/40 and full ARC-1 training from 32/400
+to 33/400, with zero incorrect and zero lost baseline solves. The 80% ARC and
+general-intelligence gates remain failed.
+
 ## 0. Dataset policy
 
 ### Development partitions

@@ -79,9 +79,8 @@ fn invents_shape_and_coordinate_mapping_then_transfers_geometry() {
             .expect("held-out prediction"),
         transpose(&held_out)
     );
-    assert_eq!(theory.training_correspondences, 18);
-    assert!(theory
-        .output_rows
+    assert_eq!(theory.binding.training_correspondences, 18);
+    assert!(theory.binding.output_extents[0]
         .definition
         .name
         .starts_with("invented_output_extent"));

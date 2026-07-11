@@ -370,6 +370,53 @@ pub struct ExperienceCandidate {
     pub irreversible_risk: u64,
 }
 
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum LearningAxis {
+    CausalLaw,
+    Cardinality,
+    Value,
+    Layout,
+    Composition,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FrontierGap {
+    pub id: ExperienceId,
+    pub axis: LearningAxis,
+    pub competing_hypotheses: u64,
+    pub expected_transfer_microunits: u64,
+    pub prior_exercises: u64,
+    pub action_cost: u64,
+    pub irreversible_risk: u64,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct FrontierCurriculumGenerator;
+
+impl FrontierCurriculumGenerator {
+    /// Convert unresolved support and version-space gaps into executable
+    /// curriculum candidates without task payloads or expected answers.
+    #[must_use]
+    pub fn generate(&self, gaps: &[FrontierGap]) -> Vec<ExperienceCandidate> {
+        gaps.iter()
+            .filter(|gap| gap.competing_hypotheses > 1)
+            .map(|gap| ExperienceCandidate {
+                id: gap.id.clone(),
+                expected_information_microunits: gap
+                    .competing_hypotheses
+                    .saturating_sub(1)
+                    .saturating_mul(1_000_000),
+                expected_transfer_microunits: gap.expected_transfer_microunits,
+                underused_mechanism_bonus: 1_000_000_u64
+                    .checked_div(gap.prior_exercises.saturating_add(1))
+                    .unwrap_or(0),
+                action_cost: gap.action_cost,
+                irreversible_risk: gap.irreversible_risk,
+            })
+            .collect()
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CurriculumError {
     EmptyCandidates,

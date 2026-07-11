@@ -4,14 +4,16 @@ use cairn_consolidator::{
     EpisodeBindings, GraphCompressionProposal, GraphPatternArgument, GraphPatternNode, ProofGraph,
     ProofNode,
 };
-use cairn_core::CanonicalEncode;
-use cairn_core::Hash32;
+use cairn_core::{CanonicalEncode, CollectionProcedureProblem, Hash32};
 use cairn_mechanism::{
     admit_persistent, AdmissionError, InventionEvidence, Mechanism, MechanismStatus,
 };
 pub use cairn_proof::{IndependentVerifier, ReplayVerifier, VerifyError};
-use cairn_rkl::CheckedTheory;
-use std::collections::BTreeSet;
+use cairn_rkl::{
+    CheckedTheory, ReferenceTheoryExecutor, RuntimeEnvironment, TheoryExecLimits,
+    TheoryExecutionRequest, Type, TypeEnvironment, Value,
+};
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct VerifiedCompression {
@@ -152,6 +154,58 @@ pub struct VerifiedProceduralPromotion {
     actual_reuse_count: u32,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CounterfactualReuseMetrics {
+    pub blank_solved: bool,
+    pub candidate_executions_without: u64,
+    pub candidate_executions_with: u64,
+    pub examples_without: u32,
+    pub examples_with: u32,
+    pub proof_nodes_without: u64,
+    pub proof_nodes_with: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedProceduralReuse {
+    theory_hash: Hash32,
+    experience: Hash32,
+    verified_cases: u64,
+    metrics: CounterfactualReuseMetrics,
+}
+
+impl VerifiedProceduralReuse {
+    #[must_use]
+    pub const fn theory_hash(&self) -> Hash32 {
+        self.theory_hash
+    }
+
+    #[must_use]
+    pub const fn experience(&self) -> Hash32 {
+        self.experience
+    }
+
+    #[must_use]
+    pub const fn verified_cases(&self) -> u64 {
+        self.verified_cases
+    }
+
+    #[must_use]
+    pub const fn metrics(&self) -> CounterfactualReuseMetrics {
+        self.metrics
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ProceduralExperimentBaseline {
+    pub target_absent_from_named_vocabulary: bool,
+    pub source_code_changes: u32,
+    pub initial_success_parts_per_million: u32,
+    pub uncompressed_cost: u64,
+    pub compressed_cost: u64,
+    pub false_acceptances_without: u32,
+    pub false_acceptances_with: u32,
+}
+
 impl VerifiedProceduralPromotion {
     #[must_use]
     pub const fn theory_hash(&self) -> Hash32 {
@@ -195,6 +249,54 @@ impl VerifiedPromotion {
 pub struct PromotionVerifier;
 
 impl PromotionVerifier {
+    /// Independently replay a whole collection theory on current and held-out
+    /// evidence and bind the result to its canonical identity.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed evidence, failed replay, empty counterfactual work, or
+    /// a held-out mismatch.
+    pub fn verify_collection_reuse(
+        &self,
+        theory: &CheckedTheory,
+        problem: &CollectionProcedureProblem,
+        expected_prediction: &BTreeSet<i64>,
+        experience: Hash32,
+        metrics: CounterfactualReuseMetrics,
+    ) -> Result<VerifiedProceduralReuse, AdmissionError> {
+        if problem.demonstrations.is_empty()
+            || problem.prediction_input.is_empty()
+            || metrics.candidate_executions_without == 0
+            || metrics.examples_without == 0
+            || metrics.blank_solved
+        {
+            return Err(AdmissionError::Unverified);
+        }
+        for demonstration in &problem.demonstrations {
+            if execute_collection(theory, &demonstration.input)
+                != Some(demonstration.output.clone())
+            {
+                return Err(AdmissionError::Unverified);
+            }
+        }
+        if execute_collection(theory, &problem.prediction_input)
+            != Some(expected_prediction.clone())
+        {
+            return Err(AdmissionError::Unverified);
+        }
+        let bytes = theory
+            .encode_canonical()
+            .map_err(|_| AdmissionError::Unverified)?;
+        Ok(VerifiedProceduralReuse {
+            theory_hash: Hash32::digest(&bytes),
+            experience,
+            verified_cases: u64::try_from(problem.demonstrations.len())
+                .unwrap_or(u64::MAX)
+                .saturating_add(1),
+            metrics,
+        })
+    }
+
     /// Validate a mechanism and the evidence that it changed future learning.
     /// Replay certificates must already have been issued by `cairn-proof` and
     /// are represented in the mechanism derivation certificate.
@@ -255,6 +357,130 @@ impl PromotionVerifier {
             actual_reuse_count: evidence.actual_reuse_count,
         })
     }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ProceduralPromotionConsolidator;
+
+impl ProceduralPromotionConsolidator {
+    /// Aggregate independent verifier receipts into the strict persistent
+    /// learning gate and return a theory-bound promotion certificate.
+    ///
+    /// # Errors
+    ///
+    /// Rejects fewer than two independent experiences, mixed theory identity,
+    /// duplicate experiences, or any unmet persistent-learning criterion.
+    pub fn consolidate(
+        &self,
+        mechanism: &Mechanism,
+        theory: &CheckedTheory,
+        baseline: ProceduralExperimentBaseline,
+        receipts: &[VerifiedProceduralReuse],
+    ) -> Result<VerifiedProceduralPromotion, AdmissionError> {
+        let theory_hash = Hash32::digest(
+            &theory
+                .encode_canonical()
+                .map_err(|_| AdmissionError::Unverified)?,
+        );
+        let experiences = receipts
+            .iter()
+            .map(VerifiedProceduralReuse::experience)
+            .collect::<BTreeSet<_>>();
+        if receipts.len() < 2
+            || experiences.len() != receipts.len()
+            || receipts
+                .iter()
+                .any(|receipt| receipt.theory_hash != theory_hash)
+        {
+            return Err(AdmissionError::InsufficientIndependentExperience);
+        }
+        let sum_u64 = |select: fn(CounterfactualReuseMetrics) -> u64| {
+            receipts
+                .iter()
+                .map(|receipt| select(receipt.metrics))
+                .fold(0_u64, u64::saturating_add)
+        };
+        let sum_u32 = |select: fn(CounterfactualReuseMetrics) -> u32| {
+            receipts
+                .iter()
+                .map(|receipt| select(receipt.metrics))
+                .fold(0_u32, u32::saturating_add)
+        };
+        let evidence = InventionEvidence {
+            target_absent_from_named_vocabulary: baseline.target_absent_from_named_vocabulary,
+            source_code_changes: baseline.source_code_changes,
+            independent_experiences: u32::try_from(experiences.len()).unwrap_or(u32::MAX),
+            initial_success_parts_per_million: baseline.initial_success_parts_per_million,
+            post_experience_success_parts_per_million: 1_000_000,
+            uncompressed_cost: baseline.uncompressed_cost,
+            compressed_cost: baseline.compressed_cost,
+            held_out_verified_cases: receipts
+                .iter()
+                .map(VerifiedProceduralReuse::verified_cases)
+                .fold(0_u64, u64::saturating_add),
+            candidate_executions_without: sum_u64(|metrics| metrics.candidate_executions_without),
+            candidate_executions_with: sum_u64(|metrics| metrics.candidate_executions_with),
+            examples_without: sum_u32(|metrics| metrics.examples_without),
+            examples_with: sum_u32(|metrics| metrics.examples_with),
+            false_acceptances_without: baseline.false_acceptances_without,
+            false_acceptances_with: baseline.false_acceptances_with,
+            actual_reuse_count: u32::try_from(receipts.len()).unwrap_or(u32::MAX),
+            necessary_reuse_count: u32::try_from(
+                receipts
+                    .iter()
+                    .filter(|receipt| !receipt.metrics.blank_solved)
+                    .count(),
+            )
+            .unwrap_or(u32::MAX),
+        };
+        PromotionVerifier.verify_procedural(mechanism, theory, &evidence)
+    }
+}
+
+fn execute_collection(theory: &CheckedTheory, input: &[i64]) -> Option<BTreeSet<i64>> {
+    let binder = theory.theory().inputs.first()?;
+    let Type::List { element, maximum } = &binder.ty else {
+        return None;
+    };
+    if input.len() > usize::try_from(*maximum).ok()? {
+        return None;
+    }
+    let mut types = TypeEnvironment::new();
+    types.insert(binder.name.clone(), binder.ty.clone());
+    let mut values = RuntimeEnvironment::new();
+    values.insert(
+        binder.name.clone(),
+        Value::Set {
+            element_type: (**element).clone(),
+            maximum: *maximum,
+            values: input.iter().copied().map(Value::Int).collect(),
+        },
+    );
+    let trace = ReferenceTheoryExecutor
+        .execute(
+            theory,
+            &TheoryExecutionRequest {
+                types,
+                values,
+                initial_facts: BTreeSet::new(),
+                initial_state: BTreeMap::new(),
+            },
+            TheoryExecLimits {
+                expression: cairn_rkl::ExecLimits::default(),
+                maximum_bindings: u64::from(*maximum),
+                maximum_rule_firings: u64::from(*maximum),
+            },
+        )
+        .ok()?;
+    trace
+        .rendered
+        .facts
+        .into_iter()
+        .map(|value| match value {
+            Value::Int(value) => Some(value),
+            _ => None,
+        })
+        .collect()
 }
 
 fn verifier_ancestral_subgraph(

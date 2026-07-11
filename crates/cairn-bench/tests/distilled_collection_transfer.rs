@@ -2,7 +2,7 @@ use cairn_distill::{CollectionDistillationProposer, DistillationVerifier, Teache
 use cairn_invent::InventionLimits;
 use cairn_mechanism::{CardinalityRange, DomainClass, SupportGeometry, VariableId};
 use cairn_memory::{MechanismStore, ModuleStatus};
-use cairn_runtime::{CognitionRuntime, ProceduralSolveError};
+use cairn_runtime::{CognitionRuntime, CompositionLimits, ProceduralSolveError};
 use cairn_sequence::{CollectionSequenceExample, SequenceAdapter};
 use cairn_vector::{VectorAdapter, VectorAttributeBatch};
 use std::collections::BTreeSet;
@@ -248,4 +248,83 @@ fn runtime_composes_independently_distilled_map_and_filter_without_a_composite()
     assert_eq!(composed.predictions.len(), 1);
     assert_eq!(composed.predictions[0].modules.len(), 2);
     assert_eq!(composed.predictions[0].output, BTreeSet::from([-23, -9]));
+}
+
+#[test]
+fn runtime_learns_an_order_sensitive_depth_three_composition() {
+    let mut packet = TeacherPacketCompiler
+        .parse(include_bytes!(
+            "../../cairn-distill/tests/fixtures/collection.json"
+        ))
+        .expect("map packet");
+    let mut increment = packet.collection_mechanism_lessons[0].clone();
+    increment.name = "independently_invented_increment".to_owned();
+    for episode in &mut increment.episodes {
+        episode.outputs = episode.inputs.iter().map(|value| value + 1).collect();
+    }
+    packet.collection_mechanism_lessons.push(increment);
+    let filter = TeacherPacketCompiler
+        .parse(include_bytes!(
+            "../../cairn-distill/tests/fixtures/filter.json"
+        ))
+        .expect("filter packet");
+    packet
+        .collection_mechanism_lessons
+        .extend(filter.collection_mechanism_lessons);
+    let verified = DistillationVerifier
+        .verify(
+            TeacherPacketCompiler
+                .compile(&packet, InventionLimits::default())
+                .expect("compile"),
+        )
+        .expect("three independently verified lessons");
+    let procedures = CollectionDistillationProposer
+        .propose(
+            &verified,
+            &SupportGeometry {
+                observed_domains: BTreeSet::from([DomainClass("generic-collection".to_owned())]),
+                observed_cardinalities: BTreeSet::from([CardinalityRange {
+                    minimum: 2,
+                    maximum: 8,
+                }]),
+                varied_variables: BTreeSet::from([VariableId("collection".to_owned())]),
+                invariant_variables: BTreeSet::new(),
+                unknown_variables: BTreeSet::new(),
+                validated_compositions: BTreeSet::new(),
+                failed_conditions: BTreeSet::new(),
+            },
+        )
+        .expect("three procedures");
+    let runtime = CognitionRuntime::with_memories(MechanismStore::new(), procedures);
+    let problem = SequenceAdapter.lower_collection(
+        32,
+        &[
+            CollectionSequenceExample {
+                input: vec![-8, -2, -1, 0, 5],
+                output: vec![-14, -2, 0],
+            },
+            CollectionSequenceExample {
+                input: vec![-10, -4, -1, 2, 7, 11],
+                output: vec![-18, -6, 0],
+            },
+        ],
+        vec![-12, -5, -1, 0, 3, 9],
+    );
+    assert_eq!(
+        runtime.solve_collection_pair(&problem),
+        Err(ProceduralSolveError::NoVerifiedProposal)
+    );
+    let composed = runtime
+        .solve_collection_composed(
+            &problem,
+            CompositionLimits {
+                minimum_depth: 3,
+                maximum_depth: 3,
+                maximum_schedules: 100,
+            },
+        )
+        .expect("depth-three schedule");
+    assert_eq!(composed.predictions.len(), 1);
+    assert_eq!(composed.predictions[0].modules.len(), 3);
+    assert_eq!(composed.predictions[0].output, BTreeSet::from([-22, -8, 0]));
 }

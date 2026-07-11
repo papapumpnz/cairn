@@ -779,12 +779,272 @@ fn local_bindings(
 /// definitions: two infer output extents and two map each output coordinate to
 /// a source coordinate. No transform label or field-operation enum is stored.
 #[derive(Clone, Debug, PartialEq)]
-pub struct LearnedRemappedFieldTheory {
-    pub output_rows: DefinitionProposal,
-    pub output_columns: DefinitionProposal,
-    pub source_row: DefinitionProposal,
-    pub source_column: DefinitionProposal,
+pub struct LearnedRenderBinding {
+    pub output_extents: [DefinitionProposal; 2],
+    pub source_coordinates: [DefinitionProposal; 2],
     pub training_correspondences: usize,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LearnedPartitionBroadcastBinding {
+    pub controller_role: PartitionControllerRole,
+    pub observed_partition_grids: BTreeSet<(usize, usize)>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum PartitionControllerRole {
+    FixedIndex(usize),
+    OmitsSharedMarker,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct PartitionBroadcastLearner;
+
+impl PartitionBroadcastLearner {
+    /// Learn which structural partition acts as a cellwise controller for a
+    /// grid of equally shaped payload partitions.
+    ///
+    /// # Errors
+    ///
+    /// Rejects absent/ambiguous partitions, incompatible geometry, or failure
+    /// to replay every source output exactly.
+    pub fn learn(
+        &self,
+        pairs: &[(FiniteField, FiniteField)],
+    ) -> Result<LearnedPartitionBroadcastBinding, FieldError> {
+        if pairs.len() < 2 {
+            return Err(FieldError::NoCorrespondence);
+        }
+        let layouts = pairs
+            .iter()
+            .map(|(input, output)| {
+                input.validate()?;
+                output.validate()?;
+                if input.shape != output.shape {
+                    return Err(FieldError::ObservationMismatch);
+                }
+                partition_layout(input)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let maximum = layouts
+            .iter()
+            .map(|layout| layout.row_ranges.len() * layout.column_ranges.len())
+            .min()
+            .ok_or(FieldError::NoCorrespondence)?;
+        let candidates = (0..maximum)
+            .map(PartitionControllerRole::FixedIndex)
+            .chain(std::iter::once(PartitionControllerRole::OmitsSharedMarker))
+            .filter(|role| {
+                pairs.iter().all(|(input, output)| {
+                    render_partition_broadcast(input, role).as_ref() == Ok(output)
+                })
+            })
+            .collect::<Vec<_>>();
+        if candidates.len() != 1 {
+            return Err(FieldError::NoCorrespondence);
+        }
+        Ok(LearnedPartitionBroadcastBinding {
+            controller_role: candidates[0].clone(),
+            observed_partition_grids: layouts
+                .iter()
+                .map(|layout| (layout.row_ranges.len(), layout.column_ranges.len()))
+                .collect(),
+        })
+    }
+
+    /// Rebind the learned controller role to newly inferred partitions and
+    /// render the resulting finite field.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed partition geometry, out-of-range controller roles, or
+    /// invalid fields.
+    pub fn predict(
+        &self,
+        binding: &LearnedPartitionBroadcastBinding,
+        input: &FiniteField,
+    ) -> Result<FiniteField, FieldError> {
+        render_partition_broadcast(input, &binding.controller_role)
+    }
+}
+
+#[derive(Clone, Debug)]
+struct PartitionLayout {
+    separator: i64,
+    separator_rows: BTreeSet<usize>,
+    separator_columns: BTreeSet<usize>,
+    row_ranges: Vec<(usize, usize)>,
+    column_ranges: Vec<(usize, usize)>,
+}
+
+fn partition_layout(field: &FiniteField) -> Result<PartitionLayout, FieldError> {
+    field.validate()?;
+    if field.shape.len() != 2 {
+        return Err(FieldError::Cardinality);
+    }
+    let rows = usize::try_from(field.shape[0]).map_err(|_| FieldError::Capacity)?;
+    let columns = usize::try_from(field.shape[1]).map_err(|_| FieldError::Capacity)?;
+    let separator_rows = (0..rows)
+        .filter(|row| {
+            let first = field.values[row * columns];
+            field.values[row * columns..(row + 1) * columns]
+                .iter()
+                .all(|value| *value == first)
+        })
+        .collect::<BTreeSet<_>>();
+    let separator_columns = (0..columns)
+        .filter(|column| {
+            let first = field.values[*column];
+            (0..rows).all(|row| field.values[row * columns + column] == first)
+        })
+        .collect::<BTreeSet<_>>();
+    let separator = separator_rows
+        .iter()
+        .map(|row| field.values[row * columns])
+        .chain(separator_columns.iter().map(|column| field.values[*column]))
+        .next()
+        .ok_or(FieldError::NoCorrespondence)?;
+    if separator_rows
+        .iter()
+        .any(|row| field.values[row * columns] != separator)
+        || separator_columns
+            .iter()
+            .any(|column| field.values[*column] != separator)
+    {
+        return Err(FieldError::NoCorrespondence);
+    }
+    let row_ranges = nonseparator_ranges(rows, &separator_rows);
+    let column_ranges = nonseparator_ranges(columns, &separator_columns);
+    if row_ranges.is_empty()
+        || column_ranges.is_empty()
+        || row_ranges
+            .iter()
+            .any(|(start, end)| end - start != row_ranges.len())
+        || column_ranges
+            .iter()
+            .any(|(start, end)| end - start != column_ranges.len())
+    {
+        return Err(FieldError::NoCorrespondence);
+    }
+    Ok(PartitionLayout {
+        separator,
+        separator_rows,
+        separator_columns,
+        row_ranges,
+        column_ranges,
+    })
+}
+
+fn nonseparator_ranges(extent: usize, separators: &BTreeSet<usize>) -> Vec<(usize, usize)> {
+    let mut ranges = Vec::new();
+    let mut start = None;
+    for index in 0..=extent {
+        if index < extent && !separators.contains(&index) {
+            start.get_or_insert(index);
+        } else if let Some(start) = start.take() {
+            ranges.push((start, index));
+        }
+    }
+    ranges
+}
+
+fn render_partition_broadcast(
+    input: &FiniteField,
+    controller_role: &PartitionControllerRole,
+) -> Result<FiniteField, FieldError> {
+    let layout = partition_layout(input)?;
+    let columns = usize::try_from(input.shape[1]).map_err(|_| FieldError::Capacity)?;
+    let partition_columns = layout.column_ranges.len();
+    let controller_partition = match controller_role {
+        PartitionControllerRole::FixedIndex(index) => *index,
+        PartitionControllerRole::OmitsSharedMarker => {
+            omitted_shared_marker_partition(input, &layout)?
+        }
+    };
+    let controller_row = controller_partition / partition_columns;
+    let controller_column = controller_partition % partition_columns;
+    let Some((controller_row_start, _)) = layout.row_ranges.get(controller_row) else {
+        return Err(FieldError::NoCorrespondence);
+    };
+    let Some((controller_column_start, _)) = layout.column_ranges.get(controller_column) else {
+        return Err(FieldError::NoCorrespondence);
+    };
+    let mut values = vec![layout.separator; input.values.len()];
+    for (panel_row, (row_start, row_end)) in layout.row_ranges.iter().enumerate() {
+        for (panel_column, (column_start, column_end)) in layout.column_ranges.iter().enumerate() {
+            let control = input.values[(controller_row_start + panel_row) * columns
+                + controller_column_start
+                + panel_column];
+            for row in *row_start..*row_end {
+                for column in *column_start..*column_end {
+                    values[row * columns + column] = control;
+                }
+            }
+        }
+    }
+    for row in layout.separator_rows {
+        for column in 0..columns {
+            values[row * columns + column] = layout.separator;
+        }
+    }
+    for column in layout.separator_columns {
+        for row in 0..usize::try_from(input.shape[0]).map_err(|_| FieldError::Capacity)? {
+            values[row * columns + column] = layout.separator;
+        }
+    }
+    Ok(FiniteField {
+        shape: input.shape.clone(),
+        values,
+    })
+}
+
+fn omitted_shared_marker_partition(
+    input: &FiniteField,
+    layout: &PartitionLayout,
+) -> Result<usize, FieldError> {
+    let columns = usize::try_from(input.shape[1]).map_err(|_| FieldError::Capacity)?;
+    let panels = layout
+        .row_ranges
+        .iter()
+        .flat_map(|(row_start, row_end)| {
+            layout
+                .column_ranges
+                .iter()
+                .map(move |(column_start, column_end)| {
+                    (*row_start..*row_end)
+                        .flat_map(|row| {
+                            (*column_start..*column_end)
+                                .map(move |column| input.values[row * columns + column])
+                        })
+                        .collect::<BTreeSet<_>>()
+                })
+        })
+        .collect::<Vec<_>>();
+    let all_values = panels.iter().flatten().copied().collect::<BTreeSet<_>>();
+    let missing = all_values
+        .iter()
+        .filter_map(|value| {
+            let absent = panels
+                .iter()
+                .enumerate()
+                .filter_map(|(index, panel)| (!panel.contains(value)).then_some(index))
+                .collect::<Vec<_>>();
+            if absent.len() == 1 {
+                Some(absent[0])
+            } else {
+                None
+            }
+        })
+        .collect::<BTreeSet<_>>();
+    if missing.len() != 1 {
+        return Err(FieldError::AmbiguousEntity);
+    }
+    missing.into_iter().next().ok_or(FieldError::NoEntity)
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct LearnedRemappedFieldTheory {
+    pub binding: LearnedRenderBinding,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -818,11 +1078,11 @@ impl RemappedFieldLearner {
         let (source_row, source_column, correspondence_count) =
             invent_affine_sampler(pairs, limits)?;
         let theory = LearnedRemappedFieldTheory {
-            output_rows,
-            output_columns,
-            source_row,
-            source_column,
-            training_correspondences: correspondence_count,
+            binding: LearnedRenderBinding {
+                output_extents: [output_rows, output_columns],
+                source_coordinates: [source_row, source_column],
+                training_correspondences: correspondence_count,
+            },
         };
         for (input, output) in pairs {
             if self.predict(&theory, input, limits.execution)? != *output {
@@ -849,8 +1109,10 @@ impl RemappedFieldLearner {
             return Err(FieldError::Cardinality);
         }
         let shape_inputs = shape_bindings(input);
-        let output_rows = predict_nonnegative(&theory.output_rows, &shape_inputs, limits)?;
-        let output_columns = predict_nonnegative(&theory.output_columns, &shape_inputs, limits)?;
+        let output_rows =
+            predict_nonnegative(&theory.binding.output_extents[0], &shape_inputs, limits)?;
+        let output_columns =
+            predict_nonnegative(&theory.binding.output_extents[1], &shape_inputs, limits)?;
         if output_rows == 0 || output_columns == 0 {
             return Err(FieldError::EmptyAxis);
         }
@@ -862,8 +1124,10 @@ impl RemappedFieldLearner {
             for column in 0..output_columns {
                 let bindings =
                     coordinate_bindings(input, row, column, output_rows, output_columns)?;
-                let source_row = predict_nonnegative(&theory.source_row, &bindings, limits)?;
-                let source_column = predict_nonnegative(&theory.source_column, &bindings, limits)?;
+                let source_row =
+                    predict_nonnegative(&theory.binding.source_coordinates[0], &bindings, limits)?;
+                let source_column =
+                    predict_nonnegative(&theory.binding.source_coordinates[1], &bindings, limits)?;
                 let input_columns =
                     usize::try_from(input.shape[1]).map_err(|_| FieldError::Capacity)?;
                 if source_row

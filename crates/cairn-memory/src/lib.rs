@@ -12,11 +12,13 @@ use cairn_invent::{
 use cairn_mechanism::SupportGeometry as MechanismSupportGeometry;
 use cairn_rkl::CheckedTheory;
 use cairn_rkl::{BoundChecker, Definition, Expr, Type, TypeChecker, VarName};
-use cairn_verifier::{VerifiedCompression, VerifiedProceduralPromotion, VerifiedPromotion};
+use cairn_verifier::{
+    VerifiedCompression, VerifiedProceduralPromotion, VerifiedProceduralReuse, VerifiedPromotion,
+};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
-pub const MEMORY_SEMANTICS_VERSION: &str = "1.3.0";
+pub const MEMORY_SEMANTICS_VERSION: &str = "1.4.0";
 const MAXIMUM_REBOUND_PROPOSALS: usize = 1_024;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -660,6 +662,37 @@ impl ProceduralMechanismStore {
         module.reuse.insert(evidence.experience, evidence);
         module.actual_reuse_count = u32::try_from(module.reuse.len()).unwrap_or(u32::MAX);
         Ok(())
+    }
+
+    /// Import an opaque independent-verifier receipt into the procedural reuse
+    /// ledger without allowing callers to rewrite its measured fields.
+    ///
+    /// # Errors
+    ///
+    /// Rejects theory identity mismatch and ordinary reuse-ledger failures.
+    pub fn record_verifier_receipt(
+        &mut self,
+        id: Hash32,
+        receipt: &VerifiedProceduralReuse,
+    ) -> Result<(), ReuseError> {
+        if receipt.theory_hash() != id {
+            return Err(ReuseError::UnknownModule);
+        }
+        let metrics = receipt.metrics();
+        self.record_verified_reuse(
+            id,
+            ReuseEvidence {
+                experience: receipt.experience(),
+                independently_verified: true,
+                necessary_under_ablation: !metrics.blank_solved,
+                candidate_executions_without: metrics.candidate_executions_without,
+                candidate_executions_with: metrics.candidate_executions_with,
+                examples_without: metrics.examples_without,
+                examples_with: metrics.examples_with,
+                proof_nodes_without: metrics.proof_nodes_without,
+                proof_nodes_with: metrics.proof_nodes_with,
+            },
+        )
     }
 
     /// Promote an existing provisional theory only when a verifier token is

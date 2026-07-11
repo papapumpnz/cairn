@@ -1,5 +1,7 @@
 use cairn_core::Hash32;
-use cairn_curriculum::{Curriculum, ExperienceCandidate, ExperienceId};
+use cairn_curriculum::{
+    Curriculum, ExperienceId, FrontierCurriculumGenerator, FrontierGap, LearningAxis,
+};
 use cairn_runtime::{TheoryHypothesis, VersionSpace};
 use cairn_world::{ActionId, StateSpace, TransitionObservation, WorldLearner, WorldState};
 use std::collections::{BTreeMap, BTreeSet};
@@ -110,10 +112,10 @@ fn identify_mapping(
     let mut interventions = 0_u64;
     while space.len() > 1 {
         let tests = space.discriminating_tests();
-        let candidates = tests
+        let gaps = tests
             .iter()
             .filter(|test| test.outcome_partitions > 1)
-            .map(|test| ExperienceCandidate {
+            .map(|test| FrontierGap {
                 id: ExperienceId(
                     action_hashes
                         .iter()
@@ -121,15 +123,16 @@ fn identify_mapping(
                         .expect("modeled action")
                         .to_string(),
                 ),
-                expected_information_microunits: u64::try_from(test.outcome_partitions - 1)
-                    .expect("small partitions")
-                    * 1_000_000,
+                axis: LearningAxis::CausalLaw,
+                competing_hypotheses: u64::try_from(test.outcome_partitions)
+                    .expect("small partitions"),
                 expected_transfer_microunits: 0,
-                underused_mechanism_bonus: 0,
+                prior_exercises: interventions,
                 action_cost: 1,
                 irreversible_risk: 0,
             })
             .collect::<Vec<_>>();
+        let candidates = FrontierCurriculumGenerator.generate(&gaps);
         let selected = Curriculum.select(&candidates).expect("curriculum choice");
         let index = selected.id.0.parse::<usize>().expect("generated index");
         space

@@ -11,6 +11,10 @@ use cairn_rkl::{
 };
 use std::collections::{BTreeMap, BTreeSet};
 
+use cairn_core::{
+    EntityId, EntitySelectionProblem, FeatureId, RelationRole, RelationalEntityCollection,
+};
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct PredicateColumn {
     pub expression: Expr,
@@ -840,6 +844,238 @@ impl CollectionMechanismInventor {
             observed_cardinalities,
         })
     }
+}
+
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum EntityFeature {
+    Attribute(FeatureId),
+    OutDegree(RelationRole),
+    InDegree(RelationRole),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct LearnedEntitySelector {
+    pub selector: InventionOutcome,
+    pub features: Vec<EntityFeature>,
+    pub source_collections: usize,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum EntitySelectionError {
+    InsufficientCollections,
+    EmptyCollection,
+    UnknownEntity,
+    InvalidSelection,
+    Contrast(ContrastError),
+    Prediction(InventionError),
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct RelationalEntitySelectorInventor;
+
+impl RelationalEntitySelectorInventor {
+    /// Invent one executable entity predicate from attributes and relation-role
+    /// degrees, then retain the feature contract needed for rebinding.
+    ///
+    /// # Errors
+    ///
+    /// Rejects insufficient or malformed collections, invalid selections, and
+    /// bounded contrast-invention failure.
+    pub fn invent(
+        &self,
+        problem: &EntitySelectionProblem,
+        limits: InventionLimits,
+    ) -> Result<LearnedEntitySelector, EntitySelectionError> {
+        if problem.demonstrations.len() < 2 {
+            return Err(EntitySelectionError::InsufficientCollections);
+        }
+        for demonstration in &problem.demonstrations {
+            validate_entity_collection(&demonstration.collection)?;
+            let ids = demonstration
+                .collection
+                .entities
+                .iter()
+                .map(|entity| entity.id.clone())
+                .collect::<BTreeSet<_>>();
+            if !demonstration.selected.is_subset(&ids) {
+                return Err(EntitySelectionError::InvalidSelection);
+            }
+        }
+        validate_entity_collection(&problem.prediction)?;
+        let features = entity_feature_schema(
+            problem
+                .demonstrations
+                .iter()
+                .map(|demonstration| &demonstration.collection)
+                .chain(std::iter::once(&problem.prediction)),
+        );
+        let feature_binders = features
+            .iter()
+            .enumerate()
+            .map(|(index, _)| {
+                (
+                    VarName(format!("feature_{index}")),
+                    Type::Int(cairn_rkl::IntRange {
+                        lower: -i64::from(u16::MAX),
+                        upper: i64::from(u16::MAX),
+                    }),
+                )
+            })
+            .collect::<Vec<_>>();
+        let examples = problem
+            .demonstrations
+            .iter()
+            .flat_map(|demonstration| {
+                demonstration.collection.entities.iter().map(|entity| {
+                    let values = entity_features(&demonstration.collection, &entity.id, &features);
+                    ContrastExample {
+                        features: feature_binders
+                            .iter()
+                            .map(|(name, _)| name.clone())
+                            .zip(values.into_iter().map(Value::Int))
+                            .collect(),
+                        selected: demonstration.selected.contains(&entity.id),
+                    }
+                })
+            })
+            .collect::<Vec<_>>();
+        let selector = ContrastPredicateInventor
+            .invent(
+                "invented_entity_selector",
+                &feature_binders,
+                &examples,
+                vec![Value::Int(0), Value::Int(1), Value::Int(2)],
+                limits,
+            )
+            .map_err(EntitySelectionError::Contrast)?;
+        Ok(LearnedEntitySelector {
+            selector,
+            features,
+            source_collections: problem.demonstrations.len(),
+        })
+    }
+
+    /// Rebind and execute a learned selector on an unseen entity collection.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed relations or bounded selector execution failure.
+    pub fn predict(
+        &self,
+        learned: &LearnedEntitySelector,
+        collection: &RelationalEntityCollection,
+    ) -> Result<BTreeSet<EntityId>, EntitySelectionError> {
+        validate_entity_collection(collection)?;
+        collection
+            .entities
+            .iter()
+            .filter_map(|entity| {
+                let values = entity_features(collection, &entity.id, &learned.features);
+                let mut inputs = RuntimeEnvironment::new();
+                for (parameter, value) in learned
+                    .selector
+                    .proposal
+                    .definition
+                    .parameters
+                    .iter()
+                    .zip(values)
+                {
+                    inputs.insert(parameter.name.clone(), Value::Int(value));
+                }
+                match DefinitionInventor.predict(
+                    &learned.selector.proposal,
+                    &inputs,
+                    cairn_rkl::ExecLimits::default(),
+                ) {
+                    Ok(Value::Bool(true)) => Some(Ok(entity.id.clone())),
+                    Ok(Value::Bool(false)) => None,
+                    Ok(_) => Some(Err(EntitySelectionError::Prediction(
+                        InventionError::VerificationMismatch,
+                    ))),
+                    Err(error) => Some(Err(EntitySelectionError::Prediction(error))),
+                }
+            })
+            .collect()
+    }
+}
+
+fn validate_entity_collection(
+    collection: &RelationalEntityCollection,
+) -> Result<(), EntitySelectionError> {
+    if collection.entities.is_empty() {
+        return Err(EntitySelectionError::EmptyCollection);
+    }
+    let ids = collection
+        .entities
+        .iter()
+        .map(|entity| entity.id.clone())
+        .collect::<BTreeSet<_>>();
+    if ids.len() != collection.entities.len()
+        || collection
+            .relations
+            .iter()
+            .any(|relation| !ids.contains(&relation.subject) || !ids.contains(&relation.object))
+    {
+        return Err(EntitySelectionError::UnknownEntity);
+    }
+    Ok(())
+}
+
+fn entity_feature_schema<'a>(
+    collections: impl Iterator<Item = &'a RelationalEntityCollection>,
+) -> Vec<EntityFeature> {
+    let mut attributes = BTreeSet::new();
+    let mut roles = BTreeSet::new();
+    for collection in collections {
+        for entity in &collection.entities {
+            attributes.extend(entity.attributes.keys().cloned());
+        }
+        roles.extend(
+            collection
+                .relations
+                .iter()
+                .map(|relation| relation.role.clone()),
+        );
+    }
+    attributes
+        .into_iter()
+        .map(EntityFeature::Attribute)
+        .chain(roles.clone().into_iter().map(EntityFeature::OutDegree))
+        .chain(roles.into_iter().map(EntityFeature::InDegree))
+        .collect()
+}
+
+fn entity_features(
+    collection: &RelationalEntityCollection,
+    id: &EntityId,
+    features: &[EntityFeature],
+) -> Vec<i64> {
+    let entity = collection.entities.iter().find(|entity| &entity.id == id);
+    features
+        .iter()
+        .map(|feature| match feature {
+            EntityFeature::Attribute(feature) => entity
+                .and_then(|entity| entity.attributes.get(feature))
+                .copied()
+                .unwrap_or(0),
+            EntityFeature::OutDegree(role) => i64::try_from(
+                collection
+                    .relations
+                    .iter()
+                    .filter(|relation| relation.role == *role && relation.subject == *id)
+                    .count(),
+            )
+            .unwrap_or(i64::MAX),
+            EntityFeature::InDegree(role) => i64::try_from(
+                collection
+                    .relations
+                    .iter()
+                    .filter(|relation| relation.role == *role && relation.object == *id)
+                    .count(),
+            )
+            .unwrap_or(i64::MAX),
+        })
+        .collect()
 }
 
 fn validate_filter_traces(

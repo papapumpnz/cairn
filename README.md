@@ -306,6 +306,13 @@ map and filter theories when neither works alone. The field bridge reconstructs
 all training cells before ARC use. The frozen first-20 ARC checkpoint remains 17
 exact, 3 resource-limited, and 0 incorrect, so no ARC score gain is claimed. See
 [PROCEDURAL_REUSE_COMPOSITION_FIELD_TRANSFER.md](docs/experiments/PROCEDURAL_REUSE_COMPOSITION_FIELD_TRANSFER.md).
+The subsequent structural-transfer ablation produced the first full-corpus
+accuracy gain from non-ARC learned knowledge. A controller/render binding learned
+from generated dashboard fields improves frozen ARC-40 from 17 to 18 exact and
+the complete ARC-1 training corpus from 32/400 to 33/400 with no lost solve or
+incorrect output. This is 8.25%, not an ARC pass or evidence of general
+intelligence. See
+[STRUCTURAL_TRANSFER_ARC400_20260712.md](docs/experiments/STRUCTURAL_TRANSFER_ARC400_20260712.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and durable proof-DAG artifact storage, arbitrary internal-subgraph compilation,

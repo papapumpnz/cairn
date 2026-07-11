@@ -4,7 +4,8 @@ use cairn_core::{CollectionProcedureProblem, Hash32, LearningProblem, Observatio
 use cairn_invent::{InventionError, InventionProblem};
 use cairn_knowledge::KnowledgeBase;
 use cairn_memory::{
-    MechanismStore, MemoryAssistedInventor, MemorySolveOutcome, ProceduralMechanismStore,
+    MechanismStore, MemoryAssistedInventor, MemorySolveOutcome, ProceduralMechanismModule,
+    ProceduralMechanismStore,
 };
 use cairn_rkl::{
     ReferenceTheoryExecutor, RuntimeEnvironment, TheoryExecLimits, TheoryExecutionRequest, Type,
@@ -22,6 +23,63 @@ pub struct CognitionRuntime {
     memory: MechanismStore,
     procedures: ProceduralMechanismStore,
     knowledge: KnowledgeBase,
+}
+
+fn procedure_schedules(
+    module_count: usize,
+    minimum_depth: usize,
+    maximum_depth: usize,
+    maximum_schedules: u64,
+) -> Vec<Vec<usize>> {
+    fn extend(
+        module_count: usize,
+        target: usize,
+        maximum: u64,
+        current: &mut Vec<usize>,
+        output: &mut Vec<Vec<usize>>,
+    ) {
+        if u64::try_from(output.len()).unwrap_or(u64::MAX) >= maximum {
+            return;
+        }
+        if current.len() == target {
+            output.push(current.clone());
+            return;
+        }
+        for index in 0..module_count {
+            if current.contains(&index) {
+                continue;
+            }
+            current.push(index);
+            extend(module_count, target, maximum, current, output);
+            current.pop();
+        }
+    }
+    let mut output = Vec::new();
+    for depth in minimum_depth..=maximum_depth {
+        extend(
+            module_count,
+            depth,
+            maximum_schedules,
+            &mut Vec::new(),
+            &mut output,
+        );
+    }
+    output
+}
+
+fn execute_schedule(
+    modules: &[&ProceduralMechanismModule],
+    schedule: &[usize],
+    input: &[i64],
+) -> Option<BTreeSet<i64>> {
+    let mut values = input.iter().copied().collect::<BTreeSet<_>>();
+    for index in schedule {
+        values = execute_collection(
+            modules.get(*index)?.theory(),
+            &values.iter().copied().collect::<Vec<_>>(),
+        )?;
+    }
+    Some(values)
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -74,6 +132,23 @@ pub struct CollectionCompositionOutcome {
     pub predictions: Vec<CollectionCompositionPrediction>,
     pub schedules_attempted: u64,
     pub demonstration_replays: u64,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CompositionLimits {
+    pub minimum_depth: usize,
+    pub maximum_depth: usize,
+    pub maximum_schedules: u64,
+}
+
+impl Default for CompositionLimits {
+    fn default() -> Self {
+        Self {
+            minimum_depth: 2,
+            maximum_depth: 4,
+            maximum_schedules: 10_000,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -228,58 +303,73 @@ impl CognitionRuntime {
         &self,
         problem: &CollectionProcedureProblem,
     ) -> Result<CollectionCompositionOutcome, ProceduralSolveError> {
+        self.solve_collection_composed(
+            problem,
+            CompositionLimits {
+                minimum_depth: 2,
+                maximum_depth: 2,
+                maximum_schedules: 10_000,
+            },
+        )
+    }
+
+    /// Enumerate bounded schedules of independently stored procedures. Every
+    /// complete schedule is replayed on every current demonstration.
+    ///
+    /// # Errors
+    ///
+    /// Rejects invalid bounds, malformed evidence, exhausted schedule capacity,
+    /// or the absence of an exactly replayed composition.
+    pub fn solve_collection_composed(
+        &self,
+        problem: &CollectionProcedureProblem,
+        limits: CompositionLimits,
+    ) -> Result<CollectionCompositionOutcome, ProceduralSolveError> {
         validate_collection_problem(problem)?;
+        if limits.minimum_depth < 2
+            || limits.maximum_depth < limits.minimum_depth
+            || limits.maximum_schedules == 0
+        {
+            return Err(ProceduralSolveError::EmptyBound);
+        }
         let modules = self.procedures.reusable_modules().collect::<Vec<_>>();
         let mut schedules_attempted = 0_u64;
         let mut demonstration_replays = 0_u64;
         let mut predictions = Vec::new();
         let mut observed_outputs = BTreeSet::new();
-        for first in &modules {
-            for second in &modules {
-                if first.id() == second.id() {
-                    continue;
-                }
-                schedules_attempted = schedules_attempted.saturating_add(1);
-                let mut exact = true;
-                for demonstration in &problem.demonstrations {
-                    demonstration_replays = demonstration_replays.saturating_add(1);
-                    let Some(intermediate) =
-                        execute_collection(first.theory(), &demonstration.input)
-                    else {
-                        exact = false;
-                        break;
-                    };
-                    let input = intermediate.iter().copied().collect::<Vec<_>>();
-                    let Some(output) = execute_collection(second.theory(), &input) else {
-                        exact = false;
-                        break;
-                    };
-                    if output != demonstration.output {
-                        exact = false;
-                        break;
-                    }
-                }
-                if !exact {
-                    continue;
-                }
-                let Some(intermediate) =
-                    execute_collection(first.theory(), &problem.prediction_input)
-                else {
-                    continue;
-                };
-                let input = intermediate.iter().copied().collect::<Vec<_>>();
-                let Some(output) = execute_collection(second.theory(), &input) else {
-                    continue;
-                };
-                if observed_outputs.insert(output.clone()) {
-                    predictions.push(CollectionCompositionPrediction {
-                        modules: vec![first.id(), second.id()],
-                        output,
-                    });
-                }
-                if predictions.len() == problem.maximum_predictions {
+        let schedules = procedure_schedules(
+            modules.len(),
+            limits.minimum_depth,
+            limits.maximum_depth.min(modules.len()),
+            limits.maximum_schedules,
+        );
+        for schedule in schedules {
+            schedules_attempted = schedules_attempted.saturating_add(1);
+            let mut exact = true;
+            for demonstration in &problem.demonstrations {
+                demonstration_replays = demonstration_replays.saturating_add(1);
+                if execute_schedule(&modules, &schedule, &demonstration.input)
+                    != Some(demonstration.output.clone())
+                {
+                    exact = false;
                     break;
                 }
+            }
+            if !exact {
+                continue;
+            }
+            let Some(output) = execute_schedule(&modules, &schedule, &problem.prediction_input)
+            else {
+                continue;
+            };
+            if observed_outputs.insert(output.clone()) {
+                predictions.push(CollectionCompositionPrediction {
+                    modules: schedule.iter().map(|index| modules[*index].id()).collect(),
+                    output,
+                });
+            }
+            if predictions.len() == problem.maximum_predictions {
+                break;
             }
         }
         if predictions.is_empty() {

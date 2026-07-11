@@ -1,5 +1,5 @@
 use crate::{CanonicalEncode, CanonicalError, CanonicalValue, Hash32};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ObservationId(pub Hash32);
@@ -72,6 +72,46 @@ pub struct CollectionProcedureProblem {
     pub demonstrations: Vec<CollectionDemonstration>,
     pub prediction_input: Vec<i64>,
     pub maximum_predictions: usize,
+}
+
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct EntityId(pub Hash32);
+
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct FeatureId(pub String);
+
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct RelationRole(pub String);
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EntityRecord {
+    pub id: EntityId,
+    pub attributes: BTreeMap<FeatureId, i64>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RelationRecord {
+    pub role: RelationRole,
+    pub subject: EntityId,
+    pub object: EntityId,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RelationalEntityCollection {
+    pub entities: Vec<EntityRecord>,
+    pub relations: Vec<RelationRecord>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EntitySelectionDemonstration {
+    pub collection: RelationalEntityCollection,
+    pub selected: BTreeSet<EntityId>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EntitySelectionProblem {
+    pub demonstrations: Vec<EntitySelectionDemonstration>,
+    pub prediction: RelationalEntityCollection,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -19,9 +19,11 @@ pub use canonical::{
 };
 pub use hash::{ArtifactId, BlobId, Hash32, HashParseError};
 pub use learning::{
-    CollectionDemonstration, CollectionProcedureProblem, Demonstration, Intervention,
-    LearningProblem, ModalityId, Observation, ObservationCertainty, ObservationError,
-    ObservationId, PredictionRequest, SourceReference, TaskId,
+    CollectionDemonstration, CollectionProcedureProblem, Demonstration, EntityId, EntityRecord,
+    EntitySelectionDemonstration, EntitySelectionProblem, FeatureId, Intervention, LearningProblem,
+    ModalityId, Observation, ObservationCertainty, ObservationError, ObservationId,
+    PredictionRequest, RelationRecord, RelationRole, RelationalEntityCollection, SourceReference,
+    TaskId,
 };
 
 /// Artifact protocol implemented by this crate.

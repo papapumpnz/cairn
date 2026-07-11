@@ -12,7 +12,8 @@ use cairn_core::{
 };
 use cairn_field::{
     EntityFrameLearner, FieldError, FieldEvidence, FieldValueCollectionAdapter, FiniteField,
-    LocalFieldLearner, PointwiseFieldLearner, RemappedFieldLearner, ResidualConstructorInventor,
+    LearnedPartitionBroadcastBinding, LocalFieldLearner, PartitionBroadcastLearner,
+    PointwiseFieldLearner, RemappedFieldLearner, ResidualConstructorInventor,
 };
 use cairn_invent::InventionLimits;
 use cairn_reg::RegLimits;
@@ -22,7 +23,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.16.0";
+pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.17.0";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ArcGrid {
@@ -335,6 +336,23 @@ pub fn attempt_task_with_runtime(
     execution: ExecLimits,
     runtime: &CognitionRuntime,
 ) -> Result<ArcAttempt, ArcAdapterError> {
+    attempt_task_with_runtime_and_partition_bindings(task, invention, execution, runtime, &[])
+}
+
+/// Attempt with caller-supplied, non-ARC learned structural render bindings.
+/// Every imported binding must exactly replay all current demonstrations.
+///
+/// # Errors
+///
+/// Returns malformed evidence, bounded learning, or execution failures.
+#[allow(clippy::too_many_lines)] // Keep the ordered fail-closed learner cascade explicit.
+pub fn attempt_task_with_runtime_and_partition_bindings(
+    task: &ArcTask,
+    invention: InventionLimits,
+    execution: ExecLimits,
+    runtime: &CognitionRuntime,
+    bindings: &[LearnedPartitionBroadcastBinding],
+) -> Result<ArcAttempt, ArcAdapterError> {
     let experience =
         lower_relational_experience(task, "urn:cairn:adapter-task:sealed", RegLimits::default())?;
     let admitted = runtime
@@ -364,6 +382,46 @@ pub fn attempt_task_with_runtime(
             Ok((input, output))
         })
         .collect::<Result<Vec<_>, ArcAdapterError>>()?;
+    for binding in bindings {
+        if training.iter().all(|(input, output)| {
+            PartitionBroadcastLearner.predict(binding, input).as_ref() == Ok(output)
+        }) {
+            let predictions = task
+                .test
+                .iter()
+                .map(|case| {
+                    let input = lower(&case.input)?;
+                    PartitionBroadcastLearner
+                        .predict(binding, &input)
+                        .map_err(ArcAdapterError::Field)
+                        .and_then(|prediction| raise(&prediction))
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let evaluated_tests = task
+                .test
+                .iter()
+                .filter(|case| case.output.is_some())
+                .count();
+            let exact_tests = predictions
+                .iter()
+                .zip(&task.test)
+                .filter(|(prediction, case)| case.output.as_ref() == Some(*prediction))
+                .count();
+            return Ok(ArcAttempt {
+                predictions,
+                evaluated_tests,
+                exact_tests,
+                training_cells: training.iter().map(|(input, _)| input.values.len()).sum(),
+                generic_observations: admitted.observations,
+                relational_nodes,
+                relational_facts,
+                learned_expression: format!(
+                    "transferred_partition_controller={:?}",
+                    binding.controller_role
+                ),
+            });
+        }
+    }
     if let Some(attempt) = attempt_value_collection(task, &training, evidence, runtime)? {
         return Ok(attempt);
     }
@@ -741,16 +799,16 @@ fn attempt_remapped(
         predictions,
         evaluated_tests,
         exact_tests,
-        training_cells: learned.training_correspondences,
+        training_cells: learned.binding.training_correspondences,
         generic_observations: evidence.observations,
         relational_nodes: evidence.relational_nodes,
         relational_facts: evidence.relational_facts,
         learned_expression: format!(
             "shape=({:?},{:?}); source=({:?},{:?})",
-            learned.output_rows.definition.body,
-            learned.output_columns.definition.body,
-            learned.source_row.definition.body,
-            learned.source_column.definition.body,
+            learned.binding.output_extents[0].definition.body,
+            learned.binding.output_extents[1].definition.body,
+            learned.binding.source_coordinates[0].definition.body,
+            learned.binding.source_coordinates[1].definition.body,
         ),
     })
 }
@@ -789,6 +847,29 @@ pub fn run_training_batch_with_runtime(
     invention: InventionLimits,
     execution: ExecLimits,
     runtime: &CognitionRuntime,
+) -> Result<ArcBatchReport, String> {
+    run_training_batch_with_runtime_and_partition_bindings(
+        directory,
+        maximum_tasks,
+        invention,
+        execution,
+        runtime,
+        &[],
+    )
+}
+
+/// Run a frozen batch with caller-supplied non-ARC structural bindings.
+///
+/// # Errors
+///
+/// Returns an I/O diagnostic if the corpus directory cannot be enumerated.
+pub fn run_training_batch_with_runtime_and_partition_bindings(
+    directory: &Path,
+    maximum_tasks: usize,
+    invention: InventionLimits,
+    execution: ExecLimits,
+    runtime: &CognitionRuntime,
+    bindings: &[LearnedPartitionBroadcastBinding],
 ) -> Result<ArcBatchReport, String> {
     let mut paths = fs::read_dir(directory)
         .map_err(|error| error.to_string())?
@@ -876,7 +957,7 @@ pub fn run_training_batch_with_runtime(
             .saturating_add(generic_observations);
         batch.relational_nodes = batch.relational_nodes.saturating_add(relational_nodes);
         batch.relational_facts = batch.relational_facts.saturating_add(relational_facts);
-        let report = evaluate_task(task_name, task, invention, execution, runtime);
+        let report = evaluate_task(task_name, task, invention, execution, runtime, bindings);
         record_report(&mut batch, report);
     }
     Ok(batch)
@@ -914,6 +995,7 @@ fn evaluate_task(
     invention: InventionLimits,
     execution: ExecLimits,
     runtime: &CognitionRuntime,
+    bindings: &[LearnedPartitionBroadcastBinding],
 ) -> ArcTaskReport {
     let expected = task
         .test
@@ -931,7 +1013,9 @@ fn evaluate_task(
             })
             .collect(),
     };
-    match attempt_task_with_runtime(&sealed, invention, execution, runtime) {
+    match attempt_task_with_runtime_and_partition_bindings(
+        &sealed, invention, execution, runtime, bindings,
+    ) {
         Ok(attempt) => {
             let evaluated = expected.iter().filter(|item| item.is_some()).count();
             let exact = attempt
