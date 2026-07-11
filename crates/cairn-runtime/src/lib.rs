@@ -5,6 +5,11 @@ use cairn_invent::{InventionError, InventionProblem};
 use cairn_memory::{
     MechanismStore, MemoryAssistedInventor, MemorySolveOutcome, ProceduralMechanismStore,
 };
+use cairn_skill::{Condition, Skill, SkillPlan, SkillPlanError, SkillPlanner};
+use cairn_world::{
+    ActionId, ExactPlanner, GoalObservation, GoalTheory, Plan, PlanLimits, StateSpace,
+    TransitionObservation, TransitionTheory, WorldError, WorldLearner, WorldState,
+};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Debug, Default)]
@@ -30,6 +35,19 @@ pub enum ExperienceError {
     InvalidObservation(ObservationId),
     DuplicateObservation(ObservationId),
     UnknownReference(ObservationId),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InteractiveLearningOutcome {
+    pub transition_theory: TransitionTheory,
+    pub goal_theory: GoalTheory,
+    pub plan: Plan,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CognitionError {
+    World(WorldError),
+    Skill(SkillPlanError),
 }
 
 impl CognitionRuntime {
@@ -136,6 +154,55 @@ impl CognitionRuntime {
             demonstrations: problem.demonstrations.len(),
             requested_predictions: problem.requested_predictions.len(),
         })
+    }
+
+    /// Learn action effects and a goal from observations, then plan under the
+    /// induced theories through the same adapter-neutral runtime.
+    ///
+    /// # Errors
+    ///
+    /// Returns exact world induction, goal inference, or planning failures.
+    pub fn learn_and_plan_world(
+        &self,
+        space: &StateSpace,
+        actions: &[ActionId],
+        transitions: &[TransitionObservation],
+        goals: &[GoalObservation],
+        initial: &WorldState,
+        limits: PlanLimits,
+    ) -> Result<InteractiveLearningOutcome, CognitionError> {
+        let transition_theory = WorldLearner
+            .induce_transitions(space, actions, transitions)
+            .map_err(CognitionError::World)?;
+        let goal_theory = WorldLearner
+            .induce_goal(space, goals)
+            .map_err(CognitionError::World)?;
+        let plan = ExactPlanner
+            .plan(&transition_theory, &goal_theory, initial, limits)
+            .map_err(CognitionError::World)?;
+        Ok(InteractiveLearningOutcome {
+            transition_theory,
+            goal_theory,
+            plan,
+        })
+    }
+
+    /// Compose conditional learned skills using their initiation conditions
+    /// and effects rather than replaying a recorded action sequence.
+    ///
+    /// # Errors
+    ///
+    /// Returns exact malformed-library, capacity, or no-plan failures.
+    pub fn plan_with_skills(
+        &self,
+        initial: &BTreeSet<cairn_skill::Fluent>,
+        goal: &Condition,
+        skills: &[Skill],
+        maximum_expansions: u64,
+    ) -> Result<SkillPlan, CognitionError> {
+        SkillPlanner
+            .plan(initial, goal, skills, maximum_expansions)
+            .map_err(CognitionError::Skill)
     }
 }
 

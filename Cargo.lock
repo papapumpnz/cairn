@@ -210,6 +210,9 @@ dependencies = [
  "cairn-core",
  "cairn-invent",
  "cairn-memory",
+ "cairn-rkl",
+ "cairn-skill",
+ "cairn-world",
 ]
 
 [[package]]

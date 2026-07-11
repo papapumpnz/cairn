@@ -238,6 +238,14 @@ promotion token binds definitions, quantified rules, schedule, and renderer;
 theory is rejected under the original token. See
 docs/experiments/COLLECTION_MECHANISM_PROMOTION.md.
 
+The common runtime now exposes all three mandatory loops through one instance:
+task-local definition learning; persistent definition and canonical procedural
+memory; action-conditioned transition and goal induction followed by planning;
+and conditional learned-skill composition. A unified test executes all three
+paths without adapter types. The official ARC regression remains 17/20 after
+the integration, demonstrating that orchestration did not alter the quarantined
+adapter baseline. See docs/experiments/UNIFIED_COGNITION_RUNTIME.md.
+
 ## 5. Proof-backed knowledge learning
 
 The knowledge subsystem stores:

@@ -11,6 +11,11 @@ repository.workspace = true
 cairn-core = { path = "../cairn-core" }
 cairn-invent = { path = "../cairn-invent" }
 cairn-memory = { path = "../cairn-memory" }
+cairn-skill = { path = "../cairn-skill" }
+cairn-world = { path = "../cairn-world" }
+
+[dev-dependencies]
+cairn-rkl = { path = "../cairn-rkl" }
 
 [lints]
 workspace = true

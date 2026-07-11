@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "date": "2026-07-11",
+  "status": "shared_orchestration_checkpoint",
+  "general_intelligence_claim": false,
+  "one_runtime_instance": true,
+  "task_learning": true,
+  "scalar_memory": true,
+  "canonical_procedural_memory": true,
+  "transition_learning": true,
+  "goal_learning": true,
+  "planning": true,
+  "skill_composition": true,
+  "adapter_types_in_runtime": false,
+  "arc_exact": 17,
+  "arc_total": 20,
+  "arc_resource_limited": 3,
+  "open_requirements": [
+    "rich_adapter_to_reg_theory_induction",
+    "noisy_belief_worlds",
+    "skill_recovery_learning",
+    "learned_perception",
+    "arc_legacy_backend_replacement"
+  ]
+}
