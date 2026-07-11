@@ -17,6 +17,7 @@ members = [
   "crates/cairn-knowledge",
   "crates/cairn-language",
   "crates/cairn-distill",
+  "crates/cairn-teacher-spool",
   "crates/cairn-memory",
   "crates/cairn-mechanism",
   "crates/cairn-consolidator",

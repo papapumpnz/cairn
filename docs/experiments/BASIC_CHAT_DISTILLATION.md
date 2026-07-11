@@ -152,3 +152,16 @@ What is not yet real:
 The next engineering gate is semantic claim validation, multi-family
 anti-unification, and contextual retrieval, followed by a broader frozen
 teacher-independence curriculum.
+
+## Offline dual-provider follow-up
+
+The provider boundary is now a network-free spool supporting GPT-compatible
+Responses structured output and Anthropic-compatible Messages forced-tool
+output. It exports request bytes and imports saved response bytes only. CAIRN
+has no live teacher client and answers from accepted local knowledge.
+
+An offline GPT-authored follow-up compiled 40 non-ARC lessons into 20 provisional
+mechanisms, but the full frozen ARC rerun remained 32/400 exact with zero
+incorrect, used none of those mechanisms in selected proofs, and took 476.50
+seconds. This is not an ARC improvement and the library does not yet satisfy G1
+actual-reuse evidence. See `OFFLINE_DUAL_TEACHER_ARC_TRANSFER.md`.

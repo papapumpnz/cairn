@@ -345,8 +345,12 @@ failure, propagation latency, and memory per useful artifact.
 ## 16. Teacher-originated artifacts
 
 Teacher packets enter through a dedicated offline orchestrator and retain their
-origin forever. No swarm worker may invoke an external model in the production
-answer path. Schema validation precedes decoding; code is parsed to a typed AST,
+origin forever. GPT-compatible and Anthropic-compatible orchestrators are
+transport-incapable spool codecs: they serialize requests and decode saved
+responses but own no network, credential, provider SDK, or subprocess
+capability. No swarm worker may invoke an external model in the production
+answer path, and CAIRN answers only from current evidence and accepted local
+knowledge. Schema validation precedes decoding; code is parsed to a typed AST,
 sandboxed, resource bounded, and verified before any execution. Teacher
 confidence, signatures, and peer votes cannot replace proof replay. Revocation
 must reach every accepted-artifact frontier before affected knowledge can be

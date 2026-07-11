@@ -576,6 +576,12 @@ claims, procedures, mechanisms, skills, curricula, tests, alternatives, and
 counterexamples. CAIRN must compile, verify, decompose, anti-unify, challenge,
 transfer-test, and revoke them using its own representations. The external
 teacher is absent from production and from the teacher-independence evaluation.
+GPT and Anthropic integrations are network-free spool codecs only. They may
+export an API-shaped JSON request and import a response saved by a separately
+governed external process. They may not own HTTP, sockets, credentials, provider
+SDKs, or subprocess transport. CAIRN answers solely from current evidence and
+accepted local knowledge; absence of knowledge must remain an explicit failure
+or clarification, never an implicit online teacher call.
 
 Swarm learning is a first-class continual loop: discoveries and failures become
 immutable proof-carrying artifacts; specialist peers replay, falsify, transfer
@@ -615,3 +621,14 @@ single-variable rebindings before compilation. The complete rerun remains
 390.85 seconds, while matching memory still removes one candidate. This clears
 the initial narrow retrieval-overhead regression; contextual retrieval for
 compound and composed mechanisms remains open.
+
+The first larger offline GPT-authored curriculum supplied 40 independently
+varied, non-ARC spatial-sensor lessons. CAIRN synthesized and admitted 20
+executable provisional mechanisms, then ran the frozen 400-task corpus. The
+result was
+32 exact, 368 resource-limited, zero incorrect, 476.50 seconds, and zero
+selected proofs using those mechanisms. This passes offline compilation and
+admission but fails D2 transfer and compute improvement. The mechanisms do not
+count as useful learned persistent knowledge under G1 until actual reuse is
+shown. No Anthropic knowledge was ingested; only its offline spool contract is
+implemented and tested.

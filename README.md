@@ -10,8 +10,11 @@ initial slice compiles prompts to explicit intent, retains dialogue goals,
 constructs a typed Python AST, executes examples, and only then realizes code
 and explanation. A closed offline teacher-packet pipeline can bootstrap
 language mappings and executable lessons, but the teacher is never in the
-answer path: local verification, independent swarm peers, changed-context
-transfer, provenance, and revocation gate shared knowledge.
+answer path. Both GPT-shaped Responses packets and Anthropic-shaped Messages
+tool packets cross a network-free filesystem spool only; CAIRN contains no
+provider client and answers solely from its accepted local knowledge. Local
+verification, independent swarm peers, changed-context transfer, provenance,
+and revocation gate shared knowledge.
 
 ARC is one quarantined evaluation adapter. It is not the project's developmental
 centre or sufficient evidence of general learning.
@@ -32,6 +35,8 @@ Implemented today:
   response is built from a typed AST and executable examples;
 - `cairn-distill`, a closed offline teacher-packet compiler with local replay,
   two-peer receipts, transfer gating, provenance, and revocation state;
+- `cairn-teacher-spool`, a transport-incapable dual-protocol request/export and
+  saved-response/import boundary for GPT and Anthropic teacher packets;
 
 - a pinned Rust workspace;
 - the repository operating law and architecture-layer manifest;
@@ -264,6 +269,14 @@ Memory semantics 1.1.0 now refutes directly contradicted variable bindings
 before compilation. The complete contextual rerun keeps 32/400 and zero
 incorrect, retains the useful one-candidate reuse, removes the known rejected
 proposal, and completes in 390.85 seconds versus roughly 458 seconds before.
+An offline GPT-authored, non-ARC curriculum subsequently induced 20 provisional
+spatial mechanisms from 40 independently varied lessons. The frozen 400-task
+ARC rerun stayed at 32/400 exact, 368 resource-limited, and zero incorrect; no
+distilled mechanism entered a selected proof and elapsed time rose to 476.50
+seconds. This is a successful distillation/admission test but a failed ARC
+improvement experiment. It rules out broad guessed spatial priors as the next
+route and motivates failure-core-driven curricula and stricter retrieval. See
+[OFFLINE_DUAL_TEACHER_ARC_TRANSFER.md](docs/experiments/OFFLINE_DUAL_TEACHER_ARC_TRANSFER.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and durable proof-DAG artifact storage, arbitrary internal-subgraph compilation,

@@ -1,0 +1,16 @@
+[package]
+name = "cairn-teacher-spool"
+description = "Network-free request and response spooling for external CAIRN teachers"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+cairn-core = { path = "../cairn-core" }
+cairn-distill = { path = "../cairn-distill" }
+serde_json = { version = "=1.0.133", default-features = false, features = ["std"] }
+
+[lints]
+workspace = true

@@ -133,7 +133,7 @@ less fluid than a neural chatbot; correctness, provenance, and continual
 learning take precedence over unrestricted prose breadth.
 
 External teachers transfer no weights or hidden representations. A dedicated
-offline distillation orchestrator requests schema-constrained packets containing
+offline distillation spool serializes schema-constrained requests containing
 intent annotations, typed claims, procedures, candidate mechanisms,
 implementations, tests, counterexamples, variation axes, and uncertainties.
 Raw packets retain origin provenance and are untrusted. The compiler decomposes
@@ -145,6 +145,13 @@ support boundaries; and only transfer-tested artifacts may reach shared memory.
 teacher -> packet -> compile -> verify -> consolidate -> peer/transfer test
         -> shared memory -> autonomous CPU runtime -> new evidence
 ```
+
+Two wire adapters are supported: a GPT-compatible structured Responses envelope
+and an Anthropic-compatible forced-tool Messages envelope. They only export
+request bytes and import saved response bytes. The code has no network,
+credential, provider SDK, or process-execution capability. External transport
+is deliberately outside CAIRN. During chat, ARC, and all other inference,
+CAIRN answers from current evidence plus accepted local/swarm knowledge only.
 
 Distillation channels remain separate: language, declarative knowledge,
 procedures, mechanisms, skills, curricula, and counterexamples have different
@@ -174,6 +181,14 @@ sound refutation, not heuristic acceptance: surviving proposals still receive
 complete dual-executor replay, and fresh search remains reachable. The full
 contextual audit recovers the measured overhead (390.85 seconds, 32/400, zero
 incorrect) while preserving actual reuse.
+
+The first larger offline teacher curriculum induced 20 provisional mechanisms
+from 40 non-ARC spatial-sensor lessons. On the same frozen 400-task ARC run it
+scored 32 exact, 368 resource-limited, and zero incorrect in 476.50 seconds;
+none of the new mechanisms entered a selected proof. The infrastructure and
+trust boundary passed, but the transfer hypothesis failed. Future curricula
+must target generic unresolved failure cores and demonstrate proof-trace use,
+not merely add plausible spatial formulas.
 
 ## 1. Requirements
 

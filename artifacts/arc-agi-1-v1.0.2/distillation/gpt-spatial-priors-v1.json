@@ -1,0 +1,2242 @@
+{
+  "packet_version": "1.0",
+  "domain": "non_benchmark_spatial_sensor_reasoning",
+  "origin": {
+    "kind": "gpt_offline_teacher_session",
+    "identifier": "cairn-gpt-spatial-curriculum-2026-07-11"
+  },
+  "semantic_intents": [],
+  "mechanism_lessons": [
+    {
+      "name": "gpt_spatial_0_a",
+      "parameters": [
+        "center",
+        "north"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "north": 10
+          },
+          "output": 10
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "north": 2
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "north": -6
+          },
+          "output": -6
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "north": -14
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "north": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "north": 1
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_0_b",
+      "parameters": [
+        "center",
+        "north"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "north": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "north": 1
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "north": -7
+          },
+          "output": -7
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "north": -15
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "north": 8
+          },
+          "output": 8
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "north": 0
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_1_a",
+      "parameters": [
+        "center",
+        "south"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "south": 10
+          },
+          "output": 10
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "south": 2
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "south": -6
+          },
+          "output": -6
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "south": -14
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "south": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "south": 1
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_1_b",
+      "parameters": [
+        "center",
+        "south"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "south": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "south": 1
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "south": -7
+          },
+          "output": -7
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "south": -15
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "south": 8
+          },
+          "output": 8
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "south": 0
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_2_a",
+      "parameters": [
+        "center",
+        "west"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "west": 10
+          },
+          "output": 10
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "west": 2
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "west": -6
+          },
+          "output": -6
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "west": -14
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "west": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "west": 1
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_2_b",
+      "parameters": [
+        "center",
+        "west"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "west": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "west": 1
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "west": -7
+          },
+          "output": -7
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "west": -15
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "west": 8
+          },
+          "output": 8
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "west": 0
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_3_a",
+      "parameters": [
+        "center",
+        "east"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "east": 10
+          },
+          "output": 10
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "east": 2
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "east": -6
+          },
+          "output": -6
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "east": -14
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "east": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "east": 1
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_3_b",
+      "parameters": [
+        "center",
+        "east"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "east": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "east": 1
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "east": -7
+          },
+          "output": -7
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "east": -15
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "east": 8
+          },
+          "output": 8
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "east": 0
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_4_a",
+      "parameters": [
+        "north",
+        "south"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "north": -7,
+            "south": 10
+          },
+          "output": 10
+        },
+        {
+          "inputs": {
+            "north": -15,
+            "south": 2
+          },
+          "output": 2
+        },
+        {
+          "inputs": {
+            "north": 8,
+            "south": -6
+          },
+          "output": 8
+        },
+        {
+          "inputs": {
+            "north": 0,
+            "south": -14
+          },
+          "output": 0
+        },
+        {
+          "inputs": {
+            "north": -8,
+            "south": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "north": 15,
+            "south": 1
+          },
+          "output": 15
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_4_b",
+      "parameters": [
+        "north",
+        "south"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "north": -8,
+            "south": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "north": 15,
+            "south": 1
+          },
+          "output": 15
+        },
+        {
+          "inputs": {
+            "north": 7,
+            "south": -7
+          },
+          "output": 7
+        },
+        {
+          "inputs": {
+            "north": -1,
+            "south": -15
+          },
+          "output": -1
+        },
+        {
+          "inputs": {
+            "north": -9,
+            "south": 8
+          },
+          "output": 8
+        },
+        {
+          "inputs": {
+            "north": 14,
+            "south": 0
+          },
+          "output": 14
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_5_a",
+      "parameters": [
+        "north",
+        "south"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "north": -7,
+            "south": 10
+          },
+          "output": -7
+        },
+        {
+          "inputs": {
+            "north": -15,
+            "south": 2
+          },
+          "output": -15
+        },
+        {
+          "inputs": {
+            "north": 8,
+            "south": -6
+          },
+          "output": -6
+        },
+        {
+          "inputs": {
+            "north": 0,
+            "south": -14
+          },
+          "output": -14
+        },
+        {
+          "inputs": {
+            "north": -8,
+            "south": 9
+          },
+          "output": -8
+        },
+        {
+          "inputs": {
+            "north": 15,
+            "south": 1
+          },
+          "output": 1
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_5_b",
+      "parameters": [
+        "north",
+        "south"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "north": -8,
+            "south": 9
+          },
+          "output": -8
+        },
+        {
+          "inputs": {
+            "north": 15,
+            "south": 1
+          },
+          "output": 1
+        },
+        {
+          "inputs": {
+            "north": 7,
+            "south": -7
+          },
+          "output": -7
+        },
+        {
+          "inputs": {
+            "north": -1,
+            "south": -15
+          },
+          "output": -15
+        },
+        {
+          "inputs": {
+            "north": -9,
+            "south": 8
+          },
+          "output": -9
+        },
+        {
+          "inputs": {
+            "north": 14,
+            "south": 0
+          },
+          "output": 0
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_6_a",
+      "parameters": [
+        "west",
+        "east"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "east": 10,
+            "west": -7
+          },
+          "output": 10
+        },
+        {
+          "inputs": {
+            "east": 2,
+            "west": -15
+          },
+          "output": 2
+        },
+        {
+          "inputs": {
+            "east": -6,
+            "west": 8
+          },
+          "output": 8
+        },
+        {
+          "inputs": {
+            "east": -14,
+            "west": 0
+          },
+          "output": 0
+        },
+        {
+          "inputs": {
+            "east": 9,
+            "west": -8
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "east": 1,
+            "west": 15
+          },
+          "output": 15
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_6_b",
+      "parameters": [
+        "west",
+        "east"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "east": 9,
+            "west": -8
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "east": 1,
+            "west": 15
+          },
+          "output": 15
+        },
+        {
+          "inputs": {
+            "east": -7,
+            "west": 7
+          },
+          "output": 7
+        },
+        {
+          "inputs": {
+            "east": -15,
+            "west": -1
+          },
+          "output": -1
+        },
+        {
+          "inputs": {
+            "east": 8,
+            "west": -9
+          },
+          "output": 8
+        },
+        {
+          "inputs": {
+            "east": 0,
+            "west": 14
+          },
+          "output": 14
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_7_a",
+      "parameters": [
+        "west",
+        "east"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "east": 10,
+            "west": -7
+          },
+          "output": -7
+        },
+        {
+          "inputs": {
+            "east": 2,
+            "west": -15
+          },
+          "output": -15
+        },
+        {
+          "inputs": {
+            "east": -6,
+            "west": 8
+          },
+          "output": -6
+        },
+        {
+          "inputs": {
+            "east": -14,
+            "west": 0
+          },
+          "output": -14
+        },
+        {
+          "inputs": {
+            "east": 9,
+            "west": -8
+          },
+          "output": -8
+        },
+        {
+          "inputs": {
+            "east": 1,
+            "west": 15
+          },
+          "output": 1
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_7_b",
+      "parameters": [
+        "west",
+        "east"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "east": 9,
+            "west": -8
+          },
+          "output": -8
+        },
+        {
+          "inputs": {
+            "east": 1,
+            "west": 15
+          },
+          "output": 1
+        },
+        {
+          "inputs": {
+            "east": -7,
+            "west": 7
+          },
+          "output": -7
+        },
+        {
+          "inputs": {
+            "east": -15,
+            "west": -1
+          },
+          "output": -15
+        },
+        {
+          "inputs": {
+            "east": 8,
+            "west": -9
+          },
+          "output": -9
+        },
+        {
+          "inputs": {
+            "east": 0,
+            "west": 14
+          },
+          "output": 0
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_8_a",
+      "parameters": [
+        "visible_north"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "visible_north": -7
+          },
+          "output": -7
+        },
+        {
+          "inputs": {
+            "visible_north": -15
+          },
+          "output": -15
+        },
+        {
+          "inputs": {
+            "visible_north": 8
+          },
+          "output": 8
+        },
+        {
+          "inputs": {
+            "visible_north": 0
+          },
+          "output": 0
+        },
+        {
+          "inputs": {
+            "visible_north": -8
+          },
+          "output": -8
+        },
+        {
+          "inputs": {
+            "visible_north": 15
+          },
+          "output": 15
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_8_b",
+      "parameters": [
+        "visible_north"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "visible_north": -8
+          },
+          "output": -8
+        },
+        {
+          "inputs": {
+            "visible_north": 15
+          },
+          "output": 15
+        },
+        {
+          "inputs": {
+            "visible_north": 7
+          },
+          "output": 7
+        },
+        {
+          "inputs": {
+            "visible_north": -1
+          },
+          "output": -1
+        },
+        {
+          "inputs": {
+            "visible_north": -9
+          },
+          "output": -9
+        },
+        {
+          "inputs": {
+            "visible_north": 14
+          },
+          "output": 14
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_9_a",
+      "parameters": [
+        "visible_south"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "visible_south": -7
+          },
+          "output": -7
+        },
+        {
+          "inputs": {
+            "visible_south": -15
+          },
+          "output": -15
+        },
+        {
+          "inputs": {
+            "visible_south": 8
+          },
+          "output": 8
+        },
+        {
+          "inputs": {
+            "visible_south": 0
+          },
+          "output": 0
+        },
+        {
+          "inputs": {
+            "visible_south": -8
+          },
+          "output": -8
+        },
+        {
+          "inputs": {
+            "visible_south": 15
+          },
+          "output": 15
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_9_b",
+      "parameters": [
+        "visible_south"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "visible_south": -8
+          },
+          "output": -8
+        },
+        {
+          "inputs": {
+            "visible_south": 15
+          },
+          "output": 15
+        },
+        {
+          "inputs": {
+            "visible_south": 7
+          },
+          "output": 7
+        },
+        {
+          "inputs": {
+            "visible_south": -1
+          },
+          "output": -1
+        },
+        {
+          "inputs": {
+            "visible_south": -9
+          },
+          "output": -9
+        },
+        {
+          "inputs": {
+            "visible_south": 14
+          },
+          "output": 14
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_10_a",
+      "parameters": [
+        "visible_west"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "visible_west": -7
+          },
+          "output": -7
+        },
+        {
+          "inputs": {
+            "visible_west": -15
+          },
+          "output": -15
+        },
+        {
+          "inputs": {
+            "visible_west": 8
+          },
+          "output": 8
+        },
+        {
+          "inputs": {
+            "visible_west": 0
+          },
+          "output": 0
+        },
+        {
+          "inputs": {
+            "visible_west": -8
+          },
+          "output": -8
+        },
+        {
+          "inputs": {
+            "visible_west": 15
+          },
+          "output": 15
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_10_b",
+      "parameters": [
+        "visible_west"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "visible_west": -8
+          },
+          "output": -8
+        },
+        {
+          "inputs": {
+            "visible_west": 15
+          },
+          "output": 15
+        },
+        {
+          "inputs": {
+            "visible_west": 7
+          },
+          "output": 7
+        },
+        {
+          "inputs": {
+            "visible_west": -1
+          },
+          "output": -1
+        },
+        {
+          "inputs": {
+            "visible_west": -9
+          },
+          "output": -9
+        },
+        {
+          "inputs": {
+            "visible_west": 14
+          },
+          "output": 14
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_11_a",
+      "parameters": [
+        "visible_east"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "visible_east": -7
+          },
+          "output": -7
+        },
+        {
+          "inputs": {
+            "visible_east": -15
+          },
+          "output": -15
+        },
+        {
+          "inputs": {
+            "visible_east": 8
+          },
+          "output": 8
+        },
+        {
+          "inputs": {
+            "visible_east": 0
+          },
+          "output": 0
+        },
+        {
+          "inputs": {
+            "visible_east": -8
+          },
+          "output": -8
+        },
+        {
+          "inputs": {
+            "visible_east": 15
+          },
+          "output": 15
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_11_b",
+      "parameters": [
+        "visible_east"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "visible_east": -8
+          },
+          "output": -8
+        },
+        {
+          "inputs": {
+            "visible_east": 15
+          },
+          "output": 15
+        },
+        {
+          "inputs": {
+            "visible_east": 7
+          },
+          "output": 7
+        },
+        {
+          "inputs": {
+            "visible_east": -1
+          },
+          "output": -1
+        },
+        {
+          "inputs": {
+            "visible_east": -9
+          },
+          "output": -9
+        },
+        {
+          "inputs": {
+            "visible_east": 14
+          },
+          "output": 14
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_12_a",
+      "parameters": [
+        "center",
+        "visible_north"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "visible_north": 10
+          },
+          "output": 10
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "visible_north": 2
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_north": -6
+          },
+          "output": -6
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "visible_north": -14
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_north": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "visible_north": 1
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_12_b",
+      "parameters": [
+        "center",
+        "visible_north"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "visible_north": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "visible_north": 1
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_north": -7
+          },
+          "output": -7
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "visible_north": -15
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_north": 8
+          },
+          "output": 8
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "visible_north": 0
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_13_a",
+      "parameters": [
+        "center",
+        "visible_south"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "visible_south": 10
+          },
+          "output": 10
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "visible_south": 2
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_south": -6
+          },
+          "output": -6
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "visible_south": -14
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_south": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "visible_south": 1
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_13_b",
+      "parameters": [
+        "center",
+        "visible_south"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "visible_south": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "visible_south": 1
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_south": -7
+          },
+          "output": -7
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "visible_south": -15
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_south": 8
+          },
+          "output": 8
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "visible_south": 0
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_14_a",
+      "parameters": [
+        "center",
+        "visible_west"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "visible_west": 10
+          },
+          "output": 10
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "visible_west": 2
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_west": -6
+          },
+          "output": -6
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "visible_west": -14
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_west": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "visible_west": 1
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_14_b",
+      "parameters": [
+        "center",
+        "visible_west"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "visible_west": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "visible_west": 1
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_west": -7
+          },
+          "output": -7
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "visible_west": -15
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_west": 8
+          },
+          "output": 8
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "visible_west": 0
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_15_a",
+      "parameters": [
+        "center",
+        "visible_east"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "visible_east": 10
+          },
+          "output": 10
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "visible_east": 2
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_east": -6
+          },
+          "output": -6
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "visible_east": -14
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_east": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "visible_east": 1
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_15_b",
+      "parameters": [
+        "center",
+        "visible_east"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "visible_east": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "visible_east": 1
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_east": -7
+          },
+          "output": -7
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "visible_east": -15
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_east": 8
+          },
+          "output": 8
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "visible_east": 0
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_16_a",
+      "parameters": [
+        "center",
+        "visible_north"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "visible_north": 10
+          },
+          "output": 10
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "visible_north": 2
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_north": -6
+          },
+          "output": 0
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "visible_north": -14
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_north": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "visible_north": 1
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_16_b",
+      "parameters": [
+        "center",
+        "visible_north"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "visible_north": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "visible_north": 1
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_north": -7
+          },
+          "output": 0
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "visible_north": -15
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_north": 8
+          },
+          "output": 8
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "visible_north": 0
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_17_a",
+      "parameters": [
+        "center",
+        "visible_south"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "visible_south": 10
+          },
+          "output": 10
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "visible_south": 2
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_south": -6
+          },
+          "output": 0
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "visible_south": -14
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_south": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "visible_south": 1
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_17_b",
+      "parameters": [
+        "center",
+        "visible_south"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "visible_south": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "visible_south": 1
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_south": -7
+          },
+          "output": 0
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "visible_south": -15
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_south": 8
+          },
+          "output": 8
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "visible_south": 0
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_18_a",
+      "parameters": [
+        "center",
+        "visible_west"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "visible_west": 10
+          },
+          "output": 10
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "visible_west": 2
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_west": -6
+          },
+          "output": 0
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "visible_west": -14
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_west": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "visible_west": 1
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_18_b",
+      "parameters": [
+        "center",
+        "visible_west"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "visible_west": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "visible_west": 1
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_west": -7
+          },
+          "output": 0
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "visible_west": -15
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_west": 8
+          },
+          "output": 8
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "visible_west": 0
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_19_a",
+      "parameters": [
+        "center",
+        "visible_east"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "visible_east": 10
+          },
+          "output": 10
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "visible_east": 2
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_east": -6
+          },
+          "output": 0
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "visible_east": -14
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_east": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "visible_east": 1
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "gpt_spatial_19_b",
+      "parameters": [
+        "center",
+        "visible_east"
+      ],
+      "examples": [
+        {
+          "inputs": {
+            "center": 0,
+            "visible_east": 9
+          },
+          "output": 9
+        },
+        {
+          "inputs": {
+            "center": 5,
+            "visible_east": 1
+          },
+          "output": 5
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_east": -7
+          },
+          "output": 0
+        },
+        {
+          "inputs": {
+            "center": -4,
+            "visible_east": -15
+          },
+          "output": -4
+        },
+        {
+          "inputs": {
+            "center": 0,
+            "visible_east": 8
+          },
+          "output": 8
+        },
+        {
+          "inputs": {
+            "center": 2,
+            "visible_east": 0
+          },
+          "output": 2
+        }
+      ],
+      "literals": [
+        -1,
+        0,
+        1,
+        2
+      ]
+    }
+  ],
+  "knowledge_claims": [],
+  "procedures": [],
+  "counterexamples": [],
+  "uncertainties": [
+    "not validated for overlapping or missing sensor channels",
+    "not claimed to encode any benchmark-specific transformation"
+  ]
+}

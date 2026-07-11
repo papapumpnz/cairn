@@ -483,51 +483,91 @@ impl PersistentDistillationPromoter {
         mechanism_support: MechanismSupport,
         evidence: &InventionEvidence,
     ) -> Result<MechanismStore, DistillationError> {
-        let module = PromotionRunner
-            .promote(packet.mechanisms(), memory_support)
-            .map_err(DistillationError::Promotion)?;
-        let definition = module.definition().clone();
-        let mechanism = Mechanism {
-            signature: Signature {
-                inputs: definition
-                    .parameters
-                    .iter()
-                    .map(|parameter| parameter.ty.clone())
-                    .collect(),
-                output: definition.return_type.clone(),
-            },
-            variables: definition.parameters.clone(),
-            entity_definitions: vec![definition.clone()],
-            preconditions: Expr::Bool(true),
-            transition_rules: Vec::new(),
-            invariants: vec![Expr::Bool(true)],
-            termination: Expr::Bool(true),
-            effects: vec![Effect::Emit(Expr::Call {
-                function: definition.name.clone(),
-                arguments: definition
-                    .parameters
-                    .iter()
-                    .map(|parameter| Expr::Var(parameter.name.clone()))
-                    .collect(),
-            })],
-            support: mechanism_support,
-            proof: DerivationCertificate {
-                source_proofs: module.lineage().iter().copied().collect(),
-                verifier_semantics: "distillation-dual-rkl-replay".to_owned(),
-                verified_cases: evidence.held_out_verified_cases,
-            },
-        };
-        let token = PromotionVerifier
-            .verify(&mechanism, evidence)
-            .map_err(|_| DistillationError::PersistentAdmission)?;
-        let id = module.id();
-        let mut store = MechanismStore::new();
-        store.insert(module);
-        if !store.apply_verified_promotion(id, &token) {
+        promote_group(
+            packet.mechanisms(),
+            memory_support,
+            mechanism_support,
+            evidence,
+        )
+    }
+
+    /// Build provisional modules from an ordered curriculum containing two
+    /// independently invented definitions per mechanism. Teacher verification
+    /// cannot manufacture the measured reuse required for persistence.
+    ///
+    /// # Errors
+    ///
+    /// Rejects odd/empty curricula or any pair that is structurally
+    /// incompatible under ordinary proposal admission.
+    pub fn propose_pairs(
+        &self,
+        packet: &VerifiedTeacherPacket,
+        memory_support: &MemorySupport,
+    ) -> Result<MechanismStore, DistillationError> {
+        if packet.mechanisms().is_empty() || packet.mechanisms().len() % 2 != 0 {
             return Err(DistillationError::PersistentAdmission);
         }
-        Ok(store)
+        let mut aggregate = MechanismStore::new();
+        for pair in packet.mechanisms().chunks_exact(2) {
+            let module = PromotionRunner
+                .promote(pair, memory_support.clone())
+                .map_err(DistillationError::Promotion)?;
+            aggregate.insert(module);
+        }
+        Ok(aggregate)
     }
+}
+
+fn promote_group(
+    proposals: &[DefinitionProposal],
+    memory_support: MemorySupport,
+    mechanism_support: MechanismSupport,
+    evidence: &InventionEvidence,
+) -> Result<MechanismStore, DistillationError> {
+    let module = PromotionRunner
+        .promote(proposals, memory_support)
+        .map_err(DistillationError::Promotion)?;
+    let definition = module.definition().clone();
+    let mechanism = Mechanism {
+        signature: Signature {
+            inputs: definition
+                .parameters
+                .iter()
+                .map(|parameter| parameter.ty.clone())
+                .collect(),
+            output: definition.return_type.clone(),
+        },
+        variables: definition.parameters.clone(),
+        entity_definitions: vec![definition.clone()],
+        preconditions: Expr::Bool(true),
+        transition_rules: Vec::new(),
+        invariants: vec![Expr::Bool(true)],
+        termination: Expr::Bool(true),
+        effects: vec![Effect::Emit(Expr::Call {
+            function: definition.name.clone(),
+            arguments: definition
+                .parameters
+                .iter()
+                .map(|parameter| Expr::Var(parameter.name.clone()))
+                .collect(),
+        })],
+        support: mechanism_support,
+        proof: DerivationCertificate {
+            source_proofs: module.lineage().iter().copied().collect(),
+            verifier_semantics: "distillation-dual-rkl-replay".to_owned(),
+            verified_cases: evidence.held_out_verified_cases,
+        },
+    };
+    let token = PromotionVerifier
+        .verify(&mechanism, evidence)
+        .map_err(|_| DistillationError::PersistentAdmission)?;
+    let id = module.id();
+    let mut store = MechanismStore::new();
+    store.insert(module);
+    if !store.apply_verified_promotion(id, &token) {
+        return Err(DistillationError::PersistentAdmission);
+    }
+    Ok(store)
 }
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]

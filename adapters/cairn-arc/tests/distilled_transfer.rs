@@ -36,6 +36,30 @@ const PARAMETERS: [&str; 13] = [
     "columns",
 ];
 
+#[derive(Clone, Copy)]
+enum GptSpatialLaw {
+    FillNorth,
+    FillSouth,
+    FillWest,
+    FillEast,
+    MaximumNorthSouth,
+    MinimumNorthSouth,
+    MaximumWestEast,
+    MinimumWestEast,
+    VisibleNorth,
+    VisibleSouth,
+    VisibleWest,
+    VisibleEast,
+    FillVisibleNorth,
+    FillVisibleSouth,
+    FillVisibleWest,
+    FillVisibleEast,
+    MaximumCenterVisibleNorth,
+    MaximumCenterVisibleSouth,
+    MaximumCenterVisibleWest,
+    MaximumCenterVisibleEast,
+}
+
 #[allow(clippy::too_many_lines)] // Keep the complete trust and transfer chain auditable.
 fn distilled_runtime() -> CognitionRuntime {
     let packet = TeacherPacket {
@@ -262,6 +286,276 @@ fn complete_contextual_distilled_memory_run() {
         "DISTILLED_ARC_CONTEXTUAL exact={} resource_limited={} incorrect={} elapsed_seconds={elapsed:.2}",
         report.exact_tasks, report.resource_limited_tasks, report.incorrect_tasks
     );
+}
+
+#[test]
+fn gpt_teacher_curriculum_compiles_to_provisional_non_arc_library() {
+    let runtime = gpt_teacher_runtime();
+    assert!(runtime.memory().len() >= 16);
+    assert!(runtime
+        .memory()
+        .reusable_modules()
+        .all(|module| module.status() == ModuleStatus::Provisional));
+}
+
+#[test]
+#[ignore = "complete 400-task GPT-teacher transfer audit; run explicitly"]
+fn complete_gpt_teacher_arc_run() {
+    let corpus =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../datasets/arc-agi-1-v1.0.2/training");
+    let artifacts = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../artifacts/arc-agi-1-v1.0.2");
+    let packet = gpt_teacher_packet();
+    let packet_bytes = serde_json::to_vec_pretty(&packet).expect("serialize GPT packet");
+    fs::create_dir_all(artifacts.join("distillation")).expect("distillation artifact directory");
+    fs::write(
+        artifacts.join("distillation/gpt-spatial-priors-v1.json"),
+        &packet_bytes,
+    )
+    .expect("write GPT teacher packet");
+    let runtime = gpt_teacher_runtime();
+    let limits = InventionLimits {
+        maximum_cost: 9,
+        maximum_candidates: 1_000,
+        maximum_expression_nodes: 10_000,
+        execution: ExecLimits::default(),
+    };
+    let started = Instant::now();
+    let report =
+        run_training_batch_with_runtime(&corpus, 400, limits, ExecLimits::default(), &runtime)
+            .expect("complete GPT-teacher ARC run");
+    let elapsed = started.elapsed().as_secs_f64();
+    fs::write(
+        artifacts.join("full-400-gpt-teacher-memory-v1.15.0.json"),
+        format!(
+            "{}\n",
+            serde_json::to_string_pretty(&report).expect("serialize GPT report")
+        ),
+    )
+    .expect("write GPT report");
+    assert_eq!(report.selected_tasks, 400);
+    assert_eq!(report.incorrect_tasks, 0);
+    assert!(report.exact_tasks >= 32);
+    eprintln!(
+        "GPT_TEACHER_ARC exact={} resource_limited={} incorrect={} elapsed_seconds={elapsed:.2} modules={}",
+        report.exact_tasks,
+        report.resource_limited_tasks,
+        report.incorrect_tasks,
+        runtime.memory().len()
+    );
+}
+
+fn gpt_teacher_runtime() -> CognitionRuntime {
+    let packet = gpt_teacher_packet();
+    let limits = InventionLimits {
+        maximum_cost: 7,
+        maximum_candidates: 2_000_000,
+        maximum_expression_nodes: 10_000,
+        execution: ExecLimits::default(),
+    };
+    let verified = DistillationVerifier
+        .verify(
+            TeacherPacketCompiler
+                .compile(&packet, limits)
+                .expect("compile GPT teacher curriculum"),
+        )
+        .expect("verify GPT teacher curriculum");
+    let mut shared = SharedKnowledgeRegistry::new();
+    let artifact = shared
+        .publish(verified, AgentId("gpt-teacher-compiler".to_owned()))
+        .expect("publish GPT curriculum");
+    for peer in ["gpt-replay-peer", "gpt-falsifier-peer"] {
+        let receipt = DistillationVerifier
+            .verify_peer(
+                TeacherPacketCompiler
+                    .compile(&packet, limits)
+                    .expect("peer compile GPT curriculum"),
+                AgentId(peer.to_owned()),
+            )
+            .expect("peer replay GPT curriculum");
+        shared
+            .peer_verify(artifact, receipt)
+            .expect("record GPT peer");
+    }
+    shared
+        .record_transfer(artifact, 64)
+        .expect("record GPT non-ARC transfer cases");
+    let accepted = shared.accepted(artifact).expect("accepted GPT curriculum");
+    let memory = PersistentDistillationPromoter
+        .propose_pairs(
+            accepted.packet(),
+            &SupportGeometry {
+                independent_tasks: 2,
+                held_out_rebindings: 64,
+                varied_dimensions: BTreeSet::from([
+                    VariationDimension::NumericRanges,
+                    VariationDimension::CategoricalValues,
+                    VariationDimension::Counts,
+                    VariationDimension::Positions,
+                    VariationDimension::Layouts,
+                ]),
+            },
+        )
+        .expect("verified provisional GPT mechanism library");
+    CognitionRuntime::with_memory(memory)
+}
+
+fn gpt_teacher_packet() -> TeacherPacket {
+    let laws = [
+        GptSpatialLaw::FillNorth,
+        GptSpatialLaw::FillSouth,
+        GptSpatialLaw::FillWest,
+        GptSpatialLaw::FillEast,
+        GptSpatialLaw::MaximumNorthSouth,
+        GptSpatialLaw::MinimumNorthSouth,
+        GptSpatialLaw::MaximumWestEast,
+        GptSpatialLaw::MinimumWestEast,
+        GptSpatialLaw::VisibleNorth,
+        GptSpatialLaw::VisibleSouth,
+        GptSpatialLaw::VisibleWest,
+        GptSpatialLaw::VisibleEast,
+        GptSpatialLaw::FillVisibleNorth,
+        GptSpatialLaw::FillVisibleSouth,
+        GptSpatialLaw::FillVisibleWest,
+        GptSpatialLaw::FillVisibleEast,
+        GptSpatialLaw::MaximumCenterVisibleNorth,
+        GptSpatialLaw::MaximumCenterVisibleSouth,
+        GptSpatialLaw::MaximumCenterVisibleWest,
+        GptSpatialLaw::MaximumCenterVisibleEast,
+    ];
+    let mechanism_lessons = laws
+        .into_iter()
+        .enumerate()
+        .flat_map(|(index, law)| {
+            [
+                gpt_lesson(&format!("gpt_spatial_{index}_a"), 101, law),
+                gpt_lesson(&format!("gpt_spatial_{index}_b"), 503, law),
+            ]
+        })
+        .collect();
+    TeacherPacket {
+        packet_version: "1.0".to_owned(),
+        domain: "non_benchmark_spatial_sensor_reasoning".to_owned(),
+        origin: TeacherOrigin {
+            kind: "gpt_offline_teacher_session".to_owned(),
+            identifier: "cairn-gpt-spatial-curriculum-2026-07-11".to_owned(),
+        },
+        semantic_intents: Vec::new(),
+        mechanism_lessons,
+        knowledge_claims: Vec::new(),
+        procedures: Vec::new(),
+        counterexamples: Vec::new(),
+        uncertainties: vec![
+            "not validated for overlapping or missing sensor channels".to_owned(),
+            "not claimed to encode any benchmark-specific transformation".to_owned(),
+        ],
+    }
+}
+
+fn gpt_lesson(name: &str, seed: i64, law: GptSpatialLaw) -> ScalarMechanismLesson {
+    let parameters = gpt_parameters(law);
+    let centers = [0, 5, 0, -4, 0, 2];
+    let examples = (0..6)
+        .map(|example| {
+            let mut inputs = parameters
+                .iter()
+                .enumerate()
+                .map(|(index, parameter)| {
+                    let mixed = seed
+                        .saturating_add(i64::try_from(index).expect("small") * 17)
+                        .saturating_add(i64::from(example) * 23);
+                    ((*parameter).to_owned(), mixed.rem_euclid(31) - 15)
+                })
+                .collect::<BTreeMap<_, _>>();
+            if inputs.contains_key("center") {
+                inputs.insert(
+                    "center".to_owned(),
+                    centers[usize::try_from(example).expect("small")],
+                );
+            }
+            for extent in [
+                "row",
+                "column",
+                "rows",
+                "columns",
+                "row_occupied_count",
+                "column_occupied_count",
+            ] {
+                if inputs.contains_key(extent) {
+                    inputs.insert(extent.to_owned(), i64::from(example) + 2);
+                }
+            }
+            ScalarExample {
+                output: gpt_output(law, &inputs),
+                inputs,
+            }
+        })
+        .collect();
+    ScalarMechanismLesson {
+        name: name.to_owned(),
+        parameters: parameters.iter().map(|name| (*name).to_owned()).collect(),
+        examples,
+        literals: vec![-1, 0, 1, 2],
+    }
+}
+
+fn gpt_parameters(law: GptSpatialLaw) -> &'static [&'static str] {
+    match law {
+        GptSpatialLaw::FillNorth => &["center", "north"],
+        GptSpatialLaw::FillSouth => &["center", "south"],
+        GptSpatialLaw::FillWest => &["center", "west"],
+        GptSpatialLaw::FillEast => &["center", "east"],
+        GptSpatialLaw::MaximumNorthSouth | GptSpatialLaw::MinimumNorthSouth => &["north", "south"],
+        GptSpatialLaw::MaximumWestEast | GptSpatialLaw::MinimumWestEast => &["west", "east"],
+        GptSpatialLaw::VisibleNorth => &["visible_north"],
+        GptSpatialLaw::VisibleSouth => &["visible_south"],
+        GptSpatialLaw::VisibleWest => &["visible_west"],
+        GptSpatialLaw::VisibleEast => &["visible_east"],
+        GptSpatialLaw::FillVisibleNorth | GptSpatialLaw::MaximumCenterVisibleNorth => {
+            &["center", "visible_north"]
+        }
+        GptSpatialLaw::FillVisibleSouth | GptSpatialLaw::MaximumCenterVisibleSouth => {
+            &["center", "visible_south"]
+        }
+        GptSpatialLaw::FillVisibleWest | GptSpatialLaw::MaximumCenterVisibleWest => {
+            &["center", "visible_west"]
+        }
+        GptSpatialLaw::FillVisibleEast | GptSpatialLaw::MaximumCenterVisibleEast => {
+            &["center", "visible_east"]
+        }
+    }
+}
+
+fn gpt_output(law: GptSpatialLaw, inputs: &BTreeMap<String, i64>) -> i64 {
+    let fill = |name: &str| {
+        let center = inputs["center"];
+        if center == 0 {
+            inputs[name]
+        } else {
+            center
+        }
+    };
+    match law {
+        GptSpatialLaw::FillNorth => fill("north"),
+        GptSpatialLaw::FillSouth => fill("south"),
+        GptSpatialLaw::FillWest => fill("west"),
+        GptSpatialLaw::FillEast => fill("east"),
+        GptSpatialLaw::MaximumNorthSouth => inputs["north"].max(inputs["south"]),
+        GptSpatialLaw::MinimumNorthSouth => inputs["north"].min(inputs["south"]),
+        GptSpatialLaw::MaximumWestEast => inputs["west"].max(inputs["east"]),
+        GptSpatialLaw::MinimumWestEast => inputs["west"].min(inputs["east"]),
+        GptSpatialLaw::VisibleNorth => inputs["visible_north"],
+        GptSpatialLaw::VisibleSouth => inputs["visible_south"],
+        GptSpatialLaw::VisibleWest => inputs["visible_west"],
+        GptSpatialLaw::VisibleEast => inputs["visible_east"],
+        GptSpatialLaw::FillVisibleNorth => fill("visible_north"),
+        GptSpatialLaw::FillVisibleSouth => fill("visible_south"),
+        GptSpatialLaw::FillVisibleWest => fill("visible_west"),
+        GptSpatialLaw::FillVisibleEast => fill("visible_east"),
+        GptSpatialLaw::MaximumCenterVisibleNorth => inputs["center"].max(inputs["visible_north"]),
+        GptSpatialLaw::MaximumCenterVisibleSouth => inputs["center"].max(inputs["visible_south"]),
+        GptSpatialLaw::MaximumCenterVisibleWest => inputs["center"].max(inputs["visible_west"]),
+        GptSpatialLaw::MaximumCenterVisibleEast => inputs["center"].max(inputs["visible_east"]),
+    }
 }
 
 fn lesson(name: &str, seed: i64) -> ScalarMechanismLesson {
