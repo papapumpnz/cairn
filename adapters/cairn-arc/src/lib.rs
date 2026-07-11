@@ -12,6 +12,7 @@ use cairn_core::{
 };
 use cairn_field::{
     FieldError, FieldEvidence, FiniteField, PointwiseFieldLearner, RemappedFieldLearner,
+    ResidualConstructorInventor,
 };
 use cairn_invent::InventionLimits;
 use cairn_reg::RegLimits;
@@ -21,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.6.0";
+pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.7.0";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ArcGrid {
@@ -310,6 +311,11 @@ pub fn attempt_task(
         .iter()
         .map(|item| item.graph.graph().fact_count())
         .sum();
+    let evidence = AttemptEvidence {
+        observations: admitted.observations,
+        relational_nodes,
+        relational_facts,
+    };
     let training = task
         .train
         .iter()
@@ -360,29 +366,66 @@ pub fn attempt_task(
         .iter()
         .any(|(input, output)| input.shape != output.shape)
     {
-        return attempt_remapped(
-            task,
-            &training,
-            invention,
-            execution,
-            AttemptEvidence {
-                observations: admitted.observations,
-                relational_nodes,
-                relational_facts,
-            },
-        );
+        return attempt_remapped(task, &training, invention, execution, evidence);
     }
-    attempt_pointwise(
-        task,
-        &training,
-        invention,
-        execution,
-        AttemptEvidence {
-            observations: admitted.observations,
-            relational_nodes,
-            relational_facts,
-        },
-    )
+    if let Some(attempt) = attempt_residual(task, &training, invention, execution, evidence)? {
+        return Ok(attempt);
+    }
+    attempt_pointwise(task, &training, invention, execution, evidence)
+}
+
+fn attempt_residual(
+    task: &ArcTask,
+    training: &[(FiniteField, FiniteField)],
+    invention: InventionLimits,
+    execution: ExecLimits,
+    evidence: AttemptEvidence,
+) -> Result<Option<ArcAttempt>, ArcAdapterError> {
+    let backgrounds = training
+        .iter()
+        .flat_map(|(input, _)| input.values.iter().copied())
+        .collect::<std::collections::BTreeSet<_>>();
+    for background in backgrounds {
+        let Ok(learned) = ResidualConstructorInventor.invent(training, background, invention)
+        else {
+            continue;
+        };
+        let predictions = task
+            .test
+            .iter()
+            .map(|case| {
+                let input = lower(&case.input)?;
+                ResidualConstructorInventor
+                    .predict(&learned, &input, execution)
+                    .map_err(ArcAdapterError::Field)
+                    .and_then(|prediction| raise(&prediction))
+            })
+            .collect::<Result<Vec<_>, ArcAdapterError>>()?;
+        let evaluated_tests = task
+            .test
+            .iter()
+            .filter(|case| case.output.is_some())
+            .count();
+        let exact_tests = predictions
+            .iter()
+            .zip(&task.test)
+            .filter(|(prediction, case)| case.output.as_ref() == Some(*prediction))
+            .count();
+        return Ok(Some(ArcAttempt {
+            predictions,
+            evaluated_tests,
+            exact_tests,
+            training_cells: learned.training_cells,
+            generic_observations: evidence.observations,
+            relational_nodes: evidence.relational_nodes,
+            relational_facts: evidence.relational_facts,
+            learned_expression: format!(
+                "residual background={} paint={} predicate={:?}",
+                learned.background, learned.paint, learned.proposal.definition.body
+            ),
+        }));
+    }
+    Ok(None)
 }
 
 fn attempt_pointwise(

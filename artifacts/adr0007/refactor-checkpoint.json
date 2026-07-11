@@ -71,6 +71,8 @@
   "executable_mechanism_compilation": true,
   "independent_compression_verifier": true,
   "generic_affine_field_constructor": true,
+  "generic_residual_constructor_shared_path": true,
+  "residual_full_corpus_gain": 0,
   "consolidation_checkpoint": {
     "episodes": 2,
     "cohorts": 1,

@@ -54,6 +54,19 @@ Raw reports:
 
 - `artifacts/arc-agi-1-v1.0.2/full-400-baseline-v1.5.0.json`
 - `artifacts/arc-agi-1-v1.0.2/full-400-affine-v1.6.0.json`
+- `artifacts/arc-agi-1-v1.0.2/full-400-residual-v1.7.0.json`
+
+## Residual-constructor ablation
+
+The already generic residual constructor was then connected to the shared
+static path. It proposes each observed value as a background hypothesis,
+synthesizes a coordinate-conditioned Boolean emission predicate, requires
+single-paint creation and complete demonstration replay, and otherwise falls
+through to general search. The complete adapter 1.7.0 run remained 29/400 exact
+with zero incorrect accepted theories. This negative result shows that the
+remaining gap is not explained by coordinate-only residual emission; the next
+required capability is entity-conditioned selection and multi-entity
+construction.
 
 ## Threshold and claim boundary
 
