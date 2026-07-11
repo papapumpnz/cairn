@@ -65,11 +65,14 @@ gain and not evidence that the remaining mechanisms have been learned.
 - failure cores SHA-256:
   `b1ba2e1d04eb5e6ef4411cd5e394bfb604e1051a81b0be2c40494064a4ba3f6d`;
 - GPT-shaped request SHA-256:
-  `a82b7993f544b42f69d870d18d78cd08bfd81698da5487e2dd2c8e8a66a5d1de`;
+  `a35b088a7755cb36d80a158517a60b9ef09b024a86339f90570060003fd36133`;
 - Anthropic-shaped request SHA-256:
-  `63afe6ece7729b1b59325129cabfe99c30dbdfdacda1add9c23783a5032c78ab`.
+  `4cb516d7be27ea78045b7eadbe3d1608388faa93f77fbda50a28f83162b8a420`.
 
 The requests are files only. No network call occurred.
+
+The first schema extension and offline response experiment generated from this
+direction is recorded in `VARIABLE_CARDINALITY_DISTILLATION.md`.
 
 ## Reproduction
 

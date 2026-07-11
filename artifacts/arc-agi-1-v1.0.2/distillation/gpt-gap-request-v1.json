@@ -17,6 +17,70 @@
       "name": "cairn_teacher_packet",
       "schema": {
         "$defs": {
+          "collection_mechanism": {
+            "additionalProperties": false,
+            "properties": {
+              "episodes": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "episode": {
+                      "maxLength": 256,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "inputs": {
+                      "items": {
+                        "maximum": 65535,
+                        "minimum": -65535,
+                        "type": "integer"
+                      },
+                      "maxItems": 100000,
+                      "minItems": 1,
+                      "type": "array",
+                      "uniqueItems": true
+                    },
+                    "outputs": {
+                      "items": {
+                        "maximum": 65535,
+                        "minimum": -65535,
+                        "type": "integer"
+                      },
+                      "maxItems": 100000,
+                      "minItems": 1,
+                      "type": "array",
+                      "uniqueItems": true
+                    }
+                  },
+                  "required": [
+                    "episode",
+                    "inputs",
+                    "outputs"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 10000,
+                "minItems": 2,
+                "type": "array"
+              },
+              "maximum_cardinality": {
+                "maximum": 100000,
+                "minimum": 1,
+                "type": "integer"
+              },
+              "name": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "maximum_cardinality",
+              "episodes"
+            ],
+            "type": "object"
+          },
           "counterexample": {
             "additionalProperties": false,
             "properties": {
@@ -297,6 +361,13 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
+          "collection_mechanism_lessons": {
+            "items": {
+              "$ref": "#/$defs/collection_mechanism"
+            },
+            "maxItems": 10000,
+            "type": "array"
+          },
           "counterexamples": {
             "items": {
               "$ref": "#/$defs/counterexample"
@@ -375,6 +446,7 @@
           "origin",
           "semantic_intents",
           "mechanism_lessons",
+          "collection_mechanism_lessons",
           "knowledge_claims",
           "procedures",
           "counterexamples",

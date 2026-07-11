@@ -22,12 +22,19 @@ use cairn_mechanism::{
 use cairn_memory::{
     MechanismStore, PromotionError, PromotionRunner, SupportGeometry as MemorySupport,
 };
-use cairn_rkl::{Binder, Effect, Expr, IntRange, RuntimeEnvironment, Type, Value, VarName};
+use cairn_rkl::{
+    Binder, Effect, Expr, IntRange, ReferenceTheoryExecutor, RuntimeEnvironment, TheoryExecLimits,
+    TheoryExecutionRequest, Type, TypeEnvironment, Value, VarName,
+};
+use cairn_theory::{
+    CollectionInventionError, CollectionMechanismInventor, CollectionTrace,
+    LearnedCollectionMechanism,
+};
 use cairn_verifier::PromotionVerifier;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
-pub const DISTILLATION_SEMANTICS_VERSION: &str = "1.1.0";
+pub const DISTILLATION_SEMANTICS_VERSION: &str = "1.2.0";
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -39,6 +46,8 @@ pub struct TeacherPacket {
     pub semantic_intents: Vec<TeacherIntent>,
     #[serde(default)]
     pub mechanism_lessons: Vec<ScalarMechanismLesson>,
+    #[serde(default)]
+    pub collection_mechanism_lessons: Vec<CollectionMechanismLesson>,
     #[serde(default)]
     pub knowledge_claims: Vec<TeacherKnowledgeClaim>,
     #[serde(default)]
@@ -82,6 +91,22 @@ pub struct ScalarMechanismLesson {
 pub struct ScalarExample {
     pub inputs: BTreeMap<String, i64>,
     pub output: i64,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct CollectionMechanismLesson {
+    pub name: String,
+    pub maximum_cardinality: u32,
+    pub episodes: Vec<CollectionEpisode>,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct CollectionEpisode {
+    pub episode: String,
+    pub inputs: Vec<i64>,
+    pub outputs: Vec<i64>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -158,10 +183,18 @@ pub struct CompiledTeacherPacket {
     language_lessons: Vec<LanguageLesson>,
     language_tests: Vec<(String, GoalExpression)>,
     invention_problems: Vec<InventionProblem>,
+    collection_lessons: Vec<CompiledCollectionLesson>,
     knowledge_candidates: Vec<ProvisionalKnowledgeClaim>,
     procedures: Vec<ValidatedProcedureGraph>,
     counterexamples: Vec<TeacherCounterexample>,
     uncertainties: Vec<String>,
+}
+
+#[derive(Clone, Debug)]
+struct CompiledCollectionLesson {
+    traces: Vec<CollectionTrace>,
+    maximum_cardinality: u32,
+    limits: InventionLimits,
 }
 
 impl CompiledTeacherPacket {
@@ -187,6 +220,7 @@ pub struct VerifiedTeacherPacket {
     origin: TeacherOrigin,
     language_lessons: Vec<LanguageLesson>,
     mechanisms: Vec<DefinitionProposal>,
+    collection_mechanisms: Vec<LearnedCollectionMechanism>,
     knowledge_candidates: Vec<ProvisionalKnowledgeClaim>,
     procedures: Vec<ValidatedProcedureGraph>,
     verified_language_cases: u64,
@@ -221,6 +255,11 @@ impl VerifiedTeacherPacket {
     #[must_use]
     pub fn mechanisms(&self) -> &[DefinitionProposal] {
         &self.mechanisms
+    }
+
+    #[must_use]
+    pub fn collection_mechanisms(&self) -> &[LearnedCollectionMechanism] {
+        &self.collection_mechanisms
     }
 
     #[must_use]
@@ -263,6 +302,9 @@ pub enum DistillationError {
     MissingInput(String),
     UnexpectedInput(String),
     Invention(InventionError),
+    CollectionInvention(CollectionInventionError),
+    InvalidCollectionLesson,
+    CollectionReplay,
     LanguageReplay,
     UnknownArtifact,
     DuplicateArtifact,
@@ -312,6 +354,7 @@ impl TeacherPacketCompiler {
         }
         if packet.semantic_intents.is_empty()
             && packet.mechanism_lessons.is_empty()
+            && packet.collection_mechanism_lessons.is_empty()
             && packet.knowledge_claims.is_empty()
             && packet.procedures.is_empty()
         {
@@ -342,6 +385,11 @@ impl TeacherPacketCompiler {
             .iter()
             .map(|lesson| compile_mechanism(lesson, limits))
             .collect::<Result<Vec<_>, _>>()?;
+        let collection_lessons = packet
+            .collection_mechanism_lessons
+            .iter()
+            .map(|lesson| compile_collection_lesson(lesson, limits))
+            .collect::<Result<Vec<_>, _>>()?;
         let knowledge_candidates = packet
             .knowledge_claims
             .iter()
@@ -362,6 +410,7 @@ impl TeacherPacketCompiler {
             language_lessons,
             language_tests,
             invention_problems,
+            collection_lessons,
             knowledge_candidates,
             procedures,
             counterexamples: packet.counterexamples.clone(),
@@ -407,6 +456,18 @@ impl DistillationVerifier {
                 Ok(outcome.proposal)
             })
             .collect::<Result<Vec<_>, DistillationError>>()?;
+        let collection_mechanisms = compiled
+            .collection_lessons
+            .iter()
+            .map(|lesson| {
+                let learned = CollectionMechanismInventor
+                    .invent(&lesson.traces, lesson.maximum_cardinality, lesson.limits)
+                    .map_err(DistillationError::CollectionInvention)?;
+                verified_mechanism_examples = verified_mechanism_examples
+                    .saturating_add(replay_collection_lesson(&learned, lesson)?);
+                Ok(learned)
+            })
+            .collect::<Result<Vec<_>, DistillationError>>()?;
         let mut verified_counterexamples = 0_u64;
         for counterexample in &compiled.counterexamples {
             let proposal = mechanisms
@@ -434,6 +495,7 @@ impl DistillationVerifier {
             origin: compiled.origin,
             language_lessons: compiled.language_lessons,
             mechanisms,
+            collection_mechanisms,
             knowledge_candidates: compiled.knowledge_candidates,
             procedures: compiled.procedures,
             verified_language_cases: u64::try_from(compiled.language_tests.len())
@@ -821,6 +883,107 @@ fn compile_objective(lesson: &TeacherIntent) -> Result<GoalExpression, Distillat
         language: ProgrammingLanguage::Python,
         operation,
     })
+}
+
+fn compile_collection_lesson(
+    lesson: &CollectionMechanismLesson,
+    limits: InventionLimits,
+) -> Result<CompiledCollectionLesson, DistillationError> {
+    if lesson.name.trim().is_empty() || lesson.maximum_cardinality == 0 || lesson.episodes.len() < 2
+    {
+        return Err(DistillationError::InvalidCollectionLesson);
+    }
+    let mut episode_names = BTreeSet::new();
+    let mut cardinalities = BTreeSet::new();
+    let mut traces = Vec::with_capacity(lesson.episodes.len());
+    for episode in &lesson.episodes {
+        if episode.episode.trim().is_empty()
+            || !episode_names.insert(episode.episode.clone())
+            || episode.inputs.is_empty()
+            || episode.inputs.len() != episode.outputs.len()
+            || episode.inputs.len() > lesson.maximum_cardinality as usize
+            || episode
+                .inputs
+                .iter()
+                .chain(&episode.outputs)
+                .any(|value| !(-i64::from(u16::MAX)..=i64::from(u16::MAX)).contains(value))
+            || episode.inputs.iter().collect::<BTreeSet<_>>().len() != episode.inputs.len()
+            || episode.outputs.iter().collect::<BTreeSet<_>>().len() != episode.outputs.len()
+        {
+            return Err(DistillationError::InvalidCollectionLesson);
+        }
+        cardinalities.insert(episode.inputs.len());
+        traces.push(CollectionTrace {
+            episode: Hash32::digest(format!("{}:{}", lesson.name, episode.episode).as_bytes()),
+            inputs: episode.inputs.clone(),
+            outputs: episode.outputs.clone(),
+        });
+    }
+    if cardinalities.len() < 2 {
+        return Err(DistillationError::InvalidCollectionLesson);
+    }
+    Ok(CompiledCollectionLesson {
+        traces,
+        maximum_cardinality: lesson.maximum_cardinality,
+        limits,
+    })
+}
+
+fn replay_collection_lesson(
+    learned: &LearnedCollectionMechanism,
+    lesson: &CompiledCollectionLesson,
+) -> Result<u64, DistillationError> {
+    let integer = Type::Int(IntRange {
+        lower: -i64::from(u16::MAX),
+        upper: i64::from(u16::MAX),
+    });
+    let collection_type = Type::List {
+        element: Box::new(integer.clone()),
+        maximum: lesson.maximum_cardinality,
+    };
+    let mut verified = 0_u64;
+    for trace in &lesson.traces {
+        let mut types = TypeEnvironment::new();
+        types.insert(VarName("collection".to_owned()), collection_type.clone());
+        let mut values = RuntimeEnvironment::new();
+        values.insert(
+            VarName("collection".to_owned()),
+            Value::Set {
+                element_type: integer.clone(),
+                maximum: lesson.maximum_cardinality,
+                values: trace.inputs.iter().copied().map(Value::Int).collect(),
+            },
+        );
+        let execution = ReferenceTheoryExecutor
+            .execute(
+                &learned.theory,
+                &TheoryExecutionRequest {
+                    types,
+                    values,
+                    initial_facts: BTreeSet::new(),
+                    initial_state: BTreeMap::new(),
+                },
+                TheoryExecLimits {
+                    expression: cairn_rkl::ExecLimits::default(),
+                    maximum_bindings: u64::from(lesson.maximum_cardinality),
+                    maximum_rule_firings: u64::from(lesson.maximum_cardinality),
+                },
+            )
+            .map_err(|_| DistillationError::CollectionReplay)?;
+        let expected = trace
+            .outputs
+            .iter()
+            .copied()
+            .map(Value::Int)
+            .collect::<BTreeSet<_>>();
+        if execution.rendered.facts != expected
+            || execution.rule_firings.len() != trace.inputs.len()
+        {
+            return Err(DistillationError::CollectionReplay);
+        }
+        verified = verified.saturating_add(u64::try_from(trace.inputs.len()).unwrap_or(u64::MAX));
+    }
+    Ok(verified)
 }
 
 fn compile_mechanism(

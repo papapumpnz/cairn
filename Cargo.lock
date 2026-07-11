@@ -134,6 +134,7 @@ dependencies = [
  "cairn-mechanism",
  "cairn-memory",
  "cairn-rkl",
+ "cairn-theory",
  "cairn-verifier",
  "serde",
  "serde_json",

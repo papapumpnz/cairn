@@ -54,6 +54,14 @@ answers, and complete examples are forbidden. If identical available evidence
 has conflicting outcomes, curriculum generation must target missing causal
 context before proposing more formula search.
 
+Teacher packets have separate scalar and variable-cardinality collection lesson
+channels. Collection lessons are accepted only with multiple independent
+episodes and at least two cardinalities. CAIRN must infer the element definition,
+lift it into a checked quantified theory, replay every element, and transfer to
+an unseen cardinality. Fixed-length traces and duplicate values under the
+current set semantics fail closed. Collection knowledge remains provisional
+until actual downstream reuse supplies promotion evidence.
+
 ## Consequences
 
 The system can provide a normal chat surface before open-domain language is

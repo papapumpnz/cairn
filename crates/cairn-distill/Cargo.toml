@@ -14,6 +14,7 @@ cairn-language = { path = "../cairn-language" }
 cairn-mechanism = { path = "../cairn-mechanism" }
 cairn-memory = { path = "../cairn-memory" }
 cairn-rkl = { path = "../cairn-rkl" }
+cairn-theory = { path = "../cairn-theory" }
 cairn-verifier = { path = "../cairn-verifier" }
 serde = { version = "=1.0.217", default-features = false, features = ["derive", "std"] }
 serde_json = { version = "=1.0.133", default-features = false, features = ["std"] }

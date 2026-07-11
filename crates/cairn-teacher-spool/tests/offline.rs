@@ -29,6 +29,7 @@ fn packet() -> serde_json::Value {
         },
         "semantic_intents": [],
         "mechanism_lessons": [],
+        "collection_mechanism_lessons": [],
         "knowledge_claims": [],
         "procedures": [],
         "counterexamples": [],

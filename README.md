@@ -285,6 +285,13 @@ search. That core disappears after the change, while ARC remains 17/40 under
 the same 1,000-candidate budget. The remaining eight cores reject direct and
 the tested two-/three-role scalar families, focusing the next curriculum on
 hierarchical relations and composition rather than more guessed local laws.
+Distillation semantics 1.2.0 now accepts bounded variable-cardinality collection
+episodes as a separate typed channel. An offline GPT-authored non-benchmark
+packet teaches three sizes; CAIRN invents the element law, lifts it into a
+quantified `ForEach` theory, replays all 11 source elements, survives two peer
+recompilations, and transfers to an unseen seven-element collection. This is
+non-scalar learned structure, but not yet an ARC improvement or arbitrary
+hierarchical mechanism induction.
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and durable proof-DAG artifact storage, arbitrary internal-subgraph compilation,

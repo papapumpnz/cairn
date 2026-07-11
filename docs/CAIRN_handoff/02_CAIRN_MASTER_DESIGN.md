@@ -206,6 +206,16 @@ match none of the tested one-, two-, or three-role scalar families. ARC remains
 17/40 at 1,000 candidates, so this is a successful self-diagnosis and
 representation correction, not a benchmark-score gain.
 
+Distillation semantics 1.2.0 adds the first non-scalar teaching channel. A
+collection lesson contains aligned input/output episodes with varied bounded
+cardinality. The teacher does not provide a `ForEach` program. CAIRN invents the
+element definition using RKL, constructs a checked variable-arity rewrite
+theory, and replays every source element. An offline GPT-authored non-benchmark
+lesson over cardinalities 2, 4, and 5 transfers exactly to cardinality 7 after
+two independent peer recompilations. Fixed-cardinality-only packets and
+duplicate values under the current set semantics are rejected. This establishes
+bounded collection distillation, not arbitrary hierarchy or ARC transfer.
+
 ## 1. Requirements
 
 ### 1.1 Hard constraints

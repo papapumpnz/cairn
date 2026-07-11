@@ -4,7 +4,7 @@
   "title": "CAIRN untrusted structured teacher packet",
   "type": "object",
   "additionalProperties": false,
-  "required": ["packet_version", "domain", "origin", "semantic_intents", "mechanism_lessons", "knowledge_claims", "procedures", "counterexamples", "uncertainties"],
+  "required": ["packet_version", "domain", "origin", "semantic_intents", "mechanism_lessons", "collection_mechanism_lessons", "knowledge_claims", "procedures", "counterexamples", "uncertainties"],
   "properties": {
     "packet_version": {"const": "1.0"},
     "domain": {"type": "string", "minLength": 1, "maxLength": 128},
@@ -25,6 +25,11 @@
     "mechanism_lessons": {
       "type": "array",
       "items": {"$ref": "#/$defs/mechanism"},
+      "maxItems": 10000
+    },
+    "collection_mechanism_lessons": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/collection_mechanism"},
       "maxItems": 10000
     },
     "knowledge_claims": {
@@ -102,6 +107,42 @@
           "items": {"type": "integer", "minimum": -1000000, "maximum": 1000000},
           "maxItems": 256,
           "uniqueItems": true
+        }
+      }
+    },
+    "collection_mechanism": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "maximum_cardinality", "episodes"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1, "maxLength": 256},
+        "maximum_cardinality": {"type": "integer", "minimum": 1, "maximum": 100000},
+        "episodes": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 10000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["episode", "inputs", "outputs"],
+            "properties": {
+              "episode": {"type": "string", "minLength": 1, "maxLength": 256},
+              "inputs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 100000,
+                "uniqueItems": true,
+                "items": {"type": "integer", "minimum": -65535, "maximum": 65535}
+              },
+              "outputs": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 100000,
+                "uniqueItems": true,
+                "items": {"type": "integer", "minimum": -65535, "maximum": 65535}
+              }
+            }
+          }
         }
       }
     },

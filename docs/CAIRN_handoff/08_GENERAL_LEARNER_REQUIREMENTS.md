@@ -650,3 +650,11 @@ result remains 17/40 exact, 23 resource-limited, and zero incorrect at the same
 one-/two-/three-role family, so the next offline curriculum is explicitly
 focused on hierarchical relations, variable arity, recursion, and role
 composition.
+
+The first response-side extension is variable-cardinality collection
+distillation. A valid packet must vary cardinality across independent episodes;
+CAIRN must invent the element rule and lift it into a checked `ForEach` theory.
+The initial non-ARC GPT-authored packet learns from sizes 2, 4, and 5, verifies
+11 source elements, and transfers to size 7 after two peer replays. It remains
+provisional, supports unique set-like elements only, and does not satisfy the
+hierarchical or ARC-transfer gate by itself.
