@@ -1,0 +1,27 @@
+{
+  "packet_version": "1.0",
+  "domain": "cross_domain_structural_role_learning",
+  "origin": {"kind": "anthropic_offline_teacher_session", "identifier": "relational-role-packet-2026-07-12"},
+  "semantic_intents": [],
+  "mechanism_lessons": [],
+  "collection_mechanism_lessons": [],
+  "entity_selection_lessons": [{
+    "name": "select_structurally_rich_entity",
+    "episodes": [
+      {"episode":"software_modules","domain":"software_graph","entities":[
+        {"id":"core","attributes":{"has_maximum_occupied":1,"has_maximum_distinct":1}},
+        {"id":"leaf_a","attributes":{"has_maximum_occupied":1,"has_maximum_distinct":0}},
+        {"id":"leaf_b","attributes":{"has_maximum_occupied":0,"has_maximum_distinct":0}}],"relations":[],"selected":["core"]},
+      {"episode":"document_sections","domain":"document_structure","entities":[
+        {"id":"note","attributes":{"has_maximum_occupied":0,"has_maximum_distinct":1}},
+        {"id":"main","attributes":{"has_maximum_occupied":1,"has_maximum_distinct":1}},
+        {"id":"footer","attributes":{"has_maximum_occupied":0,"has_maximum_distinct":0}}],"relations":[],"selected":["main"]},
+      {"episode":"diagram_groups","domain":"vector_diagram","entities":[
+        {"id":"small","attributes":{"has_maximum_occupied":0,"has_maximum_distinct":0}},
+        {"id":"medium","attributes":{"has_maximum_occupied":0,"has_maximum_distinct":1}},
+        {"id":"target","attributes":{"has_maximum_occupied":1,"has_maximum_distinct":1}}],"relations":[],"selected":["target"]}
+    ]
+  }],
+  "knowledge_claims": [], "procedures": [], "counterexamples": [],
+  "uncertainties": ["unknown when maximum occupancy and diversity belong to different entities"]
+}

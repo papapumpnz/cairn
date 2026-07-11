@@ -313,6 +313,11 @@ the complete ARC-1 training corpus from 32/400 to 35/400 with no lost solve or
 incorrect output. This is 8.75%, not an ARC pass or evidence of general
 intelligence. See
 [STRUCTURAL_TRANSFER_ARC400_20260712.md](docs/experiments/STRUCTURAL_TRANSFER_ARC400_20260712.md).
+The relational extraction selector is now distilled from an offline AI-teacher
+packet spanning software graphs, documents, and vector diagrams. CAIRN rejected
+the underdetermined first lesson, independently invented the corrected selector,
+and preserved the same three exact ARC transfers without ingesting ARC examples.
+See [OFFLINE_AI_RELATIONAL_DISTILLATION.md](docs/experiments/OFFLINE_AI_RELATIONAL_DISTILLATION.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and durable proof-DAG artifact storage, arbitrary internal-subgraph compilation,

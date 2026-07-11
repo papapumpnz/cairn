@@ -6,7 +6,10 @@
 //! shared registry. Raw prose, model state, and benchmark answers are never
 //! accepted payloads.
 
-use cairn_core::Hash32;
+use cairn_core::{
+    EntityId, EntityRecord, EntitySelectionDemonstration, EntitySelectionProblem, FeatureId,
+    Hash32, RelationRecord, RelationRole, RelationalEntityCollection,
+};
 use cairn_invent::{
     BindingExample, DefinitionInventor, DefinitionProposal, InventionError, InventionLimits,
     InventionProblem,
@@ -29,13 +32,13 @@ use cairn_rkl::{
 };
 use cairn_theory::{
     CollectionInventionError, CollectionMechanismInventor, CollectionTrace,
-    LearnedCollectionMechanism,
+    LearnedCollectionMechanism, LearnedEntitySelector, RelationalEntitySelectorInventor,
 };
 use cairn_verifier::PromotionVerifier;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
-pub const DISTILLATION_SEMANTICS_VERSION: &str = "1.3.0";
+pub const DISTILLATION_SEMANTICS_VERSION: &str = "1.4.0";
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -49,6 +52,8 @@ pub struct TeacherPacket {
     pub mechanism_lessons: Vec<ScalarMechanismLesson>,
     #[serde(default)]
     pub collection_mechanism_lessons: Vec<CollectionMechanismLesson>,
+    #[serde(default)]
+    pub entity_selection_lessons: Vec<EntitySelectionLesson>,
     #[serde(default)]
     pub knowledge_claims: Vec<TeacherKnowledgeClaim>,
     #[serde(default)]
@@ -118,6 +123,39 @@ pub struct CollectionEpisode {
     pub episode: String,
     pub inputs: Vec<i64>,
     pub outputs: Vec<i64>,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct EntitySelectionLesson {
+    pub name: String,
+    pub episodes: Vec<EntitySelectionEpisode>,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct EntitySelectionEpisode {
+    pub episode: String,
+    pub domain: String,
+    pub entities: Vec<TeacherEntity>,
+    #[serde(default)]
+    pub relations: Vec<TeacherRelation>,
+    pub selected: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct TeacherEntity {
+    pub id: String,
+    pub attributes: BTreeMap<String, i64>,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct TeacherRelation {
+    pub role: String,
+    pub subject: String,
+    pub object: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -195,6 +233,7 @@ pub struct CompiledTeacherPacket {
     language_tests: Vec<(String, GoalExpression)>,
     invention_problems: Vec<InventionProblem>,
     collection_lessons: Vec<CompiledCollectionLesson>,
+    entity_selection_lessons: Vec<(EntitySelectionProblem, BTreeSet<EntityId>)>,
     knowledge_candidates: Vec<ProvisionalKnowledgeClaim>,
     procedures: Vec<ValidatedProcedureGraph>,
     counterexamples: Vec<TeacherCounterexample>,
@@ -233,6 +272,7 @@ pub struct VerifiedTeacherPacket {
     language_lessons: Vec<LanguageLesson>,
     mechanisms: Vec<DefinitionProposal>,
     collection_mechanisms: Vec<LearnedCollectionMechanism>,
+    entity_selectors: Vec<LearnedEntitySelector>,
     knowledge_candidates: Vec<ProvisionalKnowledgeClaim>,
     procedures: Vec<ValidatedProcedureGraph>,
     verified_language_cases: u64,
@@ -272,6 +312,11 @@ impl VerifiedTeacherPacket {
     #[must_use]
     pub fn collection_mechanisms(&self) -> &[LearnedCollectionMechanism] {
         &self.collection_mechanisms
+    }
+
+    #[must_use]
+    pub fn entity_selectors(&self) -> &[LearnedEntitySelector] {
+        &self.entity_selectors
     }
 
     #[must_use]
@@ -316,6 +361,8 @@ pub enum DistillationError {
     Invention(InventionError),
     CollectionInvention(CollectionInventionError),
     InvalidCollectionLesson,
+    InvalidEntitySelectionLesson,
+    EntitySelection(cairn_theory::EntitySelectionError),
     CollectionReplay,
     ProceduralStore(ProceduralStoreError),
     LanguageReplay,
@@ -368,6 +415,7 @@ impl TeacherPacketCompiler {
         if packet.semantic_intents.is_empty()
             && packet.mechanism_lessons.is_empty()
             && packet.collection_mechanism_lessons.is_empty()
+            && packet.entity_selection_lessons.is_empty()
             && packet.knowledge_claims.is_empty()
             && packet.procedures.is_empty()
         {
@@ -403,6 +451,11 @@ impl TeacherPacketCompiler {
             .iter()
             .map(|lesson| compile_collection_lesson(lesson, limits))
             .collect::<Result<Vec<_>, _>>()?;
+        let entity_selection_lessons = packet
+            .entity_selection_lessons
+            .iter()
+            .map(compile_entity_selection_lesson)
+            .collect::<Result<Vec<_>, _>>()?;
         let knowledge_candidates = packet
             .knowledge_claims
             .iter()
@@ -424,6 +477,7 @@ impl TeacherPacketCompiler {
             language_tests,
             invention_problems,
             collection_lessons,
+            entity_selection_lessons,
             knowledge_candidates,
             procedures,
             counterexamples: packet.counterexamples.clone(),
@@ -441,6 +495,7 @@ impl DistillationVerifier {
     /// # Errors
     ///
     /// Rejects any language mismatch or bounded invention/admission failure.
+    #[allow(clippy::too_many_lines)] // Keep all independent packet replay gates together.
     pub fn verify(
         &self,
         compiled: CompiledTeacherPacket,
@@ -491,6 +546,25 @@ impl DistillationVerifier {
                 Ok(learned)
             })
             .collect::<Result<Vec<_>, DistillationError>>()?;
+        let entity_selectors = compiled
+            .entity_selection_lessons
+            .iter()
+            .map(|(problem, expected)| {
+                let learned = RelationalEntitySelectorInventor
+                    .invent(problem, InventionLimits::default())
+                    .map_err(DistillationError::EntitySelection)?;
+                let actual = RelationalEntitySelectorInventor
+                    .predict(&learned, &problem.prediction)
+                    .map_err(DistillationError::EntitySelection)?;
+                if &actual != expected {
+                    return Err(DistillationError::InvalidEntitySelectionLesson);
+                }
+                verified_mechanism_examples = verified_mechanism_examples.saturating_add(
+                    u64::try_from(problem.demonstrations.len() + 1).unwrap_or(u64::MAX),
+                );
+                Ok(learned)
+            })
+            .collect::<Result<Vec<_>, DistillationError>>()?;
         let mut verified_counterexamples = 0_u64;
         for counterexample in &compiled.counterexamples {
             let proposal = mechanisms
@@ -519,6 +593,7 @@ impl DistillationVerifier {
             language_lessons: compiled.language_lessons,
             mechanisms,
             collection_mechanisms,
+            entity_selectors,
             knowledge_candidates: compiled.knowledge_candidates,
             procedures: compiled.procedures,
             verified_language_cases: u64::try_from(compiled.language_tests.len())
@@ -946,6 +1021,105 @@ fn compile_objective(lesson: &TeacherIntent) -> Result<GoalExpression, Distillat
         language: ProgrammingLanguage::Python,
         operation,
     })
+}
+
+fn compile_entity_selection_lesson(
+    lesson: &EntitySelectionLesson,
+) -> Result<(EntitySelectionProblem, BTreeSet<EntityId>), DistillationError> {
+    if lesson.name.trim().is_empty() || lesson.episodes.len() < 3 {
+        return Err(DistillationError::InvalidEntitySelectionLesson);
+    }
+    let compiled = lesson
+        .episodes
+        .iter()
+        .map(|episode| compile_entity_episode(&lesson.name, episode))
+        .collect::<Result<Vec<_>, _>>()?;
+    let (prediction, expected) = compiled
+        .last()
+        .cloned()
+        .ok_or(DistillationError::InvalidEntitySelectionLesson)?;
+    Ok((
+        EntitySelectionProblem {
+            demonstrations: compiled[..compiled.len() - 1]
+                .iter()
+                .map(|(collection, selected)| EntitySelectionDemonstration {
+                    collection: collection.clone(),
+                    selected: selected.clone(),
+                })
+                .collect(),
+            prediction,
+        },
+        expected,
+    ))
+}
+
+fn compile_entity_episode(
+    lesson: &str,
+    episode: &EntitySelectionEpisode,
+) -> Result<(RelationalEntityCollection, BTreeSet<EntityId>), DistillationError> {
+    if episode.episode.is_empty() || episode.domain.is_empty() || episode.entities.is_empty() {
+        return Err(DistillationError::InvalidEntitySelectionLesson);
+    }
+    let ids = episode
+        .entities
+        .iter()
+        .map(|entity| {
+            (
+                entity.id.clone(),
+                EntityId(Hash32::digest(
+                    format!("{lesson}:{}:{}", episode.episode, entity.id).as_bytes(),
+                )),
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+    if ids.len() != episode.entities.len() {
+        return Err(DistillationError::InvalidEntitySelectionLesson);
+    }
+    let entities = episode
+        .entities
+        .iter()
+        .map(|entity| EntityRecord {
+            id: ids[&entity.id].clone(),
+            attributes: entity
+                .attributes
+                .iter()
+                .map(|(name, value)| (FeatureId(name.clone()), *value))
+                .collect(),
+        })
+        .collect();
+    let relations = episode
+        .relations
+        .iter()
+        .map(|relation| {
+            Ok(RelationRecord {
+                role: RelationRole(relation.role.clone()),
+                subject: ids
+                    .get(&relation.subject)
+                    .cloned()
+                    .ok_or(DistillationError::InvalidEntitySelectionLesson)?,
+                object: ids
+                    .get(&relation.object)
+                    .cloned()
+                    .ok_or(DistillationError::InvalidEntitySelectionLesson)?,
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let selected = episode
+        .selected
+        .iter()
+        .map(|id| {
+            ids.get(id)
+                .cloned()
+                .ok_or(DistillationError::InvalidEntitySelectionLesson)
+        })
+        .collect::<Result<BTreeSet<_>, _>>()?;
+    Ok((
+        RelationalEntityCollection {
+            entities,
+            relations,
+        },
+        selected,
+    ))
 }
 
 fn compile_collection_lesson(

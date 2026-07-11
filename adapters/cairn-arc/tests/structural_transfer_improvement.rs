@@ -2,10 +2,8 @@ use cairn_arc::{
     attempt_task_with_runtime, attempt_task_with_runtime_and_partition_bindings, parse_task,
     run_training_batch_with_runtime_and_partition_bindings, ArcAdapterError,
 };
-use cairn_field::{
-    FiniteField, LearnedStructuralFieldBinding, PartitionBroadcastLearner,
-    PartitionExtractionLearner,
-};
+use cairn_distill::{DistillationVerifier, TeacherPacketCompiler};
+use cairn_field::{FiniteField, LearnedStructuralFieldBinding, PartitionBroadcastLearner};
 use cairn_invent::{InventionError, InventionLimits};
 use cairn_rkl::ExecLimits;
 use cairn_runtime::CognitionRuntime;
@@ -173,17 +171,21 @@ fn non_arc_binding() -> cairn_field::LearnedPartitionBroadcastBinding {
 }
 
 fn non_arc_extraction_binding() -> cairn_field::LearnedPartitionExtractionBinding {
-    let first = extraction_field(2, 9, 0);
-    let second = extraction_field(2, 8, 3);
-    PartitionExtractionLearner
-        .learn(
-            &[
-                (first.clone(), extraction_output(&first, 2, 0)),
-                (second.clone(), extraction_output(&second, 2, 3)),
-            ],
-            InventionLimits::default(),
+    let packet = TeacherPacketCompiler
+        .parse(include_bytes!(
+            "../../../crates/cairn-distill/tests/fixtures/relational_teacher.json"
+        ))
+        .expect("offline AI teacher packet");
+    let verified = DistillationVerifier
+        .verify(
+            TeacherPacketCompiler
+                .compile(&packet, InventionLimits::default())
+                .expect("compile teacher packet"),
         )
-        .expect("non-ARC relational extraction curriculum")
+        .expect("independent held-out verification");
+    cairn_field::LearnedPartitionExtractionBinding {
+        selector: verified.entity_selectors()[0].clone(),
+    }
 }
 
 fn structural_bindings() -> Vec<LearnedStructuralFieldBinding> {
@@ -274,52 +276,5 @@ fn arc_field(rows: &[Vec<u8>]) -> FiniteField {
             .flatten()
             .map(|value| i64::from(*value))
             .collect(),
-    }
-}
-
-fn extraction_field(size: usize, separator: i64, selected: usize) -> FiniteField {
-    let panel = size + 1;
-    let extent = size * panel + size - 1;
-    let mut values = vec![separator; extent * extent];
-    for panel_row in 0..size {
-        for panel_column in 0..size {
-            let index = panel_row * size + panel_column;
-            for row in 0..panel {
-                for column in 0..panel {
-                    let target_row = panel_row * (panel + 1) + row;
-                    let target_column = panel_column * (panel + 1) + column;
-                    values[target_row * extent + target_column] = if index == selected {
-                        1 + i64::try_from(row * panel + column).expect("small")
-                    } else if row == column && row < index % panel + 1 {
-                        2
-                    } else {
-                        0
-                    };
-                }
-            }
-        }
-    }
-    FiniteField {
-        shape: vec![u32::try_from(extent).expect("small"); 2],
-        values,
-    }
-}
-
-fn extraction_output(input: &FiniteField, grid: usize, selected: usize) -> FiniteField {
-    let panel = grid + 1;
-    let extent = usize::try_from(input.shape[0]).expect("small");
-    let panel_row = selected / grid;
-    let panel_column = selected % grid;
-    let values = (0..panel)
-        .flat_map(|row| {
-            (0..panel).map(move |column| {
-                input.values
-                    [(panel_row * (panel + 1) + row) * extent + panel_column * (panel + 1) + column]
-            })
-        })
-        .collect();
-    FiniteField {
-        shape: vec![u32::try_from(panel).expect("small"); 2],
-        values,
     }
 }
