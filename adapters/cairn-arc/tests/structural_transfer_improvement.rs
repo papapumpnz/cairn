@@ -1,6 +1,6 @@
 use cairn_arc::{
-    attempt_task_with_runtime, attempt_task_with_runtime_and_partition_bindings, parse_task,
-    run_training_batch_with_runtime_and_partition_bindings, ArcAdapterError,
+    attempt_task_with_runtime, attempt_task_with_runtime_and_structural_bindings, parse_task,
+    run_training_batch_with_runtime_and_structural_bindings, ArcAdapterError,
 };
 use cairn_distill::{DistillationVerifier, TeacherPacketCompiler};
 use cairn_field::{FiniteField, LearnedStructuralFieldBinding, PartitionBroadcastLearner};
@@ -35,7 +35,7 @@ fn non_arc_partition_knowledge_adds_an_exact_arc40_solve() {
             InventionError::CandidateCapacity { .. }
         )))
     ));
-    let transferred = attempt_task_with_runtime_and_partition_bindings(
+    let transferred = attempt_task_with_runtime_and_structural_bindings(
         &task,
         limits(),
         ExecLimits::default(),
@@ -50,7 +50,7 @@ fn non_arc_partition_knowledge_adds_an_exact_arc40_solve() {
         .learned_expression
         .starts_with("transferred_structural_binding="));
 
-    let report = run_training_batch_with_runtime_and_partition_bindings(
+    let report = run_training_batch_with_runtime_and_structural_bindings(
         &corpus,
         40,
         limits(),
@@ -70,7 +70,7 @@ fn non_arc_relational_panel_selection_adds_an_arc_solve() {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("../../datasets/arc-agi-1-v1.0.2/training");
     let task = parse_task(&fs::read(corpus.join("2dc579da.json")).expect("task")).expect("parse");
     let binding = LearnedStructuralFieldBinding::PartitionExtraction(non_arc_extraction_binding());
-    let transferred = attempt_task_with_runtime_and_partition_bindings(
+    let transferred = attempt_task_with_runtime_and_structural_bindings(
         &task,
         limits(),
         ExecLimits::default(),
@@ -79,6 +79,34 @@ fn non_arc_relational_panel_selection_adds_an_arc_solve() {
     )
     .expect("relational panel extraction transfer");
     assert_eq!(transferred.exact_tests, 1);
+}
+
+#[test]
+fn offline_ai_entity_role_rebinds_to_an_unseen_field_frontend() {
+    let corpus =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../datasets/arc-agi-1-v1.0.2/training");
+    let task = parse_task(&fs::read(corpus.join("be94b721.json")).expect("task")).expect("parse");
+    assert!(attempt_task_with_runtime(
+        &task,
+        limits(),
+        ExecLimits::default(),
+        &CognitionRuntime::new()
+    )
+    .is_err());
+    let transferred = attempt_task_with_runtime_and_structural_bindings(
+        &task,
+        limits(),
+        ExecLimits::default(),
+        &CognitionRuntime::new(),
+        &[LearnedStructuralFieldBinding::EntityFrameExtraction(
+            non_arc_entity_frame_binding(),
+        )],
+    )
+    .expect("cross-frontend entity-role transfer");
+    assert_eq!(transferred.exact_tests, 1);
+    assert!(transferred
+        .learned_expression
+        .starts_with("transferred_structural_binding="));
 }
 
 #[test]
@@ -132,6 +160,7 @@ fn complete_structural_binding_applicability_has_no_false_acceptance() {
     assert_eq!(applicable, exact);
     assert!(exact.contains(&"09629e4f".to_owned()));
     assert!(exact.contains(&"2dc579da".to_owned()));
+    assert!(exact.contains(&"be94b721".to_owned()));
 }
 
 #[test]
@@ -139,7 +168,7 @@ fn complete_structural_binding_applicability_has_no_false_acceptance() {
 fn complete_arc400_structural_transfer_ablation() {
     let corpus =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("../../datasets/arc-agi-1-v1.0.2/training");
-    let report = run_training_batch_with_runtime_and_partition_bindings(
+    let report = run_training_batch_with_runtime_and_structural_bindings(
         &corpus,
         400,
         limits(),
@@ -153,7 +182,7 @@ fn complete_arc400_structural_transfer_ablation() {
         serde_json::to_string_pretty(&report).expect("report JSON"),
     )
     .expect("write report");
-    assert!(report.exact_tasks >= 35);
+    assert!(report.exact_tasks >= 36);
     assert_eq!(report.incorrect_tasks, 0);
 }
 
@@ -171,27 +200,39 @@ fn non_arc_binding() -> cairn_field::LearnedPartitionBroadcastBinding {
 }
 
 fn non_arc_extraction_binding() -> cairn_field::LearnedPartitionExtractionBinding {
+    let verified = verified_relational_packet();
+    cairn_field::LearnedPartitionExtractionBinding {
+        selector: verified.entity_selectors()[0].clone(),
+    }
+}
+
+fn non_arc_entity_frame_binding() -> cairn_field::LearnedEntityFrameExtractionBinding {
+    let verified = verified_relational_packet();
+    cairn_field::LearnedEntityFrameExtractionBinding {
+        selector: verified.entity_selectors()[0].clone(),
+    }
+}
+
+fn verified_relational_packet() -> cairn_distill::VerifiedTeacherPacket {
     let packet = TeacherPacketCompiler
         .parse(include_bytes!(
             "../../../crates/cairn-distill/tests/fixtures/relational_teacher.json"
         ))
         .expect("offline AI teacher packet");
-    let verified = DistillationVerifier
+    DistillationVerifier
         .verify(
             TeacherPacketCompiler
                 .compile(&packet, InventionLimits::default())
                 .expect("compile teacher packet"),
         )
-        .expect("independent held-out verification");
-    cairn_field::LearnedPartitionExtractionBinding {
-        selector: verified.entity_selectors()[0].clone(),
-    }
+        .expect("independent held-out verification")
 }
 
 fn structural_bindings() -> Vec<LearnedStructuralFieldBinding> {
     vec![
         LearnedStructuralFieldBinding::PartitionBroadcast(non_arc_binding()),
         LearnedStructuralFieldBinding::PartitionExtraction(non_arc_extraction_binding()),
+        LearnedStructuralFieldBinding::EntityFrameExtraction(non_arc_entity_frame_binding()),
     ]
 }
 

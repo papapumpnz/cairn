@@ -336,7 +336,7 @@ pub fn attempt_task_with_runtime(
     execution: ExecLimits,
     runtime: &CognitionRuntime,
 ) -> Result<ArcAttempt, ArcAdapterError> {
-    attempt_task_with_runtime_and_partition_bindings(task, invention, execution, runtime, &[])
+    attempt_task_with_runtime_and_structural_bindings(task, invention, execution, runtime, &[])
 }
 
 /// Attempt with caller-supplied, non-ARC learned structural render bindings.
@@ -346,7 +346,7 @@ pub fn attempt_task_with_runtime(
 ///
 /// Returns malformed evidence, bounded learning, or execution failures.
 #[allow(clippy::too_many_lines)] // Keep the ordered fail-closed learner cascade explicit.
-pub fn attempt_task_with_runtime_and_partition_bindings(
+pub fn attempt_task_with_runtime_and_structural_bindings(
     task: &ArcTask,
     invention: InventionLimits,
     execution: ExecLimits,
@@ -479,6 +479,23 @@ pub fn attempt_task_with_runtime_and_partition_bindings(
         return Ok(attempt);
     }
     attempt_pointwise(task, &training, invention, execution, evidence)
+}
+
+/// Compatibility entry point for callers compiled against the first
+/// structural-transfer experiment. New callers should use
+/// [`attempt_task_with_runtime_and_structural_bindings`].
+///
+/// # Errors
+///
+/// Returns the same exact typed failures as the structural entry point.
+pub fn attempt_task_with_runtime_and_partition_bindings(
+    task: &ArcTask,
+    invention: InventionLimits,
+    execution: ExecLimits,
+    runtime: &CognitionRuntime,
+    bindings: &[LearnedStructuralFieldBinding],
+) -> Result<ArcAttempt, ArcAdapterError> {
+    attempt_task_with_runtime_and_structural_bindings(task, invention, execution, runtime, bindings)
 }
 
 fn attempt_value_collection(
@@ -846,7 +863,7 @@ pub fn run_training_batch_with_runtime(
     execution: ExecLimits,
     runtime: &CognitionRuntime,
 ) -> Result<ArcBatchReport, String> {
-    run_training_batch_with_runtime_and_partition_bindings(
+    run_training_batch_with_runtime_and_structural_bindings(
         directory,
         maximum_tasks,
         invention,
@@ -861,7 +878,7 @@ pub fn run_training_batch_with_runtime(
 /// # Errors
 ///
 /// Returns an I/O diagnostic if the corpus directory cannot be enumerated.
-pub fn run_training_batch_with_runtime_and_partition_bindings(
+pub fn run_training_batch_with_runtime_and_structural_bindings(
     directory: &Path,
     maximum_tasks: usize,
     invention: InventionLimits,
@@ -961,6 +978,30 @@ pub fn run_training_batch_with_runtime_and_partition_bindings(
     Ok(batch)
 }
 
+/// Compatibility entry point for the original partition-only experiment.
+/// New callers should use [`run_training_batch_with_runtime_and_structural_bindings`].
+///
+/// # Errors
+///
+/// Returns the same I/O diagnostic as the structural batch entry point.
+pub fn run_training_batch_with_runtime_and_partition_bindings(
+    directory: &Path,
+    maximum_tasks: usize,
+    invention: InventionLimits,
+    execution: ExecLimits,
+    runtime: &CognitionRuntime,
+    bindings: &[LearnedStructuralFieldBinding],
+) -> Result<ArcBatchReport, String> {
+    run_training_batch_with_runtime_and_structural_bindings(
+        directory,
+        maximum_tasks,
+        invention,
+        execution,
+        runtime,
+        bindings,
+    )
+}
+
 fn admit_batch_boundary(
     task: &ArcTask,
     task_name: &str,
@@ -1011,7 +1052,7 @@ fn evaluate_task(
             })
             .collect(),
     };
-    match attempt_task_with_runtime_and_partition_bindings(
+    match attempt_task_with_runtime_and_structural_bindings(
         &sealed, invention, execution, runtime, bindings,
     ) {
         Ok(attempt) => {

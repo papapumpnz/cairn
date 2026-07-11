@@ -16,6 +16,13 @@ memory improves ARC-40 from 17/40 to 18/40 and full ARC-1 training from 32/400
 to 35/400, with zero incorrect and zero lost baseline solves. The 80% ARC and
 general-intelligence gates remain failed.
 
+Later on 2026-07-12, the unchanged offline AI-distilled relational selector
+rebound from software, document, and vector entities to connected finite-field
+entities. The causal ablation adds one exact solve and the full frozen result is
+36/400, 364 resource-limited, and zero incorrect. This passes one narrow
+cross-frontend transfer test; the 80% ARC and general-intelligence gates remain
+failed.
+
 ## 0. Dataset policy
 
 ### Development partitions

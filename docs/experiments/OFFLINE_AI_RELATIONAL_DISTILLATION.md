@@ -19,5 +19,12 @@ false acceptance. Thus the 35/400 result is preserved while the extraction
 knowledge now originates from general cross-domain AI-teacher evidence rather
 than an ARC-shaped synthetic curriculum.
 
+A subsequent frontend-rebinding experiment applies the unchanged verified
+selector to connected entity collections. The new frontend supplies relative
+occupancy and diversity evidence and reconstructs a uniquely selected native
+frame. This adds one exact frozen solve and raises the complete result to
+36/400 with zero incorrect tasks. The causal ablation and claim boundary are in
+`CROSS_FRONTEND_ENTITY_ROLE_TRANSFER.md`.
+
 Teacher orchestration and import are file-only. CAIRN has no online provider
 access and treats the teacher as a proposal source, never as a verifier.

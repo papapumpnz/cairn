@@ -807,10 +807,19 @@ pub struct LearnedPartitionExtractionBinding {
     pub selector: LearnedEntitySelector,
 }
 
+/// A domain-neutral entity selector rebound to connected field entities. The
+/// selector is learned elsewhere; this binding only supplies exact structural
+/// evidence and renders the selected entity in its native bounding frame.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LearnedEntityFrameExtractionBinding {
+    pub selector: LearnedEntitySelector,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum LearnedStructuralFieldBinding {
     PartitionBroadcast(LearnedPartitionBroadcastBinding),
     PartitionExtraction(LearnedPartitionExtractionBinding),
+    EntityFrameExtraction(LearnedEntityFrameExtractionBinding),
 }
 
 impl LearnedStructuralFieldBinding {
@@ -825,7 +834,49 @@ impl LearnedStructuralFieldBinding {
             Self::PartitionExtraction(binding) => {
                 PartitionExtractionLearner.predict(binding, input)
             }
+            Self::EntityFrameExtraction(binding) => {
+                EntityFrameExtractionAdapter.predict(binding, input)
+            }
         }
+    }
+}
+
+/// Exact frontend rebinding for selectors learned over generic relational
+/// entity collections. This adapter does not invent or name a selection rule.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct EntityFrameExtractionAdapter;
+
+impl EntityFrameExtractionAdapter {
+    /// Rebind a learned selector to connected field entities and render the
+    /// uniquely selected entity's native frame.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed fields, selector execution failure, or ambiguous
+    /// selection. The selected result is always reconstructed from the current
+    /// input and never stored in the learned binding.
+    pub fn predict(
+        &self,
+        binding: &LearnedEntityFrameExtractionBinding,
+        input: &FiniteField,
+    ) -> Result<FiniteField, FieldError> {
+        input.validate()?;
+        let frames = entity_frames(input)?;
+        let collection = frame_entity_collection(&frames)?;
+        let selected = RelationalEntitySelectorInventor
+            .predict(&binding.selector, &collection)
+            .map_err(|_| FieldError::Prediction)?;
+        let selected_frames = frames
+            .iter()
+            .enumerate()
+            .filter_map(|(index, frame)| {
+                selected.contains(&frame_entity_id(index)).then_some(frame)
+            })
+            .collect::<Vec<_>>();
+        if selected_frames.len() != 1 {
+            return Err(FieldError::AmbiguousEntity);
+        }
+        render_frame(input, selected_frames[0])
     }
 }
 
@@ -1887,6 +1938,48 @@ fn entity_frames(field: &FiniteField) -> Result<Vec<EntityFrame>, FieldError> {
         });
     }
     Ok(frames)
+}
+
+fn frame_entity_collection(
+    frames: &[EntityFrame],
+) -> Result<RelationalEntityCollection, FieldError> {
+    let maximum_occupied = frames
+        .iter()
+        .map(|frame| frame.cell_count)
+        .max()
+        .ok_or(FieldError::NoEntity)?;
+    let maximum_distinct = frames
+        .iter()
+        .map(|frame| frame.distinct_values)
+        .max()
+        .ok_or(FieldError::NoEntity)?;
+    let entities = frames
+        .iter()
+        .enumerate()
+        .map(|(index, frame)| EntityRecord {
+            id: frame_entity_id(index),
+            attributes: BTreeMap::from([
+                (
+                    FeatureId("has_maximum_occupied".to_owned()),
+                    i64::from(frame.cell_count == maximum_occupied),
+                ),
+                (
+                    FeatureId("has_maximum_distinct".to_owned()),
+                    i64::from(frame.distinct_values == maximum_distinct),
+                ),
+            ]),
+        })
+        .collect();
+    Ok(RelationalEntityCollection {
+        entities,
+        relations: Vec::new(),
+    })
+}
+
+fn frame_entity_id(index: usize) -> EntityId {
+    EntityId(Hash32::digest(
+        format!("connected-entity:{index}").as_bytes(),
+    ))
 }
 
 fn render_frame(field: &FiniteField, frame: &EntityFrame) -> Result<FiniteField, FieldError> {

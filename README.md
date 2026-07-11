@@ -317,6 +317,12 @@ The relational extraction selector is now distilled from an offline AI-teacher
 packet spanning software graphs, documents, and vector diagrams. CAIRN rejected
 the underdetermined first lesson, independently invented the corrected selector,
 and preserved the same three exact ARC transfers without ingesting ARC examples.
+The unchanged verified selector now also rebinds to connected-entity evidence,
+a frontend absent from the teaching packet. That transfer adds one causally
+ablated exact solve, raising the complete frozen result to 36/400 (9.00%) with
+364 resource-limited and zero incorrect tasks. This is a narrow positive
+cross-frontend result, not general intelligence or an ARC pass. See
+[CROSS_FRONTEND_ENTITY_ROLE_TRANSFER.md](docs/experiments/CROSS_FRONTEND_ENTITY_ROLE_TRANSFER.md).
 See [OFFLINE_AI_RELATIONAL_DISTILLATION.md](docs/experiments/OFFLINE_AI_RELATIONAL_DISTILLATION.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding

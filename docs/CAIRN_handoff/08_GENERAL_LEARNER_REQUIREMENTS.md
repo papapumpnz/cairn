@@ -666,3 +666,19 @@ prediction is accepted. Blank-memory ablation has no proposal; an alternative
 `input + 1` task rejects the imported theory. This supplies one measured actual
 reuse event without granting persistence. ARC reuse still requires a generic
 entity-collection binding and render contract.
+
+## 24. Offline AI cross-frontend entity-role checkpoint
+
+The relational selector distilled from software graphs, document sections, and
+vector diagrams now rebinds unchanged to connected finite-field entities. The
+frontend emits relative occupancy and diversity attributes and reconstructs a
+unique selected entity from the current observation; it contains no selection
+rule, stored output, or ARC concept.
+
+Blank-runtime ablation fails the newly admitted frozen task, while the verified
+selector solves it after exact demonstration replay. Full-corpus applicability
+admits four tasks and all four are exact. The complete 400-task result rises
+from 35 to 36 exact, with 364 resource-limited and zero incorrect. This is
+evidence for one learned predicate transferring across four frontends. It does
+not establish broad ontology invention, unrestricted language competence,
+general intelligence, or the 80% ARC target.

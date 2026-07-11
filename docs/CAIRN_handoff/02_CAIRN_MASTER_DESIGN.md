@@ -18,8 +18,10 @@ independent reuse receipts consolidate into promotion certificates, typed
 relational entity selectors transfer across adapters, and learned render
 bindings cover changed geometry. A non-ARC partition-controller binding improved
 the complete frozen ARC-1 training evaluation from 32/400 to 35/400 without a
-lost solve. The result remains 8.75% and does not satisfy the ARC or general
-intelligence goals.
+lost solve. An offline AI-distilled selector learned across software, document,
+and vector entities now rebinds unchanged to connected finite-field entities,
+adding one causally ablated solve. The result is 36/400 (9.00%) with zero
+incorrect tasks and does not satisfy the ARC or general-intelligence goals.
 
 ## 0. Executive decision
 
