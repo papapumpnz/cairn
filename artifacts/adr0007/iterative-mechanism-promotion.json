@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "date": "2026-07-11",
+  "status": "persistent_mechanism_pass",
+  "general_intelligence_claim": false,
+  "named_iteration_operator_supplied": false,
+  "trusted_substrate": "bounded_fixpoint_with_progress",
+  "source_families": 2,
+  "source_episodes": 6,
+  "first_family_transitions": 13,
+  "fresh_transition_candidates": 13539,
+  "memory_candidates": 1,
+  "learned_step_cost": 8,
+  "complete_mechanism_cost": 11,
+  "examples_without_memory": 3,
+  "examples_with_memory": 1,
+  "held_out_exact": 4,
+  "held_out_total": 4,
+  "unrolled_trace_stored": false,
+  "unknown_support": [
+    "arbitrary_recursion_topology",
+    "mutual_recursion",
+    "higher_order_collection_map",
+    "unbounded_algorithms"
+  ]
+}

@@ -431,6 +431,168 @@ impl ConstructorSynthesizer {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct IterativeTrace {
+    pub episode: cairn_core::Hash32,
+    pub initial: i64,
+    pub parameter: i64,
+    pub states: Vec<i64>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct LearnedIterativeMechanism {
+    pub step: InventionOutcome,
+    pub mechanism: InventionOutcome,
+    pub source_episodes: BTreeSet<cairn_core::Hash32>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum IterativeInventionError {
+    InsufficientEpisodes,
+    DuplicateEpisode,
+    InvalidTrace,
+    Invention(InventionError),
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct IterativeMechanismInventor;
+
+impl IterativeMechanismInventor {
+    /// Learn a task-local transition function from traces, then lift it into a
+    /// bounded fixpoint program rather than retaining an unrolled sequence.
+    ///
+    /// # Errors
+    ///
+    /// Requires two independent, stable, nonnegative traces and returns exact
+    /// bounded synthesis or cross-executor admission failures.
+    #[allow(clippy::too_many_lines)] // Keep trace validation, step learning, and lifting atomic.
+    pub fn invent(
+        &self,
+        traces: &[IterativeTrace],
+        maximum_steps: u32,
+        limits: InventionLimits,
+    ) -> Result<LearnedIterativeMechanism, IterativeInventionError> {
+        if traces.len() < 2 {
+            return Err(IterativeInventionError::InsufficientEpisodes);
+        }
+        let source_episodes = traces
+            .iter()
+            .map(|trace| trace.episode)
+            .collect::<BTreeSet<_>>();
+        if source_episodes.len() != traces.len() {
+            return Err(IterativeInventionError::DuplicateEpisode);
+        }
+        if maximum_steps == 0
+            || traces.iter().any(|trace| {
+                trace.states.len() < 2
+                    || trace.states[0] != trace.initial
+                    || trace.states.iter().any(|state| *state < 0)
+                    || trace.parameter <= 0
+                    || trace.states[trace.states.len() - 1] != trace.states[trace.states.len() - 2]
+            })
+        {
+            return Err(IterativeInventionError::InvalidTrace);
+        }
+        let current = VarName("current".to_owned());
+        let parameter = VarName("parameter".to_owned());
+        let integer = Type::Int(cairn_rkl::IntRange {
+            lower: 0,
+            upper: i64::from(u16::MAX),
+        });
+        let step_parameters = vec![
+            Binder {
+                name: current.clone(),
+                ty: integer.clone(),
+            },
+            Binder {
+                name: parameter.clone(),
+                ty: integer.clone(),
+            },
+        ];
+        let step_demonstrations = traces
+            .iter()
+            .flat_map(|trace| {
+                trace.states.windows(2).map(|transition| {
+                    let mut inputs = RuntimeEnvironment::new();
+                    inputs.insert(current.clone(), Value::Int(transition[0]));
+                    inputs.insert(parameter.clone(), Value::Int(trace.parameter));
+                    BindingExample {
+                        inputs,
+                        output: Value::Int(transition[1]),
+                    }
+                })
+            })
+            .collect();
+        let step = DefinitionInventor
+            .invent(&InventionProblem {
+                definition_name: "invented_step".to_owned(),
+                parameters: step_parameters,
+                return_type: integer.clone(),
+                literals: vec![Value::Int(0), Value::Int(1)],
+                demonstrations: step_demonstrations,
+                limits,
+            })
+            .map_err(IterativeInventionError::Invention)?;
+        let initial = VarName("initial".to_owned());
+        let mechanism_parameters = vec![
+            Binder {
+                name: initial.clone(),
+                ty: integer.clone(),
+            },
+            Binder {
+                name: parameter.clone(),
+                ty: integer.clone(),
+            },
+        ];
+        let demonstrations = traces
+            .iter()
+            .map(|trace| {
+                let mut inputs = RuntimeEnvironment::new();
+                inputs.insert(initial.clone(), Value::Int(trace.initial));
+                inputs.insert(parameter.clone(), Value::Int(trace.parameter));
+                BindingExample {
+                    inputs,
+                    output: Value::Int(trace.states[trace.states.len() - 1]),
+                }
+            })
+            .collect();
+        let problem = InventionProblem {
+            definition_name: "invented_iteration".to_owned(),
+            parameters: mechanism_parameters.clone(),
+            return_type: integer,
+            literals: Vec::new(),
+            demonstrations,
+            limits,
+        };
+        let mechanism = DefinitionInventor
+            .admit_definition(
+                &problem,
+                Definition {
+                    name: problem.definition_name.clone(),
+                    parameters: mechanism_parameters,
+                    return_type: problem.return_type.clone(),
+                    body: Expr::BoundedFixpoint {
+                        binder: current.clone(),
+                        initial: Box::new(Expr::Var(initial)),
+                        step: Box::new(step.proposal.definition.body.clone()),
+                        maximum_steps,
+                        progress_measure: Box::new(Expr::Var(current)),
+                    },
+                    recursion: None,
+                    proof_annotations: Vec::new(),
+                },
+                step.proposal.structural_cost.saturating_add(3),
+                step.proposal.candidates_evaluated,
+            )
+            .map_err(IterativeInventionError::Invention)?;
+        Ok(LearnedIterativeMechanism {
+            step,
+            mechanism,
+            source_episodes,
+        })
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RuleFootprint {
     pub name: String,
     pub reads: BTreeSet<Value>,

@@ -232,6 +232,7 @@ dependencies = [
 name = "cairn-theory"
 version = "0.1.0"
 dependencies = [
+ "cairn-core",
  "cairn-invent",
  "cairn-mechanism",
  "cairn-memory",

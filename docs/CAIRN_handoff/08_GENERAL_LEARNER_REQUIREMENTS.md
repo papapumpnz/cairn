@@ -219,6 +219,15 @@ predicate from one example with a new paint value: candidates fall 29 to one,
 examples 34 to one, and 49/49 held-out cells are exact. See
 docs/experiments/RESIDUAL_CONSTRUCTOR_PROMOTION.md.
 
+Bounded recursive abstraction is now exercised from traces. The learner first
+induces a conditional state-transition definition from observed steps, then
+lifts the definition into an RKL `BoundedFixpoint` with explicit progress and
+resource bounds. It does not retain the unrolled trace. Two independent trace
+families produce the same mechanism; strict promotion succeeds, and a renamed
+one-example problem reduces 13,539 transition candidates to one memory proposal
+with 4/4 unseen iteration cases exact. See
+docs/experiments/ITERATIVE_MECHANISM_PROMOTION.md.
+
 ## 5. Proof-backed knowledge learning
 
 The knowledge subsystem stores:

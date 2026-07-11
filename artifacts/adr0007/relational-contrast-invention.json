@@ -17,6 +17,6 @@
   "persistent_promotion": true,
   "open_requirements": [
     "cross_domain_transfer",
-    "verifier_gated_promotion"
+    "higher_order_collection_invention"
   ]
 }
