@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "date": "2026-07-11",
+  "status": "canonical_whole_theory_persistence_pass",
+  "general_intelligence_claim": false,
+  "named_map_operator_supplied": false,
+  "observed_cardinalities": [2, 4, 5],
+  "scalar_candidates": 395,
+  "scalar_structural_cost": 5,
+  "source_families": 2,
+  "canonical_theories_equal": true,
+  "procedural_mechanisms_persisted": 1,
+  "candidates_without_memory": 395,
+  "candidates_with_memory": 1,
+  "examples_without_memory": 11,
+  "examples_with_memory": 2,
+  "held_out_cardinality": 7,
+  "quantified_rule_firings": 7,
+  "held_out_exact": 7,
+  "held_out_total": 7,
+  "altered_theory_rejected": true,
+  "runtime_owns_procedural_memory": true,
+  "unknown_support": [
+    "unordered_correspondence_invention",
+    "filtering",
+    "folds",
+    "nested_collections",
+    "variable_output_cardinality",
+    "recovery_branches"
+  ]
+}

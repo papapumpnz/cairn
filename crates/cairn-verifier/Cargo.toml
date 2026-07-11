@@ -11,6 +11,7 @@ repository.workspace = true
 cairn-core = { path = "../cairn-core" }
 cairn-mechanism = { path = "../cairn-mechanism" }
 cairn-proof = { path = "../cairn-proof" }
+cairn-rkl = { path = "../cairn-rkl" }
 
 [lints]
 workspace = true

@@ -8,8 +8,10 @@ use cairn_core::{CanonicalEncode, Hash32};
 use cairn_invent::{
     DefinitionInventor, DefinitionProposal, InventionError, InventionOutcome, InventionProblem,
 };
+use cairn_mechanism::SupportGeometry as MechanismSupportGeometry;
+use cairn_rkl::CheckedTheory;
 use cairn_rkl::{Definition, Expr, Type, VarName};
-use cairn_verifier::VerifiedPromotion;
+use cairn_verifier::{VerifiedProceduralPromotion, VerifiedPromotion};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
@@ -235,6 +237,113 @@ impl PromotionRunner {
 #[derive(Clone, Debug, Default)]
 pub struct MechanismStore {
     modules: BTreeMap<Hash32, MechanismModule>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ProceduralMechanismModule {
+    id: Hash32,
+    theory: CheckedTheory,
+    support: MechanismSupportGeometry,
+    source_proofs: BTreeSet<Hash32>,
+    verified_cases: u64,
+    actual_reuse_count: u32,
+}
+
+impl ProceduralMechanismModule {
+    #[must_use]
+    pub const fn id(&self) -> Hash32 {
+        self.id
+    }
+
+    #[must_use]
+    pub const fn theory(&self) -> &CheckedTheory {
+        &self.theory
+    }
+
+    #[must_use]
+    pub const fn support(&self) -> &MechanismSupportGeometry {
+        &self.support
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct ProceduralMechanismStore {
+    modules: BTreeMap<Hash32, ProceduralMechanismModule>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ProceduralStoreError {
+    TheoryHashMismatch,
+    ProofMismatch,
+    EmptyVerification,
+    Duplicate,
+    Canonicalization,
+}
+
+impl ProceduralMechanismStore {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            modules: BTreeMap::new(),
+        }
+    }
+
+    /// Persist a complete checked theory only under a token bound to its
+    /// canonical bytes and exact source-proof set.
+    ///
+    /// # Errors
+    ///
+    /// Rejects altered theories, proof mismatch, empty verification/reuse,
+    /// duplicate semantic theories, and canonicalization failures.
+    pub fn insert_verified(
+        &mut self,
+        theory: CheckedTheory,
+        support: MechanismSupportGeometry,
+        token: &VerifiedProceduralPromotion,
+    ) -> Result<Hash32, ProceduralStoreError> {
+        let bytes = theory
+            .encode_canonical()
+            .map_err(|_| ProceduralStoreError::Canonicalization)?;
+        let id = Hash32::digest(&bytes);
+        if id != token.theory_hash() {
+            return Err(ProceduralStoreError::TheoryHashMismatch);
+        }
+        if token.source_proofs().is_empty() {
+            return Err(ProceduralStoreError::ProofMismatch);
+        }
+        if token.verified_cases() == 0 || token.actual_reuse_count() == 0 {
+            return Err(ProceduralStoreError::EmptyVerification);
+        }
+        if self.modules.contains_key(&id) {
+            return Err(ProceduralStoreError::Duplicate);
+        }
+        self.modules.insert(
+            id,
+            ProceduralMechanismModule {
+                id,
+                theory,
+                support,
+                source_proofs: token.source_proofs().clone(),
+                verified_cases: token.verified_cases(),
+                actual_reuse_count: token.actual_reuse_count(),
+            },
+        );
+        Ok(id)
+    }
+
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.modules.len()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.modules.is_empty()
+    }
+
+    pub fn modules(&self) -> impl Iterator<Item = &ProceduralMechanismModule> {
+        self.modules.values()
+    }
 }
 
 impl MechanismStore {

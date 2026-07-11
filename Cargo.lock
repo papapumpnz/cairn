@@ -237,6 +237,7 @@ dependencies = [
  "cairn-mechanism",
  "cairn-memory",
  "cairn-rkl",
+ "cairn-runtime",
  "cairn-verifier",
 ]
 
@@ -255,6 +256,7 @@ dependencies = [
  "cairn-core",
  "cairn-mechanism",
  "cairn-proof",
+ "cairn-rkl",
 ]
 
 [[package]]

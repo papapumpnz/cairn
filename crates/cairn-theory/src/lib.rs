@@ -5,7 +5,9 @@ use cairn_invent::{
     InventionProblem,
 };
 use cairn_rkl::{
-    BinaryOp, Binder, Definition, Expr, RuntimeEnvironment, Schedule, Type, Value, VarName,
+    BinaryOp, Binder, CheckedTheory, ConflictPolicy, Definition, Effect, Expr, Quantifier,
+    Renderer, RewriteRule, RuleBinder, RuntimeEnvironment, Schedule, Theory, TheoryChecker, Type,
+    TypeChecker, Value, VarName,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -588,6 +590,157 @@ impl IterativeMechanismInventor {
             step,
             mechanism,
             source_episodes,
+        })
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CollectionTrace {
+    pub episode: cairn_core::Hash32,
+    pub inputs: Vec<i64>,
+    pub outputs: Vec<i64>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct LearnedCollectionMechanism {
+    pub element: InventionOutcome,
+    pub theory: CheckedTheory,
+    pub source_episodes: BTreeSet<cairn_core::Hash32>,
+    pub observed_cardinalities: BTreeSet<usize>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CollectionInventionError {
+    InsufficientEpisodes,
+    DuplicateEpisode,
+    InvalidTrace,
+    FixedCardinalityOnly,
+    Invention(InventionError),
+    Theory(cairn_rkl::CheckError),
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct CollectionMechanismInventor;
+
+impl CollectionMechanismInventor {
+    /// Learn one element transformation from aligned collection traces and
+    /// lift it into a variable-cardinality `ForEach` rule.
+    ///
+    /// # Errors
+    ///
+    /// Requires independent traces with aligned elements and at least two
+    /// observed cardinalities, then returns exact synthesis or theory-checking
+    /// failures.
+    #[allow(clippy::too_many_lines)] // Keep element induction and quantified lifting atomic.
+    pub fn invent(
+        &self,
+        traces: &[CollectionTrace],
+        maximum_cardinality: u32,
+        limits: InventionLimits,
+    ) -> Result<LearnedCollectionMechanism, CollectionInventionError> {
+        if traces.len() < 2 {
+            return Err(CollectionInventionError::InsufficientEpisodes);
+        }
+        let source_episodes = traces
+            .iter()
+            .map(|trace| trace.episode)
+            .collect::<BTreeSet<_>>();
+        if source_episodes.len() != traces.len() {
+            return Err(CollectionInventionError::DuplicateEpisode);
+        }
+        if maximum_cardinality == 0
+            || traces.iter().any(|trace| {
+                trace.inputs.is_empty()
+                    || trace.inputs.len() != trace.outputs.len()
+                    || trace.inputs.len() > maximum_cardinality as usize
+            })
+        {
+            return Err(CollectionInventionError::InvalidTrace);
+        }
+        let observed_cardinalities = traces
+            .iter()
+            .map(|trace| trace.inputs.len())
+            .collect::<BTreeSet<_>>();
+        if observed_cardinalities.len() < 2 {
+            return Err(CollectionInventionError::FixedCardinalityOnly);
+        }
+        let item = VarName("item".to_owned());
+        let integer = Type::Int(cairn_rkl::IntRange {
+            lower: -i64::from(u16::MAX),
+            upper: i64::from(u16::MAX),
+        });
+        let demonstrations = traces
+            .iter()
+            .flat_map(|trace| trace.inputs.iter().zip(&trace.outputs))
+            .map(|(input, output)| {
+                let mut inputs = RuntimeEnvironment::new();
+                inputs.insert(item.clone(), Value::Int(*input));
+                BindingExample {
+                    inputs,
+                    output: Value::Int(*output),
+                }
+            })
+            .collect();
+        let element = DefinitionInventor
+            .invent(&InventionProblem {
+                definition_name: "invented_element_transform".to_owned(),
+                parameters: vec![Binder {
+                    name: item.clone(),
+                    ty: integer.clone(),
+                }],
+                return_type: integer.clone(),
+                literals: vec![Value::Int(0), Value::Int(1), Value::Int(2)],
+                demonstrations,
+                limits,
+            })
+            .map_err(CollectionInventionError::Invention)?;
+        let collection = VarName("collection".to_owned());
+        let collection_type = Type::List {
+            element: Box::new(integer.clone()),
+            maximum: maximum_cardinality,
+        };
+        let rule_name = "invented_for_each".to_owned();
+        let theory = Theory {
+            inputs: vec![Binder {
+                name: collection.clone(),
+                ty: collection_type,
+            }],
+            definitions: vec![element.proposal.definition.clone()],
+            rules: vec![RewriteRule {
+                name: rule_name.clone(),
+                binders: vec![RuleBinder {
+                    variable: Binder {
+                        name: item.clone(),
+                        ty: integer,
+                    },
+                    domain: Expr::Var(collection.clone()),
+                    quantifier: Quantifier::ForEach,
+                }],
+                guard: Expr::Bool(true),
+                effects: vec![Effect::Emit(Expr::Call {
+                    function: element.proposal.definition.name.clone(),
+                    arguments: vec![Expr::Var(item)],
+                })],
+                priority: 0,
+            }],
+            schedule: Schedule::Sequence(vec![rule_name]),
+            renderer: Renderer {
+                canvas: Expr::Var(collection),
+                layers: Vec::new(),
+                conflict_policy: ConflictPolicy::SameValueIdempotent,
+                background: Expr::Int(0),
+            },
+            assumptions: Vec::new(),
+            proof_annotations: Vec::new(),
+        };
+        let theory = TypeChecker::new(10_000)
+            .check_theory(&theory)
+            .map_err(CollectionInventionError::Theory)?;
+        Ok(LearnedCollectionMechanism {
+            element,
+            theory,
+            source_episodes,
+            observed_cardinalities,
         })
     }
 }

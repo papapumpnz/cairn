@@ -228,6 +228,16 @@ one-example problem reduces 13,539 transition candidates to one memory proposal
 with 4/4 unseen iteration cases exact. See
 docs/experiments/ITERATIVE_MECHANISM_PROMOTION.md.
 
+Higher-order collection lifting and whole-theory persistence are now exercised.
+From aligned collections of cardinalities two, four, and five, the learner
+induces an element transform and constructs a checked `ForEach` rewrite rule.
+On an unseen cardinality seven, the rule fires seven times and is 7/7 exact.
+Two independent families yield the same canonical checked theory. A procedural
+promotion token binds definitions, quantified rules, schedule, and renderer;
+`CognitionRuntime` persists and replays the complete theory, while a modified
+theory is rejected under the original token. See
+docs/experiments/COLLECTION_MECHANISM_PROMOTION.md.
+
 ## 5. Proof-backed knowledge learning
 
 The knowledge subsystem stores:

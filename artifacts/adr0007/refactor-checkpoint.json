@@ -2,7 +2,7 @@
   "schema_version": 1,
   "decision": "ADR-0007",
   "date": "2026-07-11",
-  "claim": "architecture_boundary_only",
+  "claim": "bounded_verified_mechanism_learning",
   "general_intelligence_claim": false,
   "arc_checkpoint": {
     "corpus": "ARC-AGI-1 v1.0.2 training prefix",
@@ -46,5 +46,12 @@
   },
   "passed_decisive_gates": ["G0", "G1", "G2", "G3", "G4", "G5", "G6"],
   "open_decisive_gates": [],
+  "post_gate_persistent_routes": [
+    "relational_enclosure",
+    "residual_constructor",
+    "bounded_iteration",
+    "higher_order_collection"
+  ],
+  "canonical_whole_theory_memory": true,
   "next_audit": "independent replication and broader mechanism curricula"
 }

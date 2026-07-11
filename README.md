@@ -167,6 +167,12 @@ it into a reusable `BoundedFixpoint`, rather than storing an unrolled sequence.
 After independent re-induction and verifier promotion, renamed one-example
 tasks reduce search from 13,539 candidates to one and remain 4/4 exact. See
 [ITERATIVE_MECHANISM_PROMOTION.md](docs/experiments/ITERATIVE_MECHANISM_PROMOTION.md).
+The higher-order collection route learns an element definition from collections
+of sizes 2, 4, and 5, lifts it into a quantified `ForEach` rule, and executes
+7/7 unseen elements exactly. Whole checked theories now receive canonical
+verifier tokens and persist in `CognitionRuntime` procedural memory; an altered
+theory is rejected. See
+[COLLECTION_MECHANISM_PROMOTION.md](docs/experiments/COLLECTION_MECHANISM_PROMOTION.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and proof DAGs, richer ontology invention, one shared orchestrating runtime,

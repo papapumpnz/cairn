@@ -14,6 +14,7 @@ cairn-rkl = { path = "../cairn-rkl" }
 [dev-dependencies]
 cairn-mechanism = { path = "../cairn-mechanism" }
 cairn-memory = { path = "../cairn-memory" }
+cairn-runtime = { path = "../cairn-runtime" }
 cairn-verifier = { path = "../cairn-verifier" }
 
 [lints]

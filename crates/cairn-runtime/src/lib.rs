@@ -2,12 +2,15 @@
 
 use cairn_core::{Hash32, LearningProblem, ObservationId, TaskId};
 use cairn_invent::{InventionError, InventionProblem};
-use cairn_memory::{MechanismStore, MemoryAssistedInventor, MemorySolveOutcome};
+use cairn_memory::{
+    MechanismStore, MemoryAssistedInventor, MemorySolveOutcome, ProceduralMechanismStore,
+};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Debug, Default)]
 pub struct CognitionRuntime {
     memory: MechanismStore,
+    procedures: ProceduralMechanismStore,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -34,12 +37,24 @@ impl CognitionRuntime {
     pub const fn new() -> Self {
         Self {
             memory: MechanismStore::new(),
+            procedures: ProceduralMechanismStore::new(),
         }
     }
 
     #[must_use]
     pub const fn with_memory(memory: MechanismStore) -> Self {
-        Self { memory }
+        Self {
+            memory,
+            procedures: ProceduralMechanismStore::new(),
+        }
+    }
+
+    #[must_use]
+    pub const fn with_memories(
+        memory: MechanismStore,
+        procedures: ProceduralMechanismStore,
+    ) -> Self {
+        Self { memory, procedures }
     }
 
     #[must_use]
@@ -49,6 +64,15 @@ impl CognitionRuntime {
 
     pub const fn memory_mut(&mut self) -> &mut MechanismStore {
         &mut self.memory
+    }
+
+    #[must_use]
+    pub const fn procedural_memory(&self) -> &ProceduralMechanismStore {
+        &self.procedures
+    }
+
+    pub const fn procedural_memory_mut(&mut self) -> &mut ProceduralMechanismStore {
+        &mut self.procedures
     }
 
     /// Learn through the same task-local and memory-proposal path for every
