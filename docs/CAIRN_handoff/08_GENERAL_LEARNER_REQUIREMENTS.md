@@ -477,3 +477,23 @@ cohorts. It does not yet compile arbitrary repeated internal subgraphs,
 generalize different graph shapes, or verify semantic equivalence by exhaustive
 execution over every bounded input. See
 docs/experiments/EXECUTABLE_MECHANISM_COMPILATION.md.
+
+## 18. Complete ARC-AGI-1 training audit and generic remapping
+
+The first complete pinned 400-task training audit records 27 exact tasks
+(6.75%), 133 unsupported shape changes, and 240 pointwise search caps under
+adapter 1.5.0. This supersedes any impression that the favorable 17/20 sorted
+prefix represented broad ARC coverage.
+
+An adapter-neutral `RemappedFieldLearner` now invents four executable RKL
+definitions: output rows, output columns, source row, and source column. Output
+geometry can bind to generic content-bound hypotheses; joint affine search
+resolves repeated-value correspondences by complete output replay. Synthetic
+transpose and content-relative extraction families transfer to unseen geometry,
+layout, cardinality, and values, while uniform ambiguous evidence fails closed.
+
+Without adding a named transform or changing the quarantined schema catalog,
+the fixed 1,000-candidate full audit rises to 29/400 exact (7.25%) with zero
+incorrect accepted theories. The 80% criterion requires 320 exact tasks, so it
+is emphatically not passed. See
+docs/experiments/ARC_AGI_1_FULL_CORPUS_BASELINE.md.

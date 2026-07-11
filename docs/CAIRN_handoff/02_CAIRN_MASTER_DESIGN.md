@@ -52,6 +52,14 @@ MOSAIC: enumerate a fixed high-level DSL over precomputed parse worlds
 
 CAIRN instead uses a small universal relational kernel and induces high-level semantics as task-local, proof-carrying definitions.
 
+The finite-observation frontend now includes a learned remapping constructor.
+It synthesizes output extents and coordinate-conditioned source sampling as RKL
+definitions, using complete replay to resolve a bounded affine correspondence
+version space. Modal-complement content bounds are candidate entity evidence,
+not accepted semantics by appearance alone. This supports general transpose and
+content-relative extraction, but not creation of novel values, non-affine
+layouts, multi-entity selection, or recursive construction.
+
 ### 0.1 General-learning claim boundary
 
 CAIRN is not considered a general learner merely because it can represent or

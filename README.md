@@ -205,6 +205,14 @@ the definition, and replays it against every source. A separately implemented
 memory rejects promotion without its opaque token. The compiled abstraction,
 not either source definition, produced the same 10/10 held-out result. See
 [EXECUTABLE_MECHANISM_COMPILATION.md](docs/experiments/EXECUTABLE_MECHANISM_COMPILATION.md).
+The first complete pinned ARC-AGI-1 training-corpus audit corrects the earlier
+prefix impression: the quarantined baseline is 27/400 exact (6.75%), not 85%.
+A new generic remapped-field learner now invents output extents and affine
+source-coordinate programs from replay evidence. It transfers across non-ARC
+transpose and content-relative crop families and adds two exact ARC solves at
+the fixed budget with no incorrect accepted theories, bringing the full result
+to 29/400 (7.25%). The required 80% threshold is 320/400 and is not close. See
+[ARC_AGI_1_FULL_CORPUS_BASELINE.md](docs/experiments/ARC_AGI_1_FULL_CORPUS_BASELINE.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and durable proof-DAG artifact storage, arbitrary internal-subgraph compilation,

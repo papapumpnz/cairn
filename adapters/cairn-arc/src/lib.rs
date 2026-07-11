@@ -10,7 +10,9 @@ use cairn_core::{
     Demonstration, Hash32, Intervention, LearningProblem, PredictionRequest, SourceReference,
     TaskId,
 };
-use cairn_field::{FieldError, FieldEvidence, FiniteField, PointwiseFieldLearner};
+use cairn_field::{
+    FieldError, FieldEvidence, FiniteField, PointwiseFieldLearner, RemappedFieldLearner,
+};
 use cairn_invent::InventionLimits;
 use cairn_reg::RegLimits;
 use cairn_rkl::ExecLimits;
@@ -19,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.5.0";
+pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.6.0";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ArcGrid {
@@ -119,6 +121,13 @@ pub struct ArcTaskReport {
 pub struct ArcExperience {
     pub problem: LearningProblem,
     pub evidence: Vec<FieldEvidence>,
+}
+
+#[derive(Clone, Copy)]
+struct AttemptEvidence {
+    observations: usize,
+    relational_nodes: usize,
+    relational_facts: usize,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -351,10 +360,40 @@ pub fn attempt_task(
         .iter()
         .any(|(input, output)| input.shape != output.shape)
     {
-        return Err(ArcAdapterError::ShapeChangeUnsupported);
+        return attempt_remapped(
+            task,
+            &training,
+            invention,
+            execution,
+            AttemptEvidence {
+                observations: admitted.observations,
+                relational_nodes,
+                relational_facts,
+            },
+        );
     }
+    attempt_pointwise(
+        task,
+        &training,
+        invention,
+        execution,
+        AttemptEvidence {
+            observations: admitted.observations,
+            relational_nodes,
+            relational_facts,
+        },
+    )
+}
+
+fn attempt_pointwise(
+    task: &ArcTask,
+    training: &[(FiniteField, FiniteField)],
+    invention: InventionLimits,
+    execution: ExecLimits,
+    evidence: AttemptEvidence,
+) -> Result<ArcAttempt, ArcAdapterError> {
     let learned = PointwiseFieldLearner
-        .learn(&training, invention)
+        .learn(training, invention)
         .map_err(ArcAdapterError::Field)?;
     let mut predictions = Vec::with_capacity(task.test.len());
     let mut evaluated = 0_usize;
@@ -376,10 +415,63 @@ pub fn attempt_task(
         evaluated_tests: evaluated,
         exact_tests: exact,
         training_cells: learned.training_cells,
-        generic_observations: admitted.observations,
-        relational_nodes,
-        relational_facts,
+        generic_observations: evidence.observations,
+        relational_nodes: evidence.relational_nodes,
+        relational_facts: evidence.relational_facts,
         learned_expression: format!("{:?}", learned.proposal.definition.body),
+    })
+}
+
+fn attempt_remapped(
+    task: &ArcTask,
+    training: &[(FiniteField, FiniteField)],
+    invention: InventionLimits,
+    execution: ExecLimits,
+    evidence: AttemptEvidence,
+) -> Result<ArcAttempt, ArcAdapterError> {
+    let learned = match RemappedFieldLearner.learn(training, invention) {
+        Ok(learned) => learned,
+        Err(FieldError::Invention(error)) => {
+            return Err(ArcAdapterError::Field(FieldError::Invention(error)));
+        }
+        Err(_) => return Err(ArcAdapterError::ShapeChangeUnsupported),
+    };
+    let predictions = task
+        .test
+        .iter()
+        .map(|case| {
+            let input = lower(&case.input)?;
+            RemappedFieldLearner
+                .predict(&learned, &input, execution)
+                .map_err(ArcAdapterError::Field)
+                .and_then(|prediction| raise(&prediction))
+        })
+        .collect::<Result<Vec<_>, ArcAdapterError>>()?;
+    let evaluated_tests = task
+        .test
+        .iter()
+        .filter(|case| case.output.is_some())
+        .count();
+    let exact_tests = predictions
+        .iter()
+        .zip(&task.test)
+        .filter(|(prediction, case)| case.output.as_ref() == Some(*prediction))
+        .count();
+    Ok(ArcAttempt {
+        predictions,
+        evaluated_tests,
+        exact_tests,
+        training_cells: learned.training_correspondences,
+        generic_observations: evidence.observations,
+        relational_nodes: evidence.relational_nodes,
+        relational_facts: evidence.relational_facts,
+        learned_expression: format!(
+            "shape=({:?},{:?}); source=({:?},{:?})",
+            learned.output_rows.definition.body,
+            learned.output_columns.definition.body,
+            learned.source_row.definition.body,
+            learned.source_column.definition.body,
+        ),
     })
 }
 
