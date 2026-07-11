@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "date": "2026-07-11",
+  "status": "persistent_mechanism_pass",
+  "general_intelligence_claim": false,
+  "named_enclosure_primitive_supplied": false,
+  "generic_comparison_atoms": 48,
+  "conjunction_candidates": 236,
+  "selected_conjuncts": 4,
+  "structural_cost": 12,
+  "independent_source_families": 2,
+  "persistent_mechanisms": 1,
+  "examples_without_memory": 9,
+  "examples_with_memory": 1,
+  "candidates_without_memory": 236,
+  "candidates_with_memory": 1,
+  "held_out_exact": 5,
+  "held_out_total": 5,
+  "varied_dimensions": ["names", "ranges", "positions", "layouts"],
+  "unknown_support": ["overlap", "nested_enclosure", "irregular_boundaries", "occlusion"]
+}

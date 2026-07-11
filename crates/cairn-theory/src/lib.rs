@@ -4,7 +4,9 @@ use cairn_invent::{
     BindingExample, DefinitionInventor, InventionError, InventionLimits, InventionOutcome,
     InventionProblem,
 };
-use cairn_rkl::{BinaryOp, Binder, Expr, RuntimeEnvironment, Schedule, Type, Value, VarName};
+use cairn_rkl::{
+    BinaryOp, Binder, Definition, Expr, RuntimeEnvironment, Schedule, Type, Value, VarName,
+};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -25,6 +27,7 @@ pub struct GuardHypothesis {
     pub expression: Expr,
     pub predicates: Vec<usize>,
     pub structural_cost: u16,
+    pub candidates_evaluated: u64,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -96,6 +99,7 @@ impl GuardInducer {
                     expression,
                     predicates: indices,
                     structural_cost,
+                    candidates_evaluated: evaluated,
                 });
             }
         }
@@ -186,6 +190,182 @@ impl ContrastPredicateInventor {
             })
             .map_err(ContrastError::Invention)
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RelationExample {
+    pub bindings: BTreeMap<VarName, i64>,
+    pub related: bool,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct InventedRelation {
+    pub parameters: Vec<Binder>,
+    pub guard: GuardHypothesis,
+    pub atomic_predicates_evaluated: usize,
+    pub invention: InventionOutcome,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum RelationInventionError {
+    EmptyExamples,
+    MissingPositive,
+    MissingNegative,
+    FeatureMismatch,
+    Capacity,
+    Guard(GuardFailure),
+    Verification(InventionError),
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct RelationalPredicateInventor;
+
+impl RelationalPredicateInventor {
+    /// Invent a conjunction of ordinary comparisons between two typed entity
+    /// feature sets. No named spatial or domain relation is supplied.
+    ///
+    /// # Errors
+    ///
+    /// Rejects one-class or inconsistent bindings, row-index overflow, and a
+    /// bounded guard search that cannot separate the evidence.
+    #[allow(clippy::too_many_lines)] // Keep validation, atom generation, and admission together.
+    pub fn invent(
+        &self,
+        left_features: &[(VarName, Type)],
+        right_features: &[(VarName, Type)],
+        examples: &[RelationExample],
+        limits: GuardLimits,
+    ) -> Result<InventedRelation, RelationInventionError> {
+        if examples.is_empty() {
+            return Err(RelationInventionError::EmptyExamples);
+        }
+        if !examples.iter().any(|example| example.related) {
+            return Err(RelationInventionError::MissingPositive);
+        }
+        if !examples.iter().any(|example| !example.related) {
+            return Err(RelationInventionError::MissingNegative);
+        }
+        let parameters = left_features
+            .iter()
+            .chain(right_features)
+            .map(|(name, ty)| Binder {
+                name: name.clone(),
+                ty: ty.clone(),
+            })
+            .collect::<Vec<_>>();
+        let names = parameters
+            .iter()
+            .map(|parameter| &parameter.name)
+            .collect::<BTreeSet<_>>();
+        if names.len() != parameters.len()
+            || examples.iter().any(|example| {
+                example.bindings.len() != parameters.len()
+                    || example.bindings.keys().collect::<BTreeSet<_>>() != names
+            })
+        {
+            return Err(RelationInventionError::FeatureMismatch);
+        }
+        let table = BindingTable {
+            positive_rows: labeled_rows(examples, true)?,
+            negative_rows: labeled_rows(examples, false)?,
+        };
+        let mut predicates = Vec::new();
+        for (left_name, _) in left_features {
+            for (right_name, _) in right_features {
+                for (operation, reversed) in [
+                    (BinaryOp::LessThan, false),
+                    (BinaryOp::LessThan, true),
+                    (BinaryOp::Equal, false),
+                ] {
+                    let (first, second) = if reversed {
+                        (right_name, left_name)
+                    } else {
+                        (left_name, right_name)
+                    };
+                    let true_rows = examples
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(index, example)| {
+                            let left = example.bindings[first];
+                            let right = example.bindings[second];
+                            let value = match operation {
+                                BinaryOp::LessThan => left < right,
+                                BinaryOp::Equal => left == right,
+                                _ => false,
+                            };
+                            value.then(|| u32::try_from(index).ok()).flatten()
+                        })
+                        .collect();
+                    predicates.push(PredicateColumn {
+                        expression: Expr::Binary {
+                            op: operation,
+                            left: Box::new(Expr::Var(first.clone())),
+                            right: Box::new(Expr::Var(second.clone())),
+                        },
+                        true_rows,
+                        structural_cost: 3,
+                    });
+                }
+            }
+        }
+        let guard = GuardInducer
+            .induce(&table, &predicates, limits)
+            .map_err(RelationInventionError::Guard)?;
+        let demonstrations = examples
+            .iter()
+            .map(|example| {
+                let mut inputs = RuntimeEnvironment::new();
+                for (name, value) in &example.bindings {
+                    inputs.insert(name.clone(), Value::Int(*value));
+                }
+                BindingExample {
+                    inputs,
+                    output: Value::Bool(example.related),
+                }
+            })
+            .collect();
+        let problem = InventionProblem {
+            definition_name: "invented_relation".to_owned(),
+            parameters: parameters.clone(),
+            return_type: Type::Bool,
+            literals: Vec::new(),
+            demonstrations,
+            limits: InventionLimits::default(),
+        };
+        let invention = DefinitionInventor
+            .admit_definition(
+                &problem,
+                Definition {
+                    name: problem.definition_name.clone(),
+                    parameters: parameters.clone(),
+                    return_type: Type::Bool,
+                    body: guard.expression.clone(),
+                    recursion: None,
+                    proof_annotations: Vec::new(),
+                },
+                guard.structural_cost,
+                u64::try_from(predicates.len()).map_err(|_| RelationInventionError::Capacity)?,
+            )
+            .map_err(RelationInventionError::Verification)?;
+        Ok(InventedRelation {
+            parameters,
+            guard,
+            atomic_predicates_evaluated: predicates.len(),
+            invention,
+        })
+    }
+}
+
+fn labeled_rows(
+    examples: &[RelationExample],
+    label: bool,
+) -> Result<BTreeSet<u32>, RelationInventionError> {
+    examples
+        .iter()
+        .enumerate()
+        .filter(|(_, example)| example.related == label)
+        .map(|(index, _)| u32::try_from(index).map_err(|_| RelationInventionError::Capacity))
+        .collect()
 }
 
 #[allow(clippy::too_many_arguments)]

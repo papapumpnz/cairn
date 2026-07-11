@@ -151,6 +151,12 @@ positive and hard-negative entity bindings. The learned RKL predicate was
 `1 == min(enclosed, has_marker)`, found after 2,086 candidates, and transferred
 across unseen values and sizes without an `eligible` primitive. See
 [RELATIONAL_CONTRAST_INVENTION.md](docs/experiments/RELATIONAL_CONTRAST_INVENTION.md).
+Enclosure is no longer supplied to the follow-on experiment. From generic
+bounding coordinates, two independent families invent the same four-clause
+relation; the verifier promotes it, and a third renamed family reuses it from
+one example. Search falls from 236 candidates to one proposal and five unseen
+geometries remain exact. See
+[INVENTED_ENCLOSURE_PROMOTION.md](docs/experiments/INVENTED_ENCLOSURE_PROMOTION.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and proof DAGs, richer ontology invention, one shared orchestrating runtime,

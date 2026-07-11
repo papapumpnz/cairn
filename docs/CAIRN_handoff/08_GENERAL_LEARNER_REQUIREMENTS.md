@@ -201,6 +201,15 @@ invented the omitted enclosure-plus-marker selector after 2,086 candidates and
 predicted four unseen value/size combinations exactly. This establishes the
 route, not broad relational ontology learning.
 
+The next frozen relation family removes the supplied `enclosed` feature. From
+48 ordinary cross-entity coordinate comparisons, the learner selects four
+strict inequalities defining enclosure. A second independently shifted and
+renamed family induces the same executable definition. The independent
+verifier promotes it to persistent memory; a third renamed family reuses it
+from one example, reducing 236 conjunction candidates to one verified proposal
+while preserving 5/5 held-out geometry. See
+docs/experiments/INVENTED_ENCLOSURE_PROMOTION.md.
+
 ## 5. Proof-backed knowledge learning
 
 The knowledge subsystem stores:

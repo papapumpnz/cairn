@@ -50,7 +50,7 @@ Commands:
 ## Claim boundary
 
 This is genuine task-local predicate invention over a developer-supplied typed
-feature substrate. It does not yet infer enclosure itself, promote the selector
-to persistent memory, or solve the remaining official tasks. The next required
-step is relational feature invention—containment, panels, correspondences, and
-residual constructors—followed by non-ARC transfer and verifier-gated promotion.
+feature substrate. The follow-on frozen experiment now infers and promotes
+strict bounding-box enclosure itself; see `INVENTED_ENCLOSURE_PROMOTION.md`.
+Panels, correspondences, residual constructors, irregular enclosure, and the
+remaining official tasks remain open.

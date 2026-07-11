@@ -10,5 +10,10 @@ license.workspace = true
 cairn-invent = { path = "../cairn-invent" }
 cairn-rkl = { path = "../cairn-rkl" }
 
+[dev-dependencies]
+cairn-mechanism = { path = "../cairn-mechanism" }
+cairn-memory = { path = "../cairn-memory" }
+cairn-verifier = { path = "../cairn-verifier" }
+
 [lints]
 workspace = true

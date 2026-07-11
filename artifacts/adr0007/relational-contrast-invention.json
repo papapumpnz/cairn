@@ -14,9 +14,8 @@
   "contrast_held_out_exact": 4,
   "contrast_held_out_total": 4,
   "target_present_as_named_primitive": false,
-  "persistent_promotion": false,
+  "persistent_promotion": true,
   "open_requirements": [
-    "relational_feature_invention",
     "residual_constructor_invention",
     "cross_domain_transfer",
     "verifier_gated_promotion"

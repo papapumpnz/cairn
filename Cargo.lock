@@ -230,7 +230,10 @@ name = "cairn-theory"
 version = "0.1.0"
 dependencies = [
  "cairn-invent",
+ "cairn-mechanism",
+ "cairn-memory",
  "cairn-rkl",
+ "cairn-verifier",
 ]
 
 [[package]]
