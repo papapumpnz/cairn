@@ -226,6 +226,15 @@ carry-forward law outside ARC and adds one official exact theory,
 `max(center, visible_north)`, reaching 32/400 with zero incorrect theories.
 Lazy relational perception reduces the expanded run from 446 to 414 seconds,
 but does not yet regain the earlier smaller-vocabulary cost envelope.
+The local-law frontend now routes through the shared invention contract, so
+verified memory can propose a learned law without owning the answer path. This
+integration uncovered and removed factorial eager parameter rebinding in
+memory retrieval. On a frozen non-ARC field family, persistent `output := west`
+memory reduced four fresh candidate executions to one replayed proposal and 21
+examples to three, then predicted 35/35 cells after geometry, value, and
+position changes. This is bounded continual reuse, not a general-intelligence
+claim and not an ARC score increase. See
+[CONTINUAL_LOCAL_LAW_REUSE.md](docs/experiments/CONTINUAL_LOCAL_LAW_REUSE.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and durable proof-DAG artifact storage, arbitrary internal-subgraph compilation,

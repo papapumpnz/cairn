@@ -535,3 +535,29 @@ lazy relational perception finally reduced elapsed time to 414.16 seconds.
 This is still slower than the 360.36-second 31-task vocabulary, so the next
 cost improvement must come from learned proposal ordering or reusable proof
 fragments rather than additional frontend summaries.
+
+## 21. Continual local-law integration checkpoint
+
+`LocalFieldLearner` now lowers observations to the same domain-neutral
+`InventionProblem` consumed by `CognitionRuntime` and
+`MemoryAssistedInventor`. Fresh invention remains available, but it is no
+longer the frontend's only learning route. Independently admitted outcomes are
+wrapped as executable field theories only after common dual-executor replay.
+
+The first high-arity experiment found that reusable-module retrieval eagerly
+constructed all type-compatible parameter permutations before attempting any
+proposal. Thirteen integer inputs imply 13! possible bindings, so this was a
+general continual-learning blocker. Retrieval now prioritizes matching semantic
+parameter names and bounds direct and composed rebound proposals with a
+1,024-proposal hard ceiling. The cap limits proposal generation;
+it does not weaken replay or verifier admission.
+
+Two independent changed-geometry/value tasks invented the same previously
+unnamed right-shift law, `output := west`. After strict promotion, a frozen
+related task required four fresh candidate executions and 21 examples. The
+persistent mechanism solved a three-example rebinding in one proposal under a
+budget where fresh search fails, then predicted all 35 cells of a changed
+held-out field exactly. This is a concrete continual-learning result for a
+mechanism used by the live static frontend, not an ARC-specific operation. It
+does not change the official ARC score by itself and is not evidence of general
+intelligence.

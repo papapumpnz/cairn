@@ -124,3 +124,12 @@ sequence also preserves negative performance evidence:
 
 Raw reports use matching `full-400-*-v1.*.json` names under
 `artifacts/arc-agi-1-v1.0.2/`. The remaining gap to 80% is 288 tasks.
+
+## Continual-law routing note
+
+The generic local-law frontend now exposes the common `InventionProblem`, and
+strictly promoted local mechanisms can be proposed through shared memory. A
+non-ARC frozen experiment reduces four fresh candidates to one verified replay
+and 21 examples to three. This changes no adapter semantics or official result:
+the complete score remains 32/400. Official evaluation tasks are not promoted
+into memory. See `CONTINUAL_LOCAL_LAW_REUSE.md`.

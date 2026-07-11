@@ -17,6 +17,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 pub const MEMORY_SEMANTICS_VERSION: &str = "1.0.0";
+const MAXIMUM_REBOUND_PROPOSALS: usize = 1_024;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum VariationDimension {
@@ -631,15 +632,41 @@ impl MechanismStore {
 
     fn proposals(&self, problem: &InventionProblem) -> Vec<ReboundProposal> {
         let mut proposals = Vec::new();
+        let maximum = MAXIMUM_REBOUND_PROPOSALS;
         for module in self.reusable_modules() {
+            if proposals.len() >= maximum {
+                break;
+            }
             if !type_shape_compatible(&module.definition.return_type, &problem.return_type)
                 || module.definition.parameters.len() != problem.parameters.len()
             {
                 continue;
             }
+            let preferred = module
+                .definition
+                .parameters
+                .iter()
+                .map(|old| {
+                    problem.parameters.iter().position(|new| {
+                        old.name == new.name && type_shape_compatible(&old.ty, &new.ty)
+                    })
+                })
+                .collect::<Option<Vec<_>>>();
+            if let Some(mapping) = preferred {
+                push_rebound(module, problem, &mapping, &mut proposals);
+                continue;
+            }
             let mut used = vec![false; problem.parameters.len()];
             let mut mapping = Vec::with_capacity(problem.parameters.len());
-            bindings(module, problem, 0, &mut used, &mut mapping, &mut proposals);
+            bindings(
+                module,
+                problem,
+                0,
+                &mut used,
+                &mut mapping,
+                &mut proposals,
+                maximum,
+            );
         }
         proposals
     }
@@ -647,11 +674,18 @@ impl MechanismStore {
     fn compositions(&self, problem: &InventionProblem) -> Vec<ComposedProposal> {
         let modules = self.reusable_modules().collect::<Vec<_>>();
         let mut proposals = Vec::new();
+        let maximum = MAXIMUM_REBOUND_PROPOSALS;
         for outer in &modules {
+            if proposals.len() >= maximum {
+                break;
+            }
             if !type_shape_compatible(&outer.definition.return_type, &problem.return_type) {
                 continue;
             }
             for inner in &modules {
+                if proposals.len() >= maximum {
+                    break;
+                }
                 if outer.id == inner.id {
                     continue;
                 }
@@ -665,13 +699,23 @@ impl MechanismStore {
                     continue;
                 }
                 for substituted_parameter in 0..outer.definition.parameters.len() {
+                    if proposals.len() >= maximum {
+                        break;
+                    }
                     if !type_shape_compatible(
                         &outer.definition.parameters[substituted_parameter].ty,
                         &inner.definition.return_type,
                     ) {
                         continue;
                     }
-                    compose_bindings(outer, inner, substituted_parameter, problem, &mut proposals);
+                    compose_bindings(
+                        outer,
+                        inner,
+                        substituted_parameter,
+                        problem,
+                        &mut proposals,
+                        maximum,
+                    );
                 }
             }
         }
@@ -811,10 +855,18 @@ fn compose_bindings(
     substituted_parameter: usize,
     problem: &InventionProblem,
     proposals: &mut Vec<ComposedProposal>,
+    maximum: usize,
 ) {
-    let inner_mappings =
-        compatible_bindings(&inner.definition.parameters, problem, &BTreeSet::new());
+    let inner_mappings = compatible_bindings(
+        &inner.definition.parameters,
+        problem,
+        &BTreeSet::new(),
+        maximum.saturating_sub(proposals.len()),
+    );
     for inner_mapping in inner_mappings {
+        if proposals.len() >= maximum {
+            return;
+        }
         let used = inner_mapping.iter().copied().collect::<BTreeSet<_>>();
         let remaining_outer = outer
             .definition
@@ -824,7 +876,12 @@ fn compose_bindings(
             .filter(|(index, _)| *index != substituted_parameter)
             .map(|(_, parameter)| parameter.clone())
             .collect::<Vec<_>>();
-        for outer_mapping in compatible_bindings(&remaining_outer, problem, &used) {
+        for outer_mapping in compatible_bindings(
+            &remaining_outer,
+            problem,
+            &used,
+            maximum.saturating_sub(proposals.len()),
+        ) {
             let inner_substitutions = inner
                 .definition
                 .parameters
@@ -887,6 +944,7 @@ fn compatible_bindings(
     parameters: &[cairn_rkl::Binder],
     problem: &InventionProblem,
     initially_used: &BTreeSet<usize>,
+    maximum: usize,
 ) -> Vec<Vec<usize>> {
     fn visit(
         parameters: &[cairn_rkl::Binder],
@@ -895,7 +953,11 @@ fn compatible_bindings(
         used: &mut BTreeSet<usize>,
         selected: &mut Vec<usize>,
         results: &mut Vec<Vec<usize>>,
+        maximum: usize,
     ) {
+        if results.len() >= maximum {
+            return;
+        }
         if index == parameters.len() {
             results.push(selected.clone());
             return;
@@ -908,9 +970,20 @@ fn compatible_bindings(
             }
             used.insert(current);
             selected.push(current);
-            visit(parameters, problem, index + 1, used, selected, results);
+            visit(
+                parameters,
+                problem,
+                index + 1,
+                used,
+                selected,
+                results,
+                maximum,
+            );
             selected.pop();
             used.remove(&current);
+            if results.len() >= maximum {
+                return;
+            }
         }
     }
 
@@ -922,6 +995,7 @@ fn compatible_bindings(
         &mut initially_used.clone(),
         &mut Vec::new(),
         &mut results,
+        maximum,
     );
     results
 }
@@ -933,35 +1007,13 @@ fn bindings(
     used: &mut [bool],
     mapping: &mut Vec<usize>,
     proposals: &mut Vec<ReboundProposal>,
+    maximum: usize,
 ) {
+    if proposals.len() >= maximum {
+        return;
+    }
     if old_index == module.definition.parameters.len() {
-        let substitutions = module
-            .definition
-            .parameters
-            .iter()
-            .zip(mapping.iter())
-            .map(|(old, new)| {
-                (
-                    old.name.clone(),
-                    Expr::Var(problem.parameters[*new].name.clone()),
-                )
-            })
-            .collect::<BTreeMap<_, _>>();
-        proposals.push(ReboundProposal {
-            definition: Definition {
-                name: problem.definition_name.clone(),
-                parameters: problem.parameters.clone(),
-                return_type: problem.return_type.clone(),
-                body: substitute(
-                    &module.definition.body,
-                    &substitutions,
-                    &mut BTreeSet::new(),
-                ),
-                recursion: None,
-                proof_annotations: Vec::new(),
-            },
-            structural_cost: module.structural_cost,
-        });
+        push_rebound(module, problem, mapping, proposals);
         return;
     }
     let old = &module.definition.parameters[old_index];
@@ -971,10 +1023,63 @@ fn bindings(
         }
         used[new_index] = true;
         mapping.push(new_index);
-        bindings(module, problem, old_index + 1, used, mapping, proposals);
+        bindings(
+            module,
+            problem,
+            old_index + 1,
+            used,
+            mapping,
+            proposals,
+            maximum,
+        );
         mapping.pop();
         used[new_index] = false;
+        if proposals.len() >= maximum {
+            return;
+        }
     }
+}
+
+fn push_rebound(
+    module: &MechanismModule,
+    problem: &InventionProblem,
+    mapping: &[usize],
+    proposals: &mut Vec<ReboundProposal>,
+) {
+    let substitutions = module
+        .definition
+        .parameters
+        .iter()
+        .zip(mapping)
+        .map(|(old, new)| {
+            (
+                old.name.clone(),
+                Expr::Var(problem.parameters[*new].name.clone()),
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+    let definition = Definition {
+        name: problem.definition_name.clone(),
+        parameters: problem.parameters.clone(),
+        return_type: problem.return_type.clone(),
+        body: substitute(
+            &module.definition.body,
+            &substitutions,
+            &mut BTreeSet::new(),
+        ),
+        recursion: None,
+        proof_annotations: Vec::new(),
+    };
+    if proposals
+        .last()
+        .is_some_and(|proposal| proposal.definition == definition)
+    {
+        return;
+    }
+    proposals.push(ReboundProposal {
+        definition,
+        structural_cost: module.structural_cost,
+    });
 }
 
 fn substitute(

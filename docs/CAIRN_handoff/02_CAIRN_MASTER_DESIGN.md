@@ -74,6 +74,17 @@ the learned RKL definition decides whether and how they matter. Repeated
 full-corpus timing shows synthesis, not perception, is now the dominant cost,
 motivating learned grammar priors and proof-fragment retrieval.
 
+The local-law frontend now exposes its typed `InventionProblem` instead of
+owning a private fresh-search-only path. This lets the common cognition runtime
+offer persistent mechanisms while the frontend only wraps independently
+admitted outcomes. The first integration experiment exposed factorial eager
+parameter rebinding in memory retrieval. Retrieval now tries a name-preserving
+binding first and bounds both direct and composed rebindings with a
+1,024-proposal hard ceiling. A verified local law then
+reduced a frozen solve from four fresh candidates and 21 examples to one
+replayed proposal and three examples, while transferring exactly over 35
+changed cells. Memory still cannot bypass current-demonstration replay.
+
 ### 0.1 General-learning claim boundary
 
 CAIRN is not considered a general learner merely because it can represent or

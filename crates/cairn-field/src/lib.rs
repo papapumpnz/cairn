@@ -359,18 +359,19 @@ pub struct LearnedLocalFieldTheory {
 pub struct LocalFieldLearner;
 
 impl LocalFieldLearner {
-    /// Invent one local transition law from a cell, its bounded 8-neighborhood,
-    /// coordinates, and extents. Out-of-bounds observations use the current
-    /// modal-value hypothesis and complete replay remains mandatory.
+    /// Lower demonstrations to the domain-neutral executable-definition
+    /// contract. The returned problem can be learned either by fresh search or
+    /// by the same verifier-gated mechanism memory used by other frontends.
     ///
     /// # Errors
     ///
-    /// Rejects invalid geometry or bounded RKL invention failure.
-    pub fn learn(
+    /// Rejects invalid geometry or observations outside the supported local
+    /// and long-range relational evidence basis.
+    pub fn learning_problem(
         &self,
         pairs: &[(FiniteField, FiniteField)],
         limits: InventionLimits,
-    ) -> Result<LearnedLocalFieldTheory, FieldError> {
+    ) -> Result<InventionProblem, FieldError> {
         if pairs.is_empty() {
             return Err(FieldError::Invention(InventionError::EmptyDemonstrations));
         }
@@ -395,20 +396,47 @@ impl LocalFieldLearner {
             }
             (relational, local_parameters())
         };
-        let outcome = DefinitionInventor
-            .invent(&InventionProblem {
-                definition_name: "invented_local_transition".to_owned(),
-                parameters,
-                return_type: output_integer(),
-                literals: (-2..=2).map(Value::Int).collect(),
-                demonstrations,
-                limits,
-            })
-            .map_err(FieldError::Invention)?;
-        Ok(LearnedLocalFieldTheory {
+        Ok(InventionProblem {
+            definition_name: "invented_local_transition".to_owned(),
+            parameters,
+            return_type: output_integer(),
+            literals: (-2..=2).map(Value::Int).collect(),
+            demonstrations,
+            limits,
+        })
+    }
+
+    /// Wrap an independently admitted invention result as an executable field
+    /// theory. Admission already contains exact reference and optimized replay
+    /// counts; no frontend-specific trust path is introduced here.
+    #[must_use]
+    pub fn from_invention(
+        &self,
+        outcome: cairn_invent::InventionOutcome,
+    ) -> LearnedLocalFieldTheory {
+        LearnedLocalFieldTheory {
             proposal: outcome.proposal,
             training_cells: outcome.admission.training_examples,
-        })
+        }
+    }
+
+    /// Invent one local transition law from a cell, its bounded 8-neighborhood,
+    /// coordinates, and extents. Out-of-bounds observations use the current
+    /// modal-value hypothesis and complete replay remains mandatory.
+    ///
+    /// # Errors
+    ///
+    /// Rejects invalid geometry or bounded RKL invention failure.
+    pub fn learn(
+        &self,
+        pairs: &[(FiniteField, FiniteField)],
+        limits: InventionLimits,
+    ) -> Result<LearnedLocalFieldTheory, FieldError> {
+        let problem = self.learning_problem(pairs, limits)?;
+        let outcome = DefinitionInventor
+            .invent(&problem)
+            .map_err(FieldError::Invention)?;
+        Ok(self.from_invention(outcome))
     }
 
     /// Execute the frozen local law over a changed finite observation.
