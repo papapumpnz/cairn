@@ -46,6 +46,10 @@ allow_unsafe_modules = []
 layer = "evidence"
 allow_unsafe_modules = []
 
+[crates.cairn-knowledge]
+layer = "evidence"
+allow_unsafe_modules = []
+
 [crates.cairn-bytecode]
 layer = "execution"
 allow_unsafe_modules = []

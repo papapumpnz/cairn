@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "date": "2026-07-11",
+  "status": "structured_knowledge_checkpoint",
+  "general_intelligence_claim": false,
+  "source_identity_verified": true,
+  "typed_relation_kinds": 6,
+  "temporal_validity": true,
+  "fixed_point_confidence": true,
+  "contradictions_retained": true,
+  "indexed_retrieval": true,
+  "reversible_entity_merge": true,
+  "executable_mechanism_references": true,
+  "runtime_owned": true,
+  "unrestricted_prose_understanding": false,
+  "open_requirements": [
+    "deterministic_text_parser",
+    "coreference",
+    "grammar_induction",
+    "source_quality_models",
+    "large_corpus_scaling"
+  ]
+}

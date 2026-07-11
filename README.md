@@ -183,6 +183,11 @@ general `cairn-field` crate and into the quarantined ARC adapter. Its 20 tests
 and 17/20 official regression remain intact, but none of those results count as
 mechanism learning. See
 [ARC_LEGACY_SCHEMA_QUARANTINE.md](docs/experiments/ARC_LEGACY_SCHEMA_QUARANTINE.md).
+The common runtime now also owns a proof-backed relational knowledge base with
+source-bound typed claims, temporal validity, confidence, contradiction
+retention, reversible entity-merge proposals, indexed retrieval, and executable
+mechanism references. This accepts structured evidence only. See
+[PROOF_BACKED_KNOWLEDGE.md](docs/experiments/PROOF_BACKED_KNOWLEDGE.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and proof DAGs, richer ontology invention, one shared orchestrating runtime,

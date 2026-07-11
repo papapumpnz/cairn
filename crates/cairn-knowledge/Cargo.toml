@@ -1,0 +1,14 @@
+[package]
+name = "cairn-knowledge"
+description = "Proof-backed relational and temporal knowledge store for CAIRN"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+cairn-core = { path = "../cairn-core" }
+
+[lints]
+workspace = true

@@ -161,6 +161,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "cairn-knowledge"
+version = "0.1.0"
+dependencies = [
+ "cairn-core",
+]
+
+[[package]]
 name = "cairn-mechanism"
 version = "0.1.0"
 dependencies = [
@@ -209,6 +216,7 @@ version = "0.1.0"
 dependencies = [
  "cairn-core",
  "cairn-invent",
+ "cairn-knowledge",
  "cairn-memory",
  "cairn-rkl",
  "cairn-skill",

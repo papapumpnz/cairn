@@ -273,6 +273,14 @@ entity merges, identify contradictions, and construct domain models. Retrieval
 confidence is not truth. Unrestricted prose understanding is not claimed without
 a separately measured CPU frontend.
 
+Implementation checkpoint (2026-07-11): `cairn-knowledge` implements admitted
+source observations, typed relational claims, temporal intervals, fixed-point
+confidence, subject/predicate/time retrieval, first-class contradiction pairs,
+reversible entity-merge proposals, and executable mechanism references.
+`CognitionRuntime` owns the knowledge base. Structured acquisition passes; no
+unrestricted prose or language-understanding claim is made. See
+docs/experiments/PROOF_BACKED_KNOWLEDGE.md.
+
 ## 6. Kill and claim rule
 
 Do not describe CAIRN as a generally learning AI until it has passed all six

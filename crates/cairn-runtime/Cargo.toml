@@ -10,6 +10,7 @@ repository.workspace = true
 [dependencies]
 cairn-core = { path = "../cairn-core" }
 cairn-invent = { path = "../cairn-invent" }
+cairn-knowledge = { path = "../cairn-knowledge" }
 cairn-memory = { path = "../cairn-memory" }
 cairn-skill = { path = "../cairn-skill" }
 cairn-world = { path = "../cairn-world" }

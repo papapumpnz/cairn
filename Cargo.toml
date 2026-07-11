@@ -14,6 +14,7 @@ members = [
   "crates/cairn-events",
   "crates/cairn-field",
   "crates/cairn-invent",
+  "crates/cairn-knowledge",
   "crates/cairn-memory",
   "crates/cairn-mechanism",
   "crates/cairn-consolidator",
