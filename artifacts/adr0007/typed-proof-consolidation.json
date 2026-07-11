@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "date": "2026-07-11",
+  "experiment": "typed-proof-dag-consolidation",
+  "general_intelligence_claim": false,
+  "episodes_compared": 2,
+  "structural_cohorts": 1,
+  "proposals_created": 1,
+  "uncompressed_proof_units": 12,
+  "compressed_proof_units": 7,
+  "verified_source_replays": 2,
+  "initial_success": { "exact": 0, "total": 10 },
+  "post_learning_success": { "exact": 10, "total": 10 },
+  "candidate_executions_without_memory": 440,
+  "candidate_executions_with_memory": 10,
+  "limitations": [
+    "matching operation and dependency shape required",
+    "no direct arbitrary RKL compilation from graph pattern",
+    "in-process graph storage",
+    "compression replay not yet separately reimplemented"
+  ]
+}

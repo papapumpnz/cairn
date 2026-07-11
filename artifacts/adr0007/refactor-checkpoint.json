@@ -57,5 +57,17 @@
   "canonical_whole_theory_memory": true,
   "unified_cognition_runtime": true,
   "proof_backed_structured_knowledge": true,
-  "next_audit": "independent replication and broader mechanism curricula"
+  "typed_proof_dag_consolidation": true,
+  "automatic_structural_cohorting": true,
+  "consolidation_checkpoint": {
+    "episodes": 2,
+    "cohorts": 1,
+    "uncompressed_proof_units": 12,
+    "compressed_proof_units": 7,
+    "verified_replays": 2,
+    "held_out_exact": "10/10",
+    "candidate_executions_without_memory": 440,
+    "candidate_executions_with_memory": 10
+  },
+  "next_audit": "compile compressed graph patterns into executable invented RKL mechanisms"
 }

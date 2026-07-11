@@ -428,3 +428,27 @@ backend after admission. Those named schemas do not count as learned
 mechanisms, may not enter general memory, and must ultimately be replaced by
 the mechanism learner or remain a non-claiming regression baseline. See
 docs/experiments/ARC_GENERIC_EXPERIENCE_BOUNDARY.md.
+
+## 16. Typed proof-DAG consolidation checkpoint
+
+The initial string-trace compression prototype has been replaced on the main
+G0 scalar path by typed immutable proof DAGs and a separate offline
+`ConsolidationRuntime`. The runtime admits bounded topologically valid episode
+graphs, automatically groups compatible ancestral subgraphs without task-family
+labels, anti-unifies typed arguments, and exactly reconstructs each source
+subgraph before returning a proposal. Memory's `promote_compressed` path binds
+that opaque proposal to the exact set of independently invented definitions.
+
+In the frozen end-to-end rerun, two independent inventions formed one cohort,
+compressed from 12 proof units to seven with two exact reconstruction replays,
+then supported a persistent mechanism that solved 10/10 held-out tasks from one
+example each. Search was 440 candidates without memory versus ten verified
+memory proposals. Topology and type changes, malformed DAGs, duplicate episode
+identities, unrelated branches, and non-compressing cohorts are covered by
+negative tests.
+
+This is real automatic structural comparison across experience, but not yet a
+complete self-compressing learner. It currently requires matching operation and
+dependency shapes, retains graphs in process memory, and does not yet turn an
+arbitrary compressed graph directly into a new executable RKL definition. See
+docs/experiments/TYPED_PROOF_CONSOLIDATION.md.

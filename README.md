@@ -188,11 +188,20 @@ source-bound typed claims, temporal validity, confidence, contradiction
 retention, reversible entity-merge proposals, indexed retrieval, and executable
 mechanism references. This accepts structured evidence only. See
 [PROOF_BACKED_KNOWLEDGE.md](docs/experiments/PROOF_BACKED_KNOWLEDGE.md).
+The consolidation boundary now compares typed immutable proof DAGs rather than
+equal-length operation strings. A separate offline runtime automatically groups
+structurally compatible episodes without family labels, anti-unifies typed
+arguments, discards unrelated graph branches, exactly reconstructs every
+source subgraph, and binds the resulting compression evidence into memory
+promotion. In the first end-to-end rerun, two independent inventions compressed
+from 12 proof units to seven and the promoted mechanism then reduced 440 fresh
+candidates to ten verified proposals over ten held-out tasks. See
+[TYPED_PROOF_CONSOLIDATION.md](docs/experiments/TYPED_PROOF_CONSOLIDATION.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
-and proof DAGs, richer ontology invention, one shared orchestrating runtime,
-vector-domain integration, ARC evaluation beyond the development training
-split, and knowledge learning
+and durable proof-DAG artifact storage, richer ontology invention, broad
+cross-domain curricula, ARC evaluation beyond the development training split,
+and knowledge frontends
 remain targets. See the
 [GLL-1 evidence report](docs/experiments/GLL1_OMITTED_CONCEPT_INVENTION.md).
 The continual-learning result is documented in the

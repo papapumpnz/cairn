@@ -1,15 +1,20 @@
-use cairn_consolidator::{Consolidator, ProofTrace};
-use cairn_invent::{BindingExample, DefinitionInventor, InventionLimits, InventionProblem};
+use cairn_consolidator::{
+    ConsolidationLimits, ConsolidationRuntime, ProofDatum, ProofGraph, ProofNode, ProofValueType,
+};
+use cairn_invent::{
+    BindingExample, DefinitionInventor, InventionLimits, InventionOutcome, InventionProblem,
+};
 use cairn_mechanism::{
     CardinalityRange, DerivationCertificate, DomainClass, InventionEvidence, Mechanism, Signature,
     SupportGeometry as MechanismSupport, VariableId,
 };
 use cairn_memory::{
-    MechanismStore, MemoryAssistedInventor, ModuleStatus, PromotionRunner, SolveOrigin,
-    SupportGeometry as MemorySupport, VariationDimension,
+    MechanismStore, MemoryAssistedInventor, ModuleStatus, PromotionError, PromotionRunner,
+    SolveOrigin, SupportGeometry as MemorySupport, VariationDimension,
 };
 use cairn_rkl::{
-    Binder, Effect, ExecLimits, Expr, IntRange, RuntimeEnvironment, Type, Value, VarName,
+    BinaryOp, Binder, Effect, ExecLimits, Expr, IntRange, RuntimeEnvironment, Type, UnaryOp, Value,
+    VarName,
 };
 use cairn_verifier::PromotionVerifier;
 use std::collections::BTreeSet;
@@ -58,30 +63,96 @@ fn problem(
     }
 }
 
-fn structural_operations(expression: &Expr, output: &mut Vec<String>) {
-    match expression {
-        Expr::Var(_) => output.push("variable".to_owned()),
-        Expr::Int(_) => output.push("integer-literal".to_owned()),
+fn proof_datum(ty: ProofValueType, value: &[u8]) -> ProofDatum {
+    ProofDatum::digest(ty, value)
+}
+
+fn expression_proof(expression: &Expr, nodes: &mut Vec<ProofNode>) -> u32 {
+    let (operation, output_type, inputs, arguments) = match expression {
+        Expr::Bool(value) => (
+            "literal:boolean".to_owned(),
+            ProofValueType::Boolean,
+            vec![],
+            vec![proof_datum(ProofValueType::Boolean, &[u8::from(*value)])],
+        ),
+        Expr::Int(value) => (
+            "literal:integer".to_owned(),
+            ProofValueType::Integer,
+            vec![],
+            vec![proof_datum(ProofValueType::Integer, &value.to_be_bytes())],
+        ),
+        Expr::Var(name) => (
+            "bind-variable".to_owned(),
+            ProofValueType::Integer,
+            vec![],
+            vec![proof_datum(ProofValueType::Atom, name.0.as_bytes())],
+        ),
         Expr::Unary { op, argument } => {
-            output.push(format!("unary:{op:?}"));
-            structural_operations(argument, output);
+            let input = expression_proof(argument, nodes);
+            let output_type = if *op == UnaryOp::Not {
+                ProofValueType::Boolean
+            } else {
+                ProofValueType::Integer
+            };
+            (format!("unary:{op:?}"), output_type, vec![input], vec![])
         }
         Expr::Binary { op, left, right } => {
-            output.push(format!("binary:{op:?}"));
-            structural_operations(left, output);
-            structural_operations(right, output);
+            let left = expression_proof(left, nodes);
+            let right = expression_proof(right, nodes);
+            let output_type = if matches!(
+                op,
+                BinaryOp::And | BinaryOp::Or | BinaryOp::Equal | BinaryOp::LessThan
+            ) {
+                ProofValueType::Boolean
+            } else {
+                ProofValueType::Integer
+            };
+            (
+                format!("binary:{op:?}"),
+                output_type,
+                vec![left, right],
+                vec![],
+            )
         }
         Expr::If {
             condition,
             then_branch,
             else_branch,
         } => {
-            output.push("if".to_owned());
-            structural_operations(condition, output);
-            structural_operations(then_branch, output);
-            structural_operations(else_branch, output);
+            let condition = expression_proof(condition, nodes);
+            let then_branch = expression_proof(then_branch, nodes);
+            let else_branch = expression_proof(else_branch, nodes);
+            (
+                "if".to_owned(),
+                ProofValueType::Integer,
+                vec![condition, then_branch, else_branch],
+                vec![],
+            )
         }
-        _ => output.push("bounded-rkl-node".to_owned()),
+        _ => (
+            "bounded-rkl-node".to_owned(),
+            ProofValueType::Mechanism,
+            vec![],
+            vec![],
+        ),
+    };
+    let id = u32::try_from(nodes.len()).expect("small proof graph");
+    nodes.push(ProofNode {
+        operation,
+        output_type,
+        inputs,
+        arguments,
+    });
+    id
+}
+
+fn proof_graph(outcome: &InventionOutcome) -> ProofGraph {
+    let mut nodes = Vec::new();
+    let output = expression_proof(&outcome.proposal.definition.body, &mut nodes);
+    ProofGraph {
+        episode: outcome.proposal.semantic_hash,
+        nodes,
+        output,
     }
 }
 
@@ -131,23 +202,46 @@ fn hidden_law_is_invented_promoted_reused_and_reduces_future_search() {
             1_000_000,
         ))
         .expect("second independent invention");
-    let proof_traces = [&first, &second]
-        .into_iter()
-        .map(|outcome| {
-            let mut operations = Vec::new();
-            structural_operations(&outcome.proposal.definition.body, &mut operations);
-            ProofTrace {
-                episode: outcome.proposal.semantic_hash,
-                operations,
-            }
-        })
-        .collect::<Vec<_>>();
-    let compression = Consolidator
-        .anti_unify(&proof_traces)
-        .expect("proof-subgraph compression");
-    assert!(compression.compressed_nodes < compression.uncompressed_nodes);
+    let mut consolidator = ConsolidationRuntime::new(ConsolidationLimits {
+        maximum_episodes: 8,
+        maximum_nodes_per_episode: 64,
+        minimum_independent_episodes: 2,
+    });
+    consolidator
+        .submit(proof_graph(&first))
+        .expect("first proof graph");
+    consolidator
+        .submit(proof_graph(&second))
+        .expect("second proof graph");
+    let report = consolidator.consolidate().expect("offline consolidation");
+    assert_eq!(report.metrics.proposals_created, 1);
+    let compression = &report.proposals[0];
+    assert!(compression.compressed_nodes() < compression.uncompressed_nodes());
+    eprintln!(
+        "CONSOLIDATION_METRICS episodes={} cohorts={} proposals={} uncompressed_nodes={} compressed_nodes={} verified_replays={}",
+        report.metrics.episodes_compared,
+        report.metrics.structural_cohorts,
+        report.metrics.proposals_created,
+        compression.uncompressed_nodes(),
+        compression.compressed_nodes(),
+        compression.verified_replays()
+    );
+    assert_eq!(
+        PromotionRunner
+            .promote_compressed(
+                std::slice::from_ref(&first.proposal),
+                MemorySupport {
+                    independent_tasks: 2,
+                    held_out_rebindings: 1,
+                    varied_dimensions: BTreeSet::from([VariationDimension::ParameterNames]),
+                },
+                compression,
+            )
+            .expect_err("partial lineage rejected"),
+        PromotionError::CompressionLineageMismatch
+    );
     let module = PromotionRunner
-        .promote(
+        .promote_compressed(
             &[first.proposal.clone(), second.proposal.clone()],
             MemorySupport {
                 independent_tasks: 2,
@@ -157,8 +251,16 @@ fn hidden_law_is_invented_promoted_reused_and_reduces_future_search() {
                     VariationDimension::NumericRanges,
                 ]),
             },
+            compression,
         )
         .expect("provisional module");
+    assert_eq!(
+        module
+            .compression_evidence()
+            .expect("compression evidence")
+            .verified_replays,
+        2
+    );
     let mut store = MechanismStore::new();
     store.insert(module.clone());
     assert!(!store.set_status(module.id(), ModuleStatus::Persistent));

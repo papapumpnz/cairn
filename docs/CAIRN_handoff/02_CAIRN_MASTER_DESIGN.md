@@ -30,6 +30,16 @@ The online learner does not decide what becomes permanent. A separate
 consolidator proposes reusable mechanisms; an independent verifier gates replay;
 and a curriculum runtime chooses experiences. See ADR-0007.
 
+The implemented consolidation contract uses typed immutable proof DAGs. It
+normalizes the ancestral subgraph of a selected result, groups episodes by
+operation/type/dependency shape without benchmark family labels, anti-unifies
+only typed argument values, and exactly reconstructs every source subgraph
+before emitting an opaque compression proposal. The memory promotion runner
+requires that proposal's source identities to equal the independently invented
+definition lineage. This is a bounded first implementation: graph edit
+anti-unification across different dependency shapes and independent verifier
+re-execution of the compression certificate remain open.
+
 The architecture deliberately avoids two failed patterns:
 
 ```text

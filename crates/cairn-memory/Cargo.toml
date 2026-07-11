@@ -8,6 +8,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+cairn-consolidator = { path = "../cairn-consolidator" }
 cairn-core = { path = "../cairn-core" }
 cairn-invent = { path = "../cairn-invent" }
 cairn-mechanism = { path = "../cairn-mechanism" }
@@ -16,7 +17,6 @@ cairn-verifier = { path = "../cairn-verifier" }
 
 [dev-dependencies]
 cairn-bench = { path = "../cairn-bench" }
-cairn-consolidator = { path = "../cairn-consolidator" }
 
 [lints]
 workspace = true

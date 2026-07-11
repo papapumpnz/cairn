@@ -4,6 +4,7 @@
 //! and replayed against the complete current problem by `cairn-invent` before
 //! it can influence a prediction.
 
+use cairn_consolidator::GraphCompressionProposal;
 use cairn_core::{CanonicalEncode, Hash32};
 use cairn_invent::{
     DefinitionInventor, DefinitionProposal, InventionError, InventionOutcome, InventionProblem,
@@ -52,6 +53,15 @@ pub struct MechanismModule {
     status: ModuleStatus,
     structural_cost: u16,
     reuse: BTreeMap<Hash32, ReuseEvidence>,
+    compression: Option<CompressionEvidence>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CompressionEvidence {
+    pub proposal: Hash32,
+    pub uncompressed_nodes: u64,
+    pub compressed_nodes: u64,
+    pub verified_replays: u64,
 }
 
 impl MechanismModule {
@@ -111,6 +121,11 @@ impl MechanismModule {
         }
         metrics
     }
+
+    #[must_use]
+    pub const fn compression_evidence(&self) -> Option<CompressionEvidence> {
+        self.compression
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -156,6 +171,8 @@ pub enum PromotionError {
     EmptyEvidence,
     IncompatibleDefinitions,
     Canonicalization,
+    CompressionLineageMismatch,
+    UnverifiedCompression,
 }
 
 impl fmt::Display for PromotionError {
@@ -230,7 +247,50 @@ impl PromotionRunner {
             status: ModuleStatus::Provisional,
             structural_cost: representative.structural_cost,
             reuse: BTreeMap::new(),
+            compression: None,
         })
+    }
+
+    /// Create a provisional module only when its independently invented
+    /// definitions are also explained by an exactly replayed proof-subgraph
+    /// compression proposal.
+    ///
+    /// # Errors
+    ///
+    /// In addition to ordinary promotion errors, rejects compression over a
+    /// different source lineage or without positive, replayed compression.
+    pub fn promote_compressed(
+        &self,
+        proposals: &[DefinitionProposal],
+        support: SupportGeometry,
+        compression: &GraphCompressionProposal,
+    ) -> Result<MechanismModule, PromotionError> {
+        let proposal_sources = proposals
+            .iter()
+            .map(|proposal| proposal.semantic_hash)
+            .collect::<BTreeSet<_>>();
+        let compression_sources = compression
+            .source_episodes()
+            .iter()
+            .copied()
+            .collect::<BTreeSet<_>>();
+        if proposal_sources != compression_sources || proposal_sources.len() != proposals.len() {
+            return Err(PromotionError::CompressionLineageMismatch);
+        }
+        if compression.verified_replays()
+            != u64::try_from(proposals.len()).map_err(|_| PromotionError::UnverifiedCompression)?
+            || compression.compressed_nodes() >= compression.uncompressed_nodes()
+        {
+            return Err(PromotionError::UnverifiedCompression);
+        }
+        let mut module = self.promote(proposals, support)?;
+        module.compression = Some(CompressionEvidence {
+            proposal: compression.semantic_hash(),
+            uncompressed_nodes: compression.uncompressed_nodes(),
+            compressed_nodes: compression.compressed_nodes(),
+            verified_replays: compression.verified_replays(),
+        });
+        Ok(module)
     }
 }
 
