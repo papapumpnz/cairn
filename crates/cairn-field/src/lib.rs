@@ -1,8 +1,10 @@
 //! Adapter-neutral finite categorical fields and a first learned field model.
 
 use cairn_core::{
-    CanonicalValue, CollectionDemonstration, CollectionProcedureProblem, Hash32, ModalityId,
-    Observation, ObservationCertainty, ObservationError, SourceReference,
+    CanonicalValue, CollectionDemonstration, CollectionProcedureProblem, EntityId, EntityRecord,
+    EntitySelectionDemonstration, EntitySelectionProblem, FeatureId, Hash32, ModalityId,
+    Observation, ObservationCertainty, ObservationError, RelationalEntityCollection,
+    SourceReference,
 };
 use cairn_invent::{
     BindingExample, DefinitionInventor, DefinitionProposal, InventionError, InventionLimits,
@@ -14,7 +16,10 @@ use cairn_reg::{
     RelationDefinition, RelationId,
 };
 use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
-use cairn_theory::{ContrastExample, ContrastPredicateInventor};
+use cairn_theory::{
+    ContrastExample, ContrastPredicateInventor, LearnedEntitySelector,
+    RelationalEntitySelectorInventor,
+};
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
@@ -797,6 +802,114 @@ pub enum PartitionControllerRole {
     OmitsSharedMarker,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct LearnedPartitionExtractionBinding {
+    pub selector: LearnedEntitySelector,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum LearnedStructuralFieldBinding {
+    PartitionBroadcast(LearnedPartitionBroadcastBinding),
+    PartitionExtraction(LearnedPartitionExtractionBinding),
+}
+
+impl LearnedStructuralFieldBinding {
+    /// Execute one learned structural rendering procedure.
+    ///
+    /// # Errors
+    ///
+    /// Rejects invalid geometry, failed role rebinding, or ambiguous rendering.
+    pub fn predict(&self, input: &FiniteField) -> Result<FiniteField, FieldError> {
+        match self {
+            Self::PartitionBroadcast(binding) => PartitionBroadcastLearner.predict(binding, input),
+            Self::PartitionExtraction(binding) => {
+                PartitionExtractionLearner.predict(binding, input)
+            }
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct PartitionExtractionLearner;
+
+impl PartitionExtractionLearner {
+    /// Learn an executable predicate selecting one structural partition whose
+    /// native contents exactly explain each demonstrated output.
+    ///
+    /// # Errors
+    ///
+    /// Rejects insufficient, ambiguous, or malformed partition evidence and
+    /// bounded relational-selector failure.
+    pub fn learn(
+        &self,
+        pairs: &[(FiniteField, FiniteField)],
+        limits: InventionLimits,
+    ) -> Result<LearnedPartitionExtractionBinding, FieldError> {
+        if pairs.len() < 2 {
+            return Err(FieldError::NoCorrespondence);
+        }
+        let demonstrations = pairs
+            .iter()
+            .enumerate()
+            .map(|(episode, (input, output))| {
+                let (collection, panels) = panel_entities(input, episode)?;
+                let matches = panels
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(index, panel)| (panel == output).then_some(index))
+                    .collect::<Vec<_>>();
+                if matches.len() != 1 {
+                    return Err(FieldError::AmbiguousEntity);
+                }
+                Ok(EntitySelectionDemonstration {
+                    collection,
+                    selected: BTreeSet::from([panel_id(episode, matches[0])]),
+                })
+            })
+            .collect::<Result<Vec<_>, FieldError>>()?;
+        let prediction = demonstrations[0].collection.clone();
+        let selector = RelationalEntitySelectorInventor
+            .invent(
+                &EntitySelectionProblem {
+                    demonstrations,
+                    prediction,
+                },
+                limits,
+            )
+            .map_err(|_| FieldError::NoEntity)?;
+        Ok(LearnedPartitionExtractionBinding { selector })
+    }
+
+    /// Rebind the learned panel predicate and render the unique selection.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed partitions, selector failure, or non-unique selection.
+    pub fn predict(
+        &self,
+        binding: &LearnedPartitionExtractionBinding,
+        input: &FiniteField,
+    ) -> Result<FiniteField, FieldError> {
+        let (collection, panels) = panel_entities(input, 0)?;
+        let selected = RelationalEntitySelectorInventor
+            .predict(&binding.selector, &collection)
+            .map_err(|_| FieldError::Prediction)?;
+        let matches = panels
+            .iter()
+            .enumerate()
+            .filter_map(|(index, panel)| {
+                selected
+                    .contains(&panel_id(0, index))
+                    .then_some(panel.clone())
+            })
+            .collect::<Vec<_>>();
+        if matches.len() != 1 {
+            return Err(FieldError::AmbiguousEntity);
+        }
+        Ok(matches[0].clone())
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default)]
 pub struct PartitionBroadcastLearner;
 
@@ -915,14 +1028,16 @@ fn partition_layout(field: &FiniteField) -> Result<PartitionLayout, FieldError> 
     }
     let row_ranges = nonseparator_ranges(rows, &separator_rows);
     let column_ranges = nonseparator_ranges(columns, &separator_columns);
-    if row_ranges.is_empty()
-        || column_ranges.is_empty()
+    let row_width = row_ranges.first().map(|(start, end)| end - start);
+    let column_width = column_ranges.first().map(|(start, end)| end - start);
+    if row_width.is_none()
+        || column_width.is_none()
         || row_ranges
             .iter()
-            .any(|(start, end)| end - start != row_ranges.len())
+            .any(|(start, end)| Some(end - start) != row_width)
         || column_ranges
             .iter()
-            .any(|(start, end)| end - start != column_ranges.len())
+            .any(|(start, end)| Some(end - start) != column_width)
     {
         return Err(FieldError::NoCorrespondence);
     }
@@ -955,6 +1070,13 @@ fn render_partition_broadcast(
     let layout = partition_layout(input)?;
     let columns = usize::try_from(input.shape[1]).map_err(|_| FieldError::Capacity)?;
     let partition_columns = layout.column_ranges.len();
+    let controller_height = layout.row_ranges[0].1 - layout.row_ranges[0].0;
+    let controller_width = layout.column_ranges[0].1 - layout.column_ranges[0].0;
+    if controller_height != layout.row_ranges.len()
+        || controller_width != layout.column_ranges.len()
+    {
+        return Err(FieldError::NoCorrespondence);
+    }
     let controller_partition = match controller_role {
         PartitionControllerRole::FixedIndex(index) => *index,
         PartitionControllerRole::OmitsSharedMarker => {
@@ -996,6 +1118,95 @@ fn render_partition_broadcast(
         shape: input.shape.clone(),
         values,
     })
+}
+
+fn panel_entities(
+    input: &FiniteField,
+    episode: usize,
+) -> Result<(RelationalEntityCollection, Vec<FiniteField>), FieldError> {
+    let layout = partition_layout(input)?;
+    let columns = usize::try_from(input.shape[1]).map_err(|_| FieldError::Capacity)?;
+    let background = modal_value(input);
+    let mut entities = Vec::new();
+    let mut panels = Vec::new();
+    for (panel_row, (row_start, row_end)) in layout.row_ranges.iter().enumerate() {
+        for (panel_column, (column_start, column_end)) in layout.column_ranges.iter().enumerate() {
+            let values = (*row_start..*row_end)
+                .flat_map(|row| {
+                    (*column_start..*column_end)
+                        .map(move |column| input.values[row * columns + column])
+                })
+                .collect::<Vec<_>>();
+            let index = panel_row * layout.column_ranges.len() + panel_column;
+            entities.push(EntityRecord {
+                id: panel_id(episode, index),
+                attributes: BTreeMap::from([
+                    (
+                        FeatureId("occupied_count".to_owned()),
+                        i64::try_from(values.iter().filter(|value| **value != background).count())
+                            .map_err(|_| FieldError::Capacity)?,
+                    ),
+                    (
+                        FeatureId("distinct_count".to_owned()),
+                        i64::try_from(values.iter().copied().collect::<BTreeSet<_>>().len())
+                            .map_err(|_| FieldError::Capacity)?,
+                    ),
+                    (
+                        FeatureId("panel_row".to_owned()),
+                        i64::try_from(panel_row).map_err(|_| FieldError::Capacity)?,
+                    ),
+                    (
+                        FeatureId("panel_column".to_owned()),
+                        i64::try_from(panel_column).map_err(|_| FieldError::Capacity)?,
+                    ),
+                ]),
+            });
+            panels.push(FiniteField {
+                shape: vec![
+                    u32::try_from(row_end - row_start).map_err(|_| FieldError::Capacity)?,
+                    u32::try_from(column_end - column_start).map_err(|_| FieldError::Capacity)?,
+                ],
+                values,
+            });
+        }
+    }
+    let occupied_key = FeatureId("occupied_count".to_owned());
+    let distinct_key = FeatureId("distinct_count".to_owned());
+    let maximum_occupied = entities
+        .iter()
+        .filter_map(|entity| entity.attributes.get(&occupied_key))
+        .copied()
+        .max()
+        .ok_or(FieldError::NoEntity)?;
+    let maximum_distinct = entities
+        .iter()
+        .filter_map(|entity| entity.attributes.get(&distinct_key))
+        .copied()
+        .max()
+        .ok_or(FieldError::NoEntity)?;
+    for entity in &mut entities {
+        entity.attributes.insert(
+            FeatureId("has_maximum_occupied".to_owned()),
+            i64::from(entity.attributes[&occupied_key] == maximum_occupied),
+        );
+        entity.attributes.insert(
+            FeatureId("has_maximum_distinct".to_owned()),
+            i64::from(entity.attributes[&distinct_key] == maximum_distinct),
+        );
+    }
+    Ok((
+        RelationalEntityCollection {
+            entities,
+            relations: Vec::new(),
+        },
+        panels,
+    ))
+}
+
+fn panel_id(episode: usize, index: usize) -> EntityId {
+    EntityId(Hash32::digest(
+        format!("panel:{episode}:{index}").as_bytes(),
+    ))
 }
 
 fn omitted_shared_marker_partition(

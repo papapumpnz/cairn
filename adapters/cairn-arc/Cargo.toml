@@ -15,6 +15,10 @@ path = "src/bin/cairn-arc-attempt.rs"
 name = "cairn-arc-batch"
 path = "src/bin/cairn-arc-batch.rs"
 
+[[bin]]
+name = "cairn-arc-failure-audit"
+path = "src/bin/cairn-arc-failure-audit.rs"
+
 [dependencies]
 cairn-core = { path = "../../crates/cairn-core" }
 cairn-field = { path = "../../crates/cairn-field" }

@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "bundle": "CAIRN_ARCHITECTURE_HANDOFF",
   "architecture": "CAIRN — Causal Analogical Induction over Relational Networks",
-  "generated_utc": "2026-07-11T20:36:02Z",
+  "generated_utc": "2026-07-11T21:04:36Z",
   "hash_algorithm": "SHA-256",
   "manifest_excludes": [
     "manifest.json",
@@ -38,7 +38,7 @@
     {
       "path": "02_CAIRN_MASTER_DESIGN.md",
       "bytes": 81204,
-      "sha256": "9a3a75f5345b4fc4787697335e8cabc6e6e8430cd1a7c42756002cff3cc39b22"
+      "sha256": "11b0ec20b2b7db33e976021203804615b53a369d12a2815cbc24a21da1fa56c7"
     },
     {
       "path": "03_CAIRN_INTERFACES.md",
@@ -48,7 +48,7 @@
     {
       "path": "04_CAIRN_EXPERIMENT_LADDER.md",
       "bytes": 21165,
-      "sha256": "c43897ab11ff737af01379f0d2a77900871c7afc40073515bfd6db898c286a14"
+      "sha256": "787c13e72cb76602402037b85116bc21d6b937258f045f11b6470d063312bad2"
     },
     {
       "path": "05_CAIRN_SWARM_PROTOCOL.md",

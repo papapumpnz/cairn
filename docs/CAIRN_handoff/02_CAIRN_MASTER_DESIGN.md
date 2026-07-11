@@ -17,8 +17,8 @@ Measured checkpoint (2026-07-12): composition is bounded at arbitrary depth,
 independent reuse receipts consolidate into promotion certificates, typed
 relational entity selectors transfer across adapters, and learned render
 bindings cover changed geometry. A non-ARC partition-controller binding improved
-the complete frozen ARC-1 training evaluation from 32/400 to 33/400 without a
-lost solve. The result remains 8.25% and does not satisfy the ARC or general
+the complete frozen ARC-1 training evaluation from 32/400 to 35/400 without a
+lost solve. The result remains 8.75% and does not satisfy the ARC or general
 intelligence goals.
 
 ## 0. Executive decision

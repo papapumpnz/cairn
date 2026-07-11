@@ -13,7 +13,7 @@ not the general-intelligence or ARC completion gates.
 consolidation, relational entity collection transfer, explicit render bindings,
 and frontier-generated causal curricula pass bounded tests. Non-ARC structural
 memory improves ARC-40 from 17/40 to 18/40 and full ARC-1 training from 32/400
-to 33/400, with zero incorrect and zero lost baseline solves. The 80% ARC and
+to 35/400, with zero incorrect and zero lost baseline solves. The 80% ARC and
 general-intelligence gates remain failed.
 
 ## 0. Dataset policy

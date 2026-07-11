@@ -12,8 +12,8 @@ use cairn_core::{
 };
 use cairn_field::{
     EntityFrameLearner, FieldError, FieldEvidence, FieldValueCollectionAdapter, FiniteField,
-    LearnedPartitionBroadcastBinding, LocalFieldLearner, PartitionBroadcastLearner,
-    PointwiseFieldLearner, RemappedFieldLearner, ResidualConstructorInventor,
+    LearnedStructuralFieldBinding, LocalFieldLearner, PointwiseFieldLearner, RemappedFieldLearner,
+    ResidualConstructorInventor,
 };
 use cairn_invent::InventionLimits;
 use cairn_reg::RegLimits;
@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.17.0";
+pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.18.0";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ArcGrid {
@@ -351,7 +351,7 @@ pub fn attempt_task_with_runtime_and_partition_bindings(
     invention: InventionLimits,
     execution: ExecLimits,
     runtime: &CognitionRuntime,
-    bindings: &[LearnedPartitionBroadcastBinding],
+    bindings: &[LearnedStructuralFieldBinding],
 ) -> Result<ArcAttempt, ArcAdapterError> {
     let experience =
         lower_relational_experience(task, "urn:cairn:adapter-task:sealed", RegLimits::default())?;
@@ -383,16 +383,17 @@ pub fn attempt_task_with_runtime_and_partition_bindings(
         })
         .collect::<Result<Vec<_>, ArcAdapterError>>()?;
     for binding in bindings {
-        if training.iter().all(|(input, output)| {
-            PartitionBroadcastLearner.predict(binding, input).as_ref() == Ok(output)
-        }) {
+        if training
+            .iter()
+            .all(|(input, output)| binding.predict(input).as_ref() == Ok(output))
+        {
             let predictions = task
                 .test
                 .iter()
                 .map(|case| {
                     let input = lower(&case.input)?;
-                    PartitionBroadcastLearner
-                        .predict(binding, &input)
+                    binding
+                        .predict(&input)
                         .map_err(ArcAdapterError::Field)
                         .and_then(|prediction| raise(&prediction))
                 })
@@ -415,10 +416,7 @@ pub fn attempt_task_with_runtime_and_partition_bindings(
                 generic_observations: admitted.observations,
                 relational_nodes,
                 relational_facts,
-                learned_expression: format!(
-                    "transferred_partition_controller={:?}",
-                    binding.controller_role
-                ),
+                learned_expression: format!("transferred_structural_binding={binding:?}",),
             });
         }
     }
@@ -869,7 +867,7 @@ pub fn run_training_batch_with_runtime_and_partition_bindings(
     invention: InventionLimits,
     execution: ExecLimits,
     runtime: &CognitionRuntime,
-    bindings: &[LearnedPartitionBroadcastBinding],
+    bindings: &[LearnedStructuralFieldBinding],
 ) -> Result<ArcBatchReport, String> {
     let mut paths = fs::read_dir(directory)
         .map_err(|error| error.to_string())?
@@ -995,7 +993,7 @@ fn evaluate_task(
     invention: InventionLimits,
     execution: ExecLimits,
     runtime: &CognitionRuntime,
-    bindings: &[LearnedPartitionBroadcastBinding],
+    bindings: &[LearnedStructuralFieldBinding],
 ) -> ArcTaskReport {
     let expected = task
         .test
