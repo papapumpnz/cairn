@@ -605,6 +605,15 @@ and evidence plus freshly measured counterfactual metrics before the store or
 consolidator may count it. Persisted metrics are comparison targets, never
 replay inputs. CAS identity proves immutability, not correctness.
 
+Consolidation source evidence crosses process boundaries through
+`cairn.consolidator.proof-graph` version 1. The canonical DAG payload contains
+only typed operation structure, opaque argument hashes, an episode identity,
+and an output node. `ProofGraphArchive::load` checks the envelope, bounds,
+scope, type codes, and topology; `ConsolidationRuntime::submit` re-admits it.
+Compression remains a proposal until `CompressionVerifier` independently
+reconstructs every source and cost. Persisted proposals cannot replace their
+source DAGs.
+
 ## 19. Planner interfaces
 
 ```rust

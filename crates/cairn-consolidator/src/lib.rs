@@ -1,9 +1,17 @@
 //! Offline proof-subgraph compression separated from online task solving.
 
-use cairn_core::{CanonicalEncode, CanonicalValue, Hash32};
+use cairn_cas::{Cas, CasError, StoredArtifact};
+use cairn_core::{
+    ArtifactEnvelope, ArtifactError, ArtifactId, ArtifactKind, BlobId, BudgetRecord,
+    CanonicalEncode, CanonicalError, CanonicalLimits, CanonicalValue, Hash32, ProducerRecord,
+    SchemaDescriptor, SchemaRef, SchemaRegistry, SemanticsVersion,
+};
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
 
-pub const CONSOLIDATOR_SEMANTICS_VERSION: &str = "2.0.0";
+pub const CONSOLIDATOR_SEMANTICS_VERSION: &str = "2.1.0";
+pub const PROOF_GRAPH_SCHEMA: &str = "cairn.consolidator.proof-graph";
+pub const PROOF_GRAPH_SCHEMA_VERSION: u32 = 1;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ConsolidationLimits {
@@ -173,6 +181,199 @@ pub struct ProofGraph {
     pub episode: Hash32,
     pub nodes: Vec<ProofNode>,
     pub output: u32,
+}
+
+impl CanonicalEncode for ProofGraph {
+    fn encode_canonical(&self) -> Result<Vec<u8>, CanonicalError> {
+        proof_graph_value(self).encode_canonical()
+    }
+}
+
+impl ProofGraph {
+    /// Decode and structurally validate one complete canonical proof DAG.
+    ///
+    /// # Errors
+    ///
+    /// Rejects non-canonical bytes, resource-limit violations, unknown type
+    /// codes, malformed hashes, invalid topology, and unreachable output.
+    pub fn decode_canonical(
+        bytes: &[u8],
+        limits: CanonicalLimits,
+    ) -> Result<Self, ProofGraphDecodeError> {
+        let value = cairn_core::decode_canonical(bytes, limits)
+            .map_err(ProofGraphDecodeError::Canonical)?;
+        Self::from_canonical_value(value)
+    }
+
+    fn from_canonical_value(value: CanonicalValue) -> Result<Self, ProofGraphDecodeError> {
+        let CanonicalValue::Array(values) = value else {
+            return Err(ProofGraphDecodeError::InvalidShape("root is not an array"));
+        };
+        let [marker, episode, nodes, output] = values.as_slice() else {
+            return Err(ProofGraphDecodeError::InvalidShape(
+                "root field count is not four",
+            ));
+        };
+        if marker != &CanonicalValue::Text("cairn.consolidator.proof-graph.v1".to_owned()) {
+            return Err(ProofGraphDecodeError::InvalidShape("marker mismatch"));
+        }
+        let CanonicalValue::Array(nodes) = nodes else {
+            return Err(ProofGraphDecodeError::InvalidShape("nodes is not an array"));
+        };
+        let graph = Self {
+            episode: decode_hash(episode)?,
+            nodes: nodes
+                .iter()
+                .map(decode_proof_node)
+                .collect::<Result<Vec<_>, _>>()?,
+            output: decode_u32(output)?,
+        };
+        normalize_ancestral_subgraph(&graph).map_err(ProofGraphDecodeError::InvalidGraph)?;
+        Ok(graph)
+    }
+}
+
+/// Non-semantic envelope metadata for a persisted proof DAG. Parent IDs must
+/// identify the observations, execution trace, or proof certificate from which
+/// the graph was derived.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProofGraphArtifactMetadata {
+    pub parent_ids: Vec<ArtifactId>,
+    pub producer: ProducerRecord,
+    pub budget: BudgetRecord,
+    pub created_at_logical: u64,
+}
+
+/// Canonical CAS boundary for immutable proof DAGs submitted to consolidation.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ProofGraphArchive;
+
+impl ProofGraphArchive {
+    /// Validate and persist one proof graph as an immutable artifact.
+    ///
+    /// # Errors
+    ///
+    /// Rejects absent lineage, malformed graphs, invalid metadata, capacity,
+    /// canonicalization, storage, and integrity failures.
+    pub fn persist(
+        &self,
+        cas: &Cas,
+        graph: &ProofGraph,
+        metadata: ProofGraphArtifactMetadata,
+    ) -> Result<StoredArtifact, ProofGraphArchiveError> {
+        if metadata.parent_ids.is_empty() {
+            return Err(ProofGraphArchiveError::MissingParent);
+        }
+        normalize_ancestral_subgraph(graph).map_err(ProofGraphArchiveError::InvalidGraph)?;
+        let envelope = ArtifactEnvelope::new(
+            proof_graph_schema()?,
+            proof_graph_kind()?,
+            proof_graph_semantics(),
+            metadata.parent_ids,
+            Some(graph.episode),
+            metadata.producer,
+            metadata.budget,
+            metadata.created_at_logical,
+            graph.clone(),
+        )?;
+        cas.put_envelope(&envelope)
+            .map_err(ProofGraphArchiveError::Storage)
+    }
+
+    /// Load an untrusted proof graph, validate its canonical envelope, and
+    /// recheck the complete DAG before returning it to the consolidator.
+    ///
+    /// # Errors
+    ///
+    /// Rejects storage corruption, unsupported schema/semantics, missing
+    /// lineage, scope mismatch, malformed nodes, and invalid topology.
+    pub fn load(&self, cas: &Cas, blob_id: BlobId) -> Result<ProofGraph, ProofGraphArchiveError> {
+        let mut registry = SchemaRegistry::new();
+        registry.register(SchemaDescriptor {
+            name: PROOF_GRAPH_SCHEMA.to_owned(),
+            current_version: PROOF_GRAPH_SCHEMA_VERSION,
+            additive_read_versions: BTreeSet::new(),
+            maximum_payload_bytes: 8 * 1024 * 1024,
+        })?;
+        let envelope = cas.get_envelope(
+            blob_id,
+            &registry,
+            &BTreeSet::from([proof_graph_semantics()]),
+            CanonicalLimits {
+                max_input_bytes: 9 * 1024 * 1024,
+                max_depth: 32,
+                max_collection_items: 300_000,
+                max_scalar_bytes: 8 * 1024 * 1024,
+            },
+        )?;
+        if envelope.artifact_kind != proof_graph_kind()? || envelope.parent_ids.is_empty() {
+            return Err(ProofGraphArchiveError::InvalidEnvelope);
+        }
+        let graph = ProofGraph::from_canonical_value(envelope.payload)?;
+        if envelope.task_scope != Some(graph.episode) {
+            return Err(ProofGraphArchiveError::InvalidEnvelope);
+        }
+        Ok(graph)
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ProofGraphDecodeError {
+    Canonical(CanonicalError),
+    InvalidShape(&'static str),
+    InvalidHash,
+    UnknownType(u64),
+    IntegerOverflow,
+    InvalidGraph(ConsolidationError),
+}
+
+impl fmt::Display for ProofGraphDecodeError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{self:?}")
+    }
+}
+
+impl std::error::Error for ProofGraphDecodeError {}
+
+#[derive(Debug)]
+pub enum ProofGraphArchiveError {
+    MissingParent,
+    InvalidEnvelope,
+    InvalidGraph(ConsolidationError),
+    Decode(ProofGraphDecodeError),
+    Artifact(ArtifactError),
+    Storage(CasError),
+}
+
+impl fmt::Display for ProofGraphArchiveError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Decode(error) => error.fmt(formatter),
+            Self::Artifact(error) => error.fmt(formatter),
+            Self::Storage(error) => error.fmt(formatter),
+            other => write!(formatter, "{other:?}"),
+        }
+    }
+}
+
+impl std::error::Error for ProofGraphArchiveError {}
+
+impl From<ProofGraphDecodeError> for ProofGraphArchiveError {
+    fn from(value: ProofGraphDecodeError) -> Self {
+        Self::Decode(value)
+    }
+}
+
+impl From<ArtifactError> for ProofGraphArchiveError {
+    fn from(value: ArtifactError) -> Self {
+        Self::Artifact(value)
+    }
+}
+
+impl From<CasError> for ProofGraphArchiveError {
+    fn from(value: CasError) -> Self {
+        Self::Storage(value)
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -733,4 +934,148 @@ const fn proof_type_code(value: ProofValueType) -> u64 {
         ProofValueType::Effect => 7,
         ProofValueType::Mechanism => 8,
     }
+}
+
+fn proof_graph_value(graph: &ProofGraph) -> CanonicalValue {
+    CanonicalValue::Array(vec![
+        CanonicalValue::Text("cairn.consolidator.proof-graph.v1".to_owned()),
+        CanonicalValue::Bytes(graph.episode.as_bytes().to_vec()),
+        CanonicalValue::Array(
+            graph
+                .nodes
+                .iter()
+                .map(|node| {
+                    CanonicalValue::Array(vec![
+                        CanonicalValue::Text(node.operation.clone()),
+                        CanonicalValue::Unsigned(proof_type_code(node.output_type)),
+                        CanonicalValue::Array(
+                            node.inputs
+                                .iter()
+                                .map(|input| CanonicalValue::Unsigned(u64::from(*input)))
+                                .collect(),
+                        ),
+                        CanonicalValue::Array(
+                            node.arguments
+                                .iter()
+                                .map(|argument| {
+                                    CanonicalValue::Array(vec![
+                                        CanonicalValue::Unsigned(proof_type_code(argument.ty)),
+                                        CanonicalValue::Bytes(argument.value.as_bytes().to_vec()),
+                                    ])
+                                })
+                                .collect(),
+                        ),
+                    ])
+                })
+                .collect(),
+        ),
+        CanonicalValue::Unsigned(u64::from(graph.output)),
+    ])
+}
+
+fn decode_proof_node(value: &CanonicalValue) -> Result<ProofNode, ProofGraphDecodeError> {
+    let CanonicalValue::Array(values) = value else {
+        return Err(ProofGraphDecodeError::InvalidShape("node is not an array"));
+    };
+    let [operation, output_type, inputs, arguments] = values.as_slice() else {
+        return Err(ProofGraphDecodeError::InvalidShape(
+            "node field count is not four",
+        ));
+    };
+    let CanonicalValue::Text(operation) = operation else {
+        return Err(ProofGraphDecodeError::InvalidShape("operation is not text"));
+    };
+    if operation.is_empty() || operation.len() > 256 {
+        return Err(ProofGraphDecodeError::InvalidShape(
+            "operation length is invalid",
+        ));
+    }
+    let CanonicalValue::Array(inputs) = inputs else {
+        return Err(ProofGraphDecodeError::InvalidShape(
+            "inputs is not an array",
+        ));
+    };
+    let CanonicalValue::Array(arguments) = arguments else {
+        return Err(ProofGraphDecodeError::InvalidShape(
+            "arguments is not an array",
+        ));
+    };
+    Ok(ProofNode {
+        operation: operation.clone(),
+        output_type: decode_proof_type(output_type)?,
+        inputs: inputs
+            .iter()
+            .map(decode_u32)
+            .collect::<Result<Vec<_>, _>>()?,
+        arguments: arguments
+            .iter()
+            .map(|argument| {
+                let CanonicalValue::Array(values) = argument else {
+                    return Err(ProofGraphDecodeError::InvalidShape(
+                        "argument is not an array",
+                    ));
+                };
+                let [ty, value] = values.as_slice() else {
+                    return Err(ProofGraphDecodeError::InvalidShape(
+                        "argument field count is not two",
+                    ));
+                };
+                Ok(ProofDatum {
+                    ty: decode_proof_type(ty)?,
+                    value: decode_hash(value)?,
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?,
+    })
+}
+
+fn decode_proof_type(value: &CanonicalValue) -> Result<ProofValueType, ProofGraphDecodeError> {
+    match decode_u64(value)? {
+        0 => Ok(ProofValueType::Boolean),
+        1 => Ok(ProofValueType::Integer),
+        2 => Ok(ProofValueType::Atom),
+        3 => Ok(ProofValueType::Entity),
+        4 => Ok(ProofValueType::EntitySet),
+        5 => Ok(ProofValueType::Relation),
+        6 => Ok(ProofValueType::Action),
+        7 => Ok(ProofValueType::Effect),
+        8 => Ok(ProofValueType::Mechanism),
+        code => Err(ProofGraphDecodeError::UnknownType(code)),
+    }
+}
+
+fn decode_hash(value: &CanonicalValue) -> Result<Hash32, ProofGraphDecodeError> {
+    let CanonicalValue::Bytes(bytes) = value else {
+        return Err(ProofGraphDecodeError::InvalidHash);
+    };
+    let fixed: [u8; 32] = bytes
+        .as_slice()
+        .try_into()
+        .map_err(|_| ProofGraphDecodeError::InvalidHash)?;
+    Ok(Hash32::from_bytes(fixed))
+}
+
+fn decode_u64(value: &CanonicalValue) -> Result<u64, ProofGraphDecodeError> {
+    let CanonicalValue::Unsigned(value) = value else {
+        return Err(ProofGraphDecodeError::InvalidShape(
+            "integer is not unsigned",
+        ));
+    };
+    Ok(*value)
+}
+
+fn decode_u32(value: &CanonicalValue) -> Result<u32, ProofGraphDecodeError> {
+    u32::try_from(decode_u64(value)?).map_err(|_| ProofGraphDecodeError::IntegerOverflow)
+}
+
+fn proof_graph_schema() -> Result<SchemaRef, ArtifactError> {
+    SchemaRef::new(PROOF_GRAPH_SCHEMA, PROOF_GRAPH_SCHEMA_VERSION)
+}
+
+fn proof_graph_kind() -> Result<ArtifactKind, ArtifactError> {
+    ArtifactKind::new("consolidator.proof-graph")
+}
+
+const fn proof_graph_semantics() -> SemanticsVersion {
+    SemanticsVersion::new(1, 0, 0)
 }

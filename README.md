@@ -331,6 +331,12 @@ measurements before consolidation can promote a mechanism. A two-experience
 restart test reduces synthetic candidate work from 200 to 2 and examples from 8
 to 2 while rejecting changed theory, result, metrics, lineage, and payload. See
 [PERSISTED_REUSE_CONSOLIDATION.md](docs/experiments/PERSISTED_REUSE_CONSOLIDATION.md).
+The source proof DAGs used by consolidation are now restartable too. Three
+typed, content-addressed proof graphs survive CAS reopen/recovery and reproduce
+the identical compression proposal hash; the independent verifier then replays
+all three reloaded sources and recalculates costs. Malformed and cyclic graphs
+fail closed. See
+[PERSISTED_PROOF_GRAPH_CONSOLIDATION.md](docs/experiments/PERSISTED_PROOF_GRAPH_CONSOLIDATION.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and durable proof-DAG artifact storage, arbitrary internal-subgraph compilation,

@@ -1,6 +1,13 @@
-use cairn_consolidator::{Consolidator, ProofDatum, ProofGraph, ProofNode, ProofValueType};
-use cairn_core::Hash32;
+use cairn_cas::{Cas, CasLimits};
+use cairn_consolidator::{
+    Consolidator, ProofDatum, ProofGraph, ProofGraphArchive, ProofGraphArtifactMetadata, ProofNode,
+    ProofValueType,
+};
+use cairn_core::{ArtifactId, BudgetRecord, Hash32, ProducerRecord};
 use cairn_verifier::{CompressionVerifier, CompressionVerifyError};
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static NEXT_DIRECTORY: AtomicU64 = AtomicU64::new(0);
 
 fn datum(value: &str) -> ProofDatum {
     ProofDatum::digest(ProofValueType::Atom, value.as_bytes())
@@ -83,4 +90,66 @@ fn malformed_graph_fails_before_replay() {
         CompressionVerifier.verify(&proposal, &malformed),
         Err(CompressionVerifyError::InvalidTopology)
     );
+}
+
+#[test]
+fn independently_verifies_compression_from_restarted_canonical_sources() {
+    let directory = std::env::temp_dir().join(format!(
+        "cairn-verifier-proof-restart-{}-{}",
+        std::process::id(),
+        NEXT_DIRECTORY.fetch_add(1, Ordering::Relaxed)
+    ));
+    let cas = Cas::open(&directory, CasLimits::default()).expect("open CAS");
+    let sources = [graph(1, "triangle"), graph(2, "circle"), graph(3, "line")];
+    let proposal = Consolidator
+        .compress_proof_subgraphs(&sources)
+        .expect("producer proposal");
+    let archive = ProofGraphArchive;
+    let stored = sources
+        .iter()
+        .enumerate()
+        .map(|(index, source)| {
+            archive
+                .persist(
+                    &cas,
+                    source,
+                    ProofGraphArtifactMetadata {
+                        parent_ids: vec![ArtifactId::from_hash(Hash32::digest(
+                            format!("source-certificate-{index}").as_bytes(),
+                        ))],
+                        producer: ProducerRecord {
+                            component: "compression-producer".to_owned(),
+                            version: "0.1.0".to_owned(),
+                            commit: "test".to_owned(),
+                            host_run_id: "before-restart".to_owned(),
+                            agent_id: Some("producer".to_owned()),
+                        },
+                        budget: BudgetRecord {
+                            work_units: 3,
+                            cpu_nanos: 0,
+                            peak_rss_bytes: 0,
+                        },
+                        created_at_logical: u64::try_from(index).expect("small"),
+                    },
+                )
+                .expect("persist source")
+        })
+        .collect::<Vec<_>>();
+    drop(cas);
+    let cas = Cas::open(&directory, CasLimits::default()).expect("reopen CAS");
+    let reloaded = stored
+        .iter()
+        .map(|stored| {
+            archive
+                .load(&cas, stored.envelope_blob_id)
+                .expect("reload source")
+        })
+        .collect::<Vec<_>>();
+    let verified = CompressionVerifier
+        .verify(&proposal, &reloaded)
+        .expect("independent restart verification");
+    assert_eq!(verified.proposal(), proposal.semantic_hash());
+    assert_eq!(verified.replayed_sources(), 3);
+    drop(cas);
+    std::fs::remove_dir_all(directory).expect("clean temporary CAS");
 }

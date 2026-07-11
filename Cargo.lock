@@ -105,6 +105,7 @@ dependencies = [
 name = "cairn-consolidator"
 version = "0.1.0"
 dependencies = [
+ "cairn-cas",
  "cairn-core",
 ]
 
@@ -312,6 +313,7 @@ dependencies = [
 name = "cairn-verifier"
 version = "0.1.0"
 dependencies = [
+ "cairn-cas",
  "cairn-consolidator",
  "cairn-core",
  "cairn-mechanism",

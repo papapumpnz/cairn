@@ -14,5 +14,8 @@ cairn-mechanism = { path = "../cairn-mechanism" }
 cairn-proof = { path = "../cairn-proof" }
 cairn-rkl = { path = "../cairn-rkl" }
 
+[dev-dependencies]
+cairn-cas = { path = "../cairn-cas" }
+
 [lints]
 workspace = true

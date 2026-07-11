@@ -696,3 +696,17 @@ remains 40 versus 6, and no negative transfer occurs in the synthetic gate.
 This strengthens G1 and the self-compression loop across process boundaries. It
 does not broaden the small bounded G0-G6 task distributions, and therefore does
 not change the general-intelligence claim boundary.
+
+## 26. Durable proof-source consolidation checkpoint
+
+Typed proof DAGs now have bounded canonical encoding and content-addressed
+persistence. Three independent episodes survive process-local graph loss and
+CAS restart, then reproduce exactly the same compression proposal identity.
+The independent compression verifier replays all three reloaded graphs and
+recalculates costs. Missing lineage, cyclic topology, and malformed payloads
+fail closed.
+
+Together with durable actual-use receipts, this makes the initial bounded
+self-compression loop reconstructable across process boundaries. Arbitrary
+internal-subgraph extraction across different proof shapes and sustained
+autonomous library growth remain unproven.
