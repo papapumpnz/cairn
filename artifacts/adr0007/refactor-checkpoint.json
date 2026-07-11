@@ -59,6 +59,8 @@
   "proof_backed_structured_knowledge": true,
   "typed_proof_dag_consolidation": true,
   "automatic_structural_cohorting": true,
+  "executable_mechanism_compilation": true,
+  "independent_compression_verifier": true,
   "consolidation_checkpoint": {
     "episodes": 2,
     "cohorts": 1,
@@ -69,5 +71,5 @@
     "candidate_executions_without_memory": 440,
     "candidate_executions_with_memory": 10
   },
-  "next_audit": "compile compressed graph patterns into executable invented RKL mechanisms"
+  "next_audit": "extract and compile arbitrary repeated internal proof subgraphs"
 }

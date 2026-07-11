@@ -17,6 +17,6 @@
     "matching operation and dependency shape required",
     "no direct arbitrary RKL compilation from graph pattern",
     "in-process graph storage",
-    "compression replay not yet separately reimplemented"
+    "arbitrary internal-subgraph compilation remains open"
   ]
 }

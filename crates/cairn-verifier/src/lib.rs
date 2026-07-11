@@ -1,5 +1,9 @@
 //! Independent promotion boundary combining replay provenance and learning gates.
 
+use cairn_consolidator::{
+    EpisodeBindings, GraphCompressionProposal, GraphPatternArgument, GraphPatternNode, ProofGraph,
+    ProofNode,
+};
 use cairn_core::CanonicalEncode;
 use cairn_core::Hash32;
 use cairn_mechanism::{
@@ -8,6 +12,130 @@ use cairn_mechanism::{
 pub use cairn_proof::{IndependentVerifier, ReplayVerifier, VerifyError};
 use cairn_rkl::CheckedTheory;
 use std::collections::BTreeSet;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedCompression {
+    proposal: Hash32,
+    source_episodes: BTreeSet<Hash32>,
+    uncompressed_nodes: u64,
+    compressed_nodes: u64,
+    replayed_sources: u64,
+}
+
+impl VerifiedCompression {
+    #[must_use]
+    pub const fn proposal(&self) -> Hash32 {
+        self.proposal
+    }
+
+    #[must_use]
+    pub const fn source_episodes(&self) -> &BTreeSet<Hash32> {
+        &self.source_episodes
+    }
+
+    #[must_use]
+    pub const fn uncompressed_nodes(&self) -> u64 {
+        self.uncompressed_nodes
+    }
+
+    #[must_use]
+    pub const fn compressed_nodes(&self) -> u64 {
+        self.compressed_nodes
+    }
+
+    #[must_use]
+    pub const fn replayed_sources(&self) -> u64 {
+        self.replayed_sources
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CompressionVerifyError {
+    EmptyEvidence,
+    DuplicateEpisode,
+    SourceMismatch,
+    InvalidOutput,
+    InvalidTopology,
+    MissingBinding,
+    ReplayMismatch,
+    CostMismatch,
+    NoCompression,
+    Capacity,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct CompressionVerifier;
+
+impl CompressionVerifier {
+    /// Independently reconstruct every source proof from a compression pattern
+    /// and recalculate both representation costs.
+    ///
+    /// # Errors
+    ///
+    /// Rejects source/binding disagreement, malformed graphs, reconstruction
+    /// mismatch, cost disagreement, or non-positive compression.
+    pub fn verify(
+        &self,
+        proposal: &GraphCompressionProposal,
+        sources: &[ProofGraph],
+    ) -> Result<VerifiedCompression, CompressionVerifyError> {
+        if sources.is_empty() {
+            return Err(CompressionVerifyError::EmptyEvidence);
+        }
+        let source_ids = sources
+            .iter()
+            .map(|source| source.episode)
+            .collect::<BTreeSet<_>>();
+        if source_ids.len() != sources.len() {
+            return Err(CompressionVerifyError::DuplicateEpisode);
+        }
+        let proposal_ids = proposal
+            .source_episodes()
+            .iter()
+            .copied()
+            .collect::<BTreeSet<_>>();
+        if source_ids != proposal_ids || proposal.bindings().len() != sources.len() {
+            return Err(CompressionVerifyError::SourceMismatch);
+        }
+        let mut raw_units = 0_u64;
+        for source in sources {
+            let normalized = verifier_ancestral_subgraph(source)?;
+            let bindings = proposal
+                .bindings()
+                .iter()
+                .find(|bindings| bindings.episode == source.episode)
+                .ok_or(CompressionVerifyError::MissingBinding)?;
+            let reconstructed = verifier_instantiate(proposal.pattern(), bindings)?;
+            if normalized != reconstructed
+                || proposal.output()
+                    != u32::try_from(reconstructed.len().saturating_sub(1))
+                        .map_err(|_| CompressionVerifyError::Capacity)?
+            {
+                return Err(CompressionVerifyError::ReplayMismatch);
+            }
+            raw_units = raw_units
+                .checked_add(graph_units(&normalized)?)
+                .ok_or(CompressionVerifyError::Capacity)?;
+        }
+        let compressed_units = compressed_units(proposal.pattern(), proposal.bindings())?;
+        if raw_units != proposal.uncompressed_nodes()
+            || compressed_units != proposal.compressed_nodes()
+        {
+            return Err(CompressionVerifyError::CostMismatch);
+        }
+        if compressed_units >= raw_units {
+            return Err(CompressionVerifyError::NoCompression);
+        }
+        Ok(VerifiedCompression {
+            proposal: proposal.semantic_hash(),
+            source_episodes: source_ids,
+            uncompressed_nodes: raw_units,
+            compressed_nodes: compressed_units,
+            replayed_sources: u64::try_from(sources.len())
+                .map_err(|_| CompressionVerifyError::Capacity)?,
+        })
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct VerifiedPromotion {
@@ -127,4 +255,127 @@ impl PromotionVerifier {
             actual_reuse_count: evidence.actual_reuse_count,
         })
     }
+}
+
+fn verifier_ancestral_subgraph(
+    graph: &ProofGraph,
+) -> Result<Vec<ProofNode>, CompressionVerifyError> {
+    let output = usize::try_from(graph.output).map_err(|_| CompressionVerifyError::Capacity)?;
+    if graph.nodes.is_empty() || output >= graph.nodes.len() {
+        return Err(CompressionVerifyError::InvalidOutput);
+    }
+    for (index, node) in graph.nodes.iter().enumerate() {
+        if node.operation.is_empty()
+            || node
+                .inputs
+                .iter()
+                .any(|input| usize::try_from(*input).map_or(true, |value| value >= index))
+        {
+            return Err(CompressionVerifyError::InvalidTopology);
+        }
+    }
+    let mut ancestors = BTreeSet::from([graph.output]);
+    let mut pending = vec![graph.output];
+    while let Some(node_id) = pending.pop() {
+        let index = usize::try_from(node_id).map_err(|_| CompressionVerifyError::Capacity)?;
+        for input in &graph.nodes[index].inputs {
+            if ancestors.insert(*input) {
+                pending.push(*input);
+            }
+        }
+    }
+    let selected = ancestors.into_iter().collect::<Vec<_>>();
+    let remap = selected
+        .iter()
+        .enumerate()
+        .map(|(new, old)| {
+            Ok((
+                *old,
+                u32::try_from(new).map_err(|_| CompressionVerifyError::Capacity)?,
+            ))
+        })
+        .collect::<Result<std::collections::BTreeMap<_, _>, CompressionVerifyError>>()?;
+    selected
+        .iter()
+        .map(|old| {
+            let index = usize::try_from(*old).map_err(|_| CompressionVerifyError::Capacity)?;
+            let mut node = graph.nodes[index].clone();
+            node.inputs = node.inputs.iter().map(|input| remap[input]).collect();
+            Ok(node)
+        })
+        .collect()
+}
+
+fn verifier_instantiate(
+    pattern: &[GraphPatternNode],
+    bindings: &EpisodeBindings,
+) -> Result<Vec<ProofNode>, CompressionVerifyError> {
+    pattern
+        .iter()
+        .map(|node| {
+            let arguments = node
+                .arguments
+                .iter()
+                .map(|argument| match argument {
+                    GraphPatternArgument::Fixed(value) => Ok(*value),
+                    GraphPatternArgument::Parameter(index) => bindings
+                        .values
+                        .get(
+                            usize::try_from(*index)
+                                .map_err(|_| CompressionVerifyError::Capacity)?,
+                        )
+                        .copied()
+                        .ok_or(CompressionVerifyError::MissingBinding),
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(ProofNode {
+                operation: node.operation.clone(),
+                output_type: node.output_type,
+                inputs: node.inputs.clone(),
+                arguments,
+            })
+        })
+        .collect()
+}
+
+fn graph_units(nodes: &[ProofNode]) -> Result<u64, CompressionVerifyError> {
+    nodes.iter().try_fold(0_u64, |total, node| {
+        total
+            .checked_add(1)
+            .and_then(|value| value.checked_add(u64::try_from(node.arguments.len()).ok()?))
+            .ok_or(CompressionVerifyError::Capacity)
+    })
+}
+
+fn compressed_units(
+    pattern: &[GraphPatternNode],
+    bindings: &[EpisodeBindings],
+) -> Result<u64, CompressionVerifyError> {
+    let fixed_arguments = pattern.iter().try_fold(0_u64, |total, node| {
+        let count = node
+            .arguments
+            .iter()
+            .filter(|argument| matches!(argument, GraphPatternArgument::Fixed(_)))
+            .count();
+        let count = u64::try_from(count).map_err(|_| CompressionVerifyError::Capacity)?;
+        total
+            .checked_add(count)
+            .ok_or(CompressionVerifyError::Capacity)
+    })?;
+    let parameter_count = bindings.first().map_or(0, |binding| binding.values.len());
+    if bindings
+        .iter()
+        .any(|binding| binding.values.len() != parameter_count)
+    {
+        return Err(CompressionVerifyError::MissingBinding);
+    }
+    let parameters =
+        u64::try_from(parameter_count).map_err(|_| CompressionVerifyError::Capacity)?;
+    let episodes = u64::try_from(bindings.len()).map_err(|_| CompressionVerifyError::Capacity)?;
+    u64::try_from(pattern.len())
+        .map_err(|_| CompressionVerifyError::Capacity)?
+        .checked_add(fixed_arguments)
+        .and_then(|value| value.checked_add(parameters))
+        .and_then(|value| value.checked_add(parameters.checked_mul(episodes)?))
+        .ok_or(CompressionVerifyError::Capacity)
 }

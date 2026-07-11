@@ -9,14 +9,14 @@ use cairn_mechanism::{
     SupportGeometry as MechanismSupport, VariableId,
 };
 use cairn_memory::{
-    MechanismStore, MemoryAssistedInventor, ModuleStatus, PromotionError, PromotionRunner,
-    SolveOrigin, SupportGeometry as MemorySupport, VariationDimension,
+    MechanismCompiler, MechanismStore, MemoryAssistedInventor, ModuleStatus, PromotionError,
+    PromotionRunner, SolveOrigin, SupportGeometry as MemorySupport, VariationDimension,
 };
 use cairn_rkl::{
     BinaryOp, Binder, Effect, ExecLimits, Expr, IntRange, RuntimeEnvironment, Type, UnaryOp, Value,
     VarName,
 };
-use cairn_verifier::PromotionVerifier;
+use cairn_verifier::{CompressionVerifier, PromotionVerifier};
 use std::collections::BTreeSet;
 
 fn limits(maximum_cost: u16, maximum_candidates: u64) -> InventionLimits {
@@ -207,15 +207,19 @@ fn hidden_law_is_invented_promoted_reused_and_reduces_future_search() {
         maximum_nodes_per_episode: 64,
         minimum_independent_episodes: 2,
     });
+    let proof_graphs = [proof_graph(&first), proof_graph(&second)];
     consolidator
-        .submit(proof_graph(&first))
+        .submit(proof_graphs[0].clone())
         .expect("first proof graph");
     consolidator
-        .submit(proof_graph(&second))
+        .submit(proof_graphs[1].clone())
         .expect("second proof graph");
     let report = consolidator.consolidate().expect("offline consolidation");
     assert_eq!(report.metrics.proposals_created, 1);
     let compression = &report.proposals[0];
+    let verified_compression = CompressionVerifier
+        .verify(compression, &proof_graphs)
+        .expect("independent compression replay");
     assert!(compression.compressed_nodes() < compression.uncompressed_nodes());
     eprintln!(
         "CONSOLIDATION_METRICS episodes={} cohorts={} proposals={} uncompressed_nodes={} compressed_nodes={} verified_replays={}",
@@ -236,9 +240,44 @@ fn hidden_law_is_invented_promoted_reused_and_reduces_future_search() {
                     varied_dimensions: BTreeSet::from([VariationDimension::ParameterNames]),
                 },
                 compression,
+                &verified_compression,
             )
             .expect_err("partial lineage rejected"),
         PromotionError::CompressionLineageMismatch
+    );
+    let compiled = MechanismCompiler
+        .compile(
+            &[first.proposal.clone(), second.proposal.clone()],
+            compression,
+        )
+        .expect("compiled invented mechanism");
+    assert_eq!(compiled.exact_source_replays, 2);
+    assert!(compiled
+        .proposal
+        .definition
+        .name
+        .starts_with("invented_mechanism_"));
+    assert_ne!(
+        compiled.proposal.semantic_hash,
+        first.proposal.semantic_hash
+    );
+    assert_ne!(
+        compiled.proposal.semantic_hash,
+        second.proposal.semantic_hash
+    );
+    assert_eq!(
+        compiled.proposal.definition.parameters[0].ty,
+        Type::Int(IntRange {
+            lower: -16,
+            upper: 16,
+        })
+    );
+    assert_eq!(
+        compiled.proposal.definition.return_type,
+        Type::Int(IntRange {
+            lower: 0,
+            upper: 16,
+        })
     );
     let module = PromotionRunner
         .promote_compressed(
@@ -252,8 +291,17 @@ fn hidden_law_is_invented_promoted_reused_and_reduces_future_search() {
                 ]),
             },
             compression,
+            &verified_compression,
         )
         .expect("provisional module");
+    assert!(module.definition().name.starts_with("invented_mechanism_"));
+    assert_eq!(
+        module
+            .compression_evidence()
+            .expect("compiled compression evidence")
+            .compiled_definition,
+        compiled.proposal.semantic_hash
+    );
     assert_eq!(
         module
             .compression_evidence()

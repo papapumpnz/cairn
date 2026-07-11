@@ -452,3 +452,28 @@ complete self-compressing learner. It currently requires matching operation and
 dependency shapes, retains graphs in process memory, and does not yet turn an
 arbitrary compressed graph directly into a new executable RKL definition. See
 docs/experiments/TYPED_PROOF_CONSOLIDATION.md.
+
+## 17. Executable mechanism compilation checkpoint
+
+The compressed-promotion route now creates a new executable definition rather
+than retaining either episode-local source. `MechanismCompiler` requires the
+opaque compression lineage, verifies equivalent executable structure,
+alpha-normalizes binders, unions observed integer and bounded-collection type
+support, gives the abstraction a content-derived `invented_mechanism_<hash>`
+name, passes RKL totality/type checking, and exactly replays every normalized
+source definition. Its semantic hash differs from both source definitions.
+
+Acceptance authority is separate. `cairn-verifier::CompressionVerifier`
+independently traverses each ancestral source graph, reconstructs it from the
+pattern and episode binding, recalculates raw and compressed costs, and returns
+an opaque token. `promote_compressed` requires that token and checks its proposal
+identity, lineage, costs, and replay count. Changed source content, identity,
+topology, missing binding, cost mismatch, and non-compression fail closed.
+
+The compiled abstraction remains exact on the frozen 10-task held-out transfer
+suite and retains the 440-to-10 candidate reduction. This meets the bounded
+meaning of an expanding executable mechanism language for equal-shape scalar
+cohorts. It does not yet compile arbitrary repeated internal subgraphs,
+generalize different graph shapes, or verify semantic equivalence by exhaustive
+execution over every bounded input. See
+docs/experiments/EXECUTABLE_MECHANISM_COMPILATION.md.

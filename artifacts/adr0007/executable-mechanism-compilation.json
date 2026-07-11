@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "date": "2026-07-11",
+  "experiment": "executable-mechanism-compilation",
+  "general_intelligence_claim": false,
+  "independent_source_definitions": 2,
+  "new_compiled_definitions": 1,
+  "compiled_identity_distinct_from_sources": true,
+  "alpha_normalized": true,
+  "observed_type_support_generalized": true,
+  "exact_structural_source_replays": 2,
+  "independent_graph_replays": 2,
+  "uncompressed_proof_units": 12,
+  "compressed_proof_units": 7,
+  "held_out_exact_without_memory": "0/10",
+  "held_out_exact_with_compiled_memory": "10/10",
+  "candidate_executions_without_memory": 440,
+  "candidate_executions_with_compiled_memory": 10,
+  "fail_closed_mutations": [
+    "source content",
+    "source identity",
+    "graph topology",
+    "compression lineage"
+  ],
+  "limitations": [
+    "same-shape whole-definition cohorts only",
+    "no arbitrary internal-subgraph extraction",
+    "no graph-edit anti-unification",
+    "no exhaustive bounded semantic equivalence proof"
+  ]
+}

@@ -11,8 +11,8 @@ use cairn_invent::{
 };
 use cairn_mechanism::SupportGeometry as MechanismSupportGeometry;
 use cairn_rkl::CheckedTheory;
-use cairn_rkl::{Definition, Expr, Type, VarName};
-use cairn_verifier::{VerifiedProceduralPromotion, VerifiedPromotion};
+use cairn_rkl::{BoundChecker, Definition, Expr, Type, TypeChecker, VarName};
+use cairn_verifier::{VerifiedCompression, VerifiedProceduralPromotion, VerifiedPromotion};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
@@ -62,6 +62,134 @@ pub struct CompressionEvidence {
     pub uncompressed_nodes: u64,
     pub compressed_nodes: u64,
     pub verified_replays: u64,
+    pub compiled_definition: Hash32,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct CompiledMechanism {
+    pub proposal: DefinitionProposal,
+    pub compression: Hash32,
+    pub exact_source_replays: u64,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CompilationError {
+    EmptySources,
+    CompressionLineageMismatch,
+    IncompatibleDefinitions,
+    UnsupportedRecursion,
+    TypeCheck,
+    SourceReplayMismatch,
+    Canonicalization,
+    Capacity,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct MechanismCompiler;
+
+impl MechanismCompiler {
+    /// Compile a replayed proof cohort into a newly named, alpha-normalized RKL
+    /// definition whose type bounds cover every observed source definition.
+    ///
+    /// # Errors
+    ///
+    /// Rejects mismatched proof lineage, incompatible source structure,
+    /// recursion in this initial compiler, failed RKL checking, or any source
+    /// definition that cannot be reconstructed by binder rebinding.
+    pub fn compile(
+        &self,
+        sources: &[DefinitionProposal],
+        compression: &GraphCompressionProposal,
+    ) -> Result<CompiledMechanism, CompilationError> {
+        if sources.is_empty() {
+            return Err(CompilationError::EmptySources);
+        }
+        let source_ids = sources
+            .iter()
+            .map(|source| source.semantic_hash)
+            .collect::<BTreeSet<_>>();
+        let compressed_ids = compression
+            .source_episodes()
+            .iter()
+            .copied()
+            .collect::<BTreeSet<_>>();
+        if source_ids != compressed_ids || source_ids.len() != sources.len() {
+            return Err(CompilationError::CompressionLineageMismatch);
+        }
+        let representative = &sources[0].definition;
+        if sources
+            .iter()
+            .any(|source| !equivalent_definition_shape(representative, &source.definition))
+        {
+            return Err(CompilationError::IncompatibleDefinitions);
+        }
+        if sources
+            .iter()
+            .any(|source| source.definition.recursion.is_some())
+        {
+            return Err(CompilationError::UnsupportedRecursion);
+        }
+        let parameters = (0..representative.parameters.len())
+            .map(|index| {
+                let observed = sources
+                    .iter()
+                    .map(|source| &source.definition.parameters[index].ty)
+                    .collect::<Vec<_>>();
+                Ok(cairn_rkl::Binder {
+                    name: VarName(format!("parameter_{index}")),
+                    ty: generalize_types(&observed)?,
+                })
+            })
+            .collect::<Result<Vec<_>, CompilationError>>()?;
+        let return_types = sources
+            .iter()
+            .map(|source| &source.definition.return_type)
+            .collect::<Vec<_>>();
+        let definition = Definition {
+            name: format!(
+                "invented_mechanism_{}",
+                &compression.semantic_hash().to_hex()[..16]
+            ),
+            parameters,
+            return_type: generalize_types(&return_types)?,
+            body: normalized_body(representative),
+            recursion: None,
+            proof_annotations: compression
+                .source_episodes()
+                .iter()
+                .copied()
+                .chain(std::iter::once(compression.semantic_hash()))
+                .collect(),
+        };
+        TypeChecker::new(100_000)
+            .check_definition(&definition)
+            .map_err(|_| CompilationError::TypeCheck)?;
+        let source_replays = sources.iter().try_fold(0_u64, |count, source| {
+            if normalized_body(&source.definition) != definition.body {
+                return Err(CompilationError::SourceReplayMismatch);
+            }
+            count.checked_add(1).ok_or(CompilationError::Capacity)
+        })?;
+        let bytes = definition
+            .encode_canonical()
+            .map_err(|_| CompilationError::Canonicalization)?;
+        let structural_cost = sources
+            .iter()
+            .map(|source| source.structural_cost)
+            .min()
+            .ok_or(CompilationError::EmptySources)?;
+        Ok(CompiledMechanism {
+            proposal: DefinitionProposal {
+                definition,
+                structural_cost,
+                semantic_hash: Hash32::digest(&bytes),
+                candidates_evaluated: 0,
+                observational_classes: 0,
+            },
+            compression: compression.semantic_hash(),
+            exact_source_replays: source_replays,
+        })
+    }
 }
 
 impl MechanismModule {
@@ -173,6 +301,7 @@ pub enum PromotionError {
     Canonicalization,
     CompressionLineageMismatch,
     UnverifiedCompression,
+    Compilation(CompilationError),
 }
 
 impl fmt::Display for PromotionError {
@@ -225,22 +354,9 @@ impl PromotionRunner {
             .collect::<Vec<_>>();
         lineage.sort_unstable();
         lineage.dedup();
-        let definition_bytes = representative
-            .definition
-            .encode_canonical()
-            .map_err(|_| PromotionError::Canonicalization)?;
-        let mut identity = definition_bytes;
-        identity.extend_from_slice(MEMORY_SEMANTICS_VERSION.as_bytes());
-        for hash in &lineage {
-            identity.extend_from_slice(hash.as_bytes());
-        }
-        identity.extend_from_slice(&support.independent_tasks.to_be_bytes());
-        identity.extend_from_slice(&support.held_out_rebindings.to_be_bytes());
-        for dimension in &support.varied_dimensions {
-            identity.push(variation_code(*dimension));
-        }
+        let id = module_identity(&representative.definition, &lineage, &support)?;
         Ok(MechanismModule {
-            id: Hash32::digest(&identity),
+            id,
             definition: representative.definition.clone(),
             support,
             lineage,
@@ -264,6 +380,7 @@ impl PromotionRunner {
         proposals: &[DefinitionProposal],
         support: SupportGeometry,
         compression: &GraphCompressionProposal,
+        verified: &VerifiedCompression,
     ) -> Result<MechanismModule, PromotionError> {
         let proposal_sources = proposals
             .iter()
@@ -280,15 +397,27 @@ impl PromotionRunner {
         if compression.verified_replays()
             != u64::try_from(proposals.len()).map_err(|_| PromotionError::UnverifiedCompression)?
             || compression.compressed_nodes() >= compression.uncompressed_nodes()
+            || verified.proposal() != compression.semantic_hash()
+            || verified.source_episodes() != &compression_sources
+            || verified.uncompressed_nodes() != compression.uncompressed_nodes()
+            || verified.compressed_nodes() != compression.compressed_nodes()
+            || verified.replayed_sources() != compression.verified_replays()
         {
             return Err(PromotionError::UnverifiedCompression);
         }
+        let compiled = MechanismCompiler
+            .compile(proposals, compression)
+            .map_err(PromotionError::Compilation)?;
         let mut module = self.promote(proposals, support)?;
+        module.definition = compiled.proposal.definition;
+        module.structural_cost = compiled.proposal.structural_cost;
+        module.id = module_identity(&module.definition, &module.lineage, &module.support)?;
         module.compression = Some(CompressionEvidence {
             proposal: compression.semantic_hash(),
             uncompressed_nodes: compression.uncompressed_nodes(),
             compressed_nodes: compression.compressed_nodes(),
             verified_replays: compression.verified_replays(),
+            compiled_definition: compiled.proposal.semantic_hash,
         });
         Ok(module)
     }
@@ -964,6 +1093,114 @@ fn equivalent_definition_shape(left: &Definition, right: &Definition) -> bool {
         return false;
     }
     normalized_body(left) == normalized_body(right)
+}
+
+fn module_identity(
+    definition: &Definition,
+    lineage: &[Hash32],
+    support: &SupportGeometry,
+) -> Result<Hash32, PromotionError> {
+    let mut identity = definition
+        .encode_canonical()
+        .map_err(|_| PromotionError::Canonicalization)?;
+    identity.extend_from_slice(MEMORY_SEMANTICS_VERSION.as_bytes());
+    for hash in lineage {
+        identity.extend_from_slice(hash.as_bytes());
+    }
+    identity.extend_from_slice(&support.independent_tasks.to_be_bytes());
+    identity.extend_from_slice(&support.held_out_rebindings.to_be_bytes());
+    for dimension in &support.varied_dimensions {
+        identity.push(variation_code(*dimension));
+    }
+    Ok(Hash32::digest(&identity))
+}
+
+fn generalize_types(types: &[&Type]) -> Result<Type, CompilationError> {
+    let Some(first) = types.first() else {
+        return Err(CompilationError::IncompatibleDefinitions);
+    };
+    match first {
+        Type::Int(_) => {
+            let ranges = types
+                .iter()
+                .map(|ty| match ty {
+                    Type::Int(range) => Ok(*range),
+                    _ => Err(CompilationError::IncompatibleDefinitions),
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(Type::Int(cairn_rkl::IntRange {
+                lower: ranges
+                    .iter()
+                    .map(|range| range.lower)
+                    .min()
+                    .ok_or(CompilationError::IncompatibleDefinitions)?,
+                upper: ranges
+                    .iter()
+                    .map(|range| range.upper)
+                    .max()
+                    .ok_or(CompilationError::IncompatibleDefinitions)?,
+            }))
+        }
+        Type::CellSet { .. } => generalize_maximum(types, |maximum| Type::CellSet { maximum }),
+        Type::EntitySet { .. } => generalize_maximum(types, |maximum| Type::EntitySet { maximum }),
+        Type::List { .. } => {
+            let elements = types
+                .iter()
+                .map(|ty| match ty {
+                    Type::List { element, .. } => Ok(element.as_ref()),
+                    _ => Err(CompilationError::IncompatibleDefinitions),
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let maximum = collection_maximum(types)?;
+            Ok(Type::List {
+                element: Box::new(generalize_types(&elements)?),
+                maximum,
+            })
+        }
+        Type::Tuple(fields) => {
+            if types
+                .iter()
+                .any(|ty| !matches!(ty, Type::Tuple(other) if other.len() == fields.len()))
+            {
+                return Err(CompilationError::IncompatibleDefinitions);
+            }
+            let generalized = (0..fields.len())
+                .map(|index| {
+                    let column = types
+                        .iter()
+                        .map(|ty| match ty {
+                            Type::Tuple(other) => &other[index],
+                            _ => unreachable!("shape checked"),
+                        })
+                        .collect::<Vec<_>>();
+                    generalize_types(&column)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(Type::Tuple(generalized))
+        }
+        _ if types.iter().all(|ty| *ty == *first) => Ok((*first).clone()),
+        _ => Err(CompilationError::IncompatibleDefinitions),
+    }
+}
+
+fn generalize_maximum(
+    types: &[&Type],
+    constructor: impl FnOnce(u32) -> Type,
+) -> Result<Type, CompilationError> {
+    collection_maximum(types).map(constructor)
+}
+
+fn collection_maximum(types: &[&Type]) -> Result<u32, CompilationError> {
+    types
+        .iter()
+        .map(|ty| {
+            ty.collection_maximum()
+                .ok_or(CompilationError::IncompatibleDefinitions)
+        })
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .max()
+        .ok_or(CompilationError::IncompatibleDefinitions)
 }
 
 fn normalized_body(definition: &Definition) -> Expr {

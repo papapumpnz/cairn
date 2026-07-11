@@ -197,9 +197,18 @@ promotion. In the first end-to-end rerun, two independent inventions compressed
 from 12 proof units to seven and the promoted mechanism then reduced 440 fresh
 candidates to ten verified proposals over ten held-out tasks. See
 [TYPED_PROOF_CONSOLIDATION.md](docs/experiments/TYPED_PROOF_CONSOLIDATION.md).
+That compression now produces a genuinely new executable RKL library item.
+`MechanismCompiler` alpha-normalizes the learned structure, generalizes observed
+type bounds, assigns a content-derived `invented_mechanism_*` identity, checks
+the definition, and replays it against every source. A separately implemented
+`CompressionVerifier` reconstructs proof DAGs and recalculates both costs;
+memory rejects promotion without its opaque token. The compiled abstraction,
+not either source definition, produced the same 10/10 held-out result. See
+[EXECUTABLE_MECHANISM_COMPILATION.md](docs/experiments/EXECUTABLE_MECHANISM_COMPILATION.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
-and durable proof-DAG artifact storage, richer ontology invention, broad
+and durable proof-DAG artifact storage, arbitrary internal-subgraph compilation,
+richer ontology invention, broad
 cross-domain curricula, ARC evaluation beyond the development training split,
 and knowledge frontends
 remain targets. See the

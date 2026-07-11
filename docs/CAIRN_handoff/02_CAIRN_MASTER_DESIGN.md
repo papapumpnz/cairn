@@ -36,9 +36,12 @@ operation/type/dependency shape without benchmark family labels, anti-unifies
 only typed argument values, and exactly reconstructs every source subgraph
 before emitting an opaque compression proposal. The memory promotion runner
 requires that proposal's source identities to equal the independently invented
-definition lineage. This is a bounded first implementation: graph edit
-anti-unification across different dependency shapes and independent verifier
-re-execution of the compression certificate remain open.
+definition lineage. The cohort is compiled into a fresh alpha-normalized RKL
+definition with generalized observed type bounds, while a separately
+implemented verifier reconstructs source graphs and recalculates compression
+costs before issuing the token required by memory. This remains bounded: graph
+edit anti-unification and compilation of an arbitrary internal subgraph into a
+higher-order helper remain open.
 
 The architecture deliberately avoids two failed patterns:
 

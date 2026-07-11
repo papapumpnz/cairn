@@ -264,6 +264,7 @@ dependencies = [
 name = "cairn-verifier"
 version = "0.1.0"
 dependencies = [
+ "cairn-consolidator",
  "cairn-core",
  "cairn-mechanism",
  "cairn-proof",

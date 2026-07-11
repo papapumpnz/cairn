@@ -23,9 +23,11 @@ A separate offline `ConsolidationRuntime` now:
 - reconstructs every source subgraph exactly before proposal emission.
 
 `GraphCompressionProposal` has private fields and is created only by this replay
-path. `PromotionRunner::promote_compressed` additionally requires its source
-episode set to equal the semantic hashes of the independently invented
-definitions. The module retains the proposal identity, costs, and replay count.
+path. `cairn-verifier` now separately reimplements source traversal, pattern
+instantiation, and cost calculation. `PromotionRunner::promote_compressed`
+requires that verifier token and requires the source episode set to equal the
+semantic hashes of the independently invented definitions. The module retains
+the proposal identity, costs, replay count, and compiled-definition identity.
 
 ## End-to-end frozen rerun
 
@@ -60,7 +62,7 @@ Commands:
 
 This is the first mainline route where CAIRN automatically compares typed proof
 structure across experience and makes that compression a prerequisite of
-memory promotion. It is not autonomous open-ended mechanism invention. Current
-cohorts still require the same operation/type/dependency shape; compressed
-graphs do not yet compile arbitrary new RKL definitions; graph persistence and
-a separately implemented compression verifier remain open.
+memory promotion. The supported whole-definition cohort now compiles into a new
+RKL mechanism, but this is not autonomous open-ended invention. Current cohorts
+still require the same operation/type/dependency shape; arbitrary internal
+subgraph extraction and graph persistence remain open.
