@@ -17,6 +17,9 @@ fn offline_packet_becomes_teacher_independent_swarm_knowledge() {
         .expect("independent execution and language replay");
     assert_eq!(verified.mechanisms().len(), 1);
     assert_eq!(verified.verified_mechanism_examples(), 3);
+    assert_eq!(verified.knowledge_candidates().len(), 1);
+    assert_eq!(verified.procedures().len(), 1);
+    assert_eq!(verified.verified_counterexamples(), 1);
 
     let mut registry = SharedKnowledgeRegistry::new();
     let id = registry
@@ -54,7 +57,7 @@ fn offline_packet_becomes_teacher_independent_swarm_knowledge() {
         chatbot.install_lesson(lesson.clone());
     }
     let response = chatbot
-        .respond("Fashion a py callable that totals two values!")
+        .respond("Could you make a Python function to sum numbers?")
         .expect("teacher-independent response");
     assert!(response.rendered.contains("def add_numbers"));
     assert!(response.rendered.contains("return a + b"));
@@ -101,4 +104,23 @@ fn packet_identity_covers_executable_evidence() {
         .compile(&changed, InventionLimits::default())
         .expect("changed");
     assert_ne!(original.id(), changed.id());
+}
+
+#[test]
+fn rejects_forward_procedure_dependency_and_failed_counterexample() {
+    let packet = TeacherPacketCompiler
+        .parse(include_bytes!("fixtures/basic_python.json"))
+        .expect("packet");
+    let mut invalid_graph = packet.clone();
+    invalid_graph.procedures[0].steps.swap(0, 1);
+    assert!(TeacherPacketCompiler
+        .compile(&invalid_graph, InventionLimits::default())
+        .is_err());
+
+    let mut failed_negative = packet;
+    failed_negative.counterexamples[0].forbidden_output = 5;
+    let compiled = TeacherPacketCompiler
+        .compile(&failed_negative, InventionLimits::default())
+        .expect("structurally valid negative");
+    assert!(DistillationVerifier.verify(compiled).is_err());
 }

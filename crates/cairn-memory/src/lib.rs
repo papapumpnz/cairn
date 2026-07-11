@@ -16,7 +16,7 @@ use cairn_verifier::{VerifiedCompression, VerifiedProceduralPromotion, VerifiedP
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
-pub const MEMORY_SEMANTICS_VERSION: &str = "1.0.0";
+pub const MEMORY_SEMANTICS_VERSION: &str = "1.1.0";
 const MAXIMUM_REBOUND_PROPOSALS: usize = 1_024;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -1070,6 +1070,17 @@ fn push_rebound(
         recursion: None,
         proof_annotations: Vec::new(),
     };
+    if let Expr::Var(parameter) = &definition.body {
+        let contradicted = problem.demonstrations.iter().any(|example| {
+            example
+                .inputs
+                .get(parameter)
+                .is_none_or(|value| value != &example.output)
+        });
+        if contradicted {
+            return;
+        }
+    }
     if proposals
         .last()
         .is_some_and(|proposal| proposal.definition == definition)

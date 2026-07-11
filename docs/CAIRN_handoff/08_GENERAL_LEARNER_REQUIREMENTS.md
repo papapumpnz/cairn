@@ -589,3 +589,29 @@ decisive transfer experiment freezes ARC first, learns from unrelated domains,
 then measures exactness, CPU, candidate count, actual proof-trace use, ablation,
 and negative transfer. A score increase without causal use of clean transferred
 knowledge is not counted.
+
+## 23. Initial chatbot/distillation/D2 result
+
+The controlled technical chat path now compiles a structural intent signature,
+retains dialogue state, builds a typed Python AST, checks it internally, and
+executes it under isolated CPython resource limits before realization. One
+offline packet carries held-out paraphrases, a structurally validated sourced
+claim candidate, a dependency-checked procedure graph, executable positive
+examples, and a negative counterexample. Two separately replayed peer receipts
+plus transfer evidence gate swarm acceptance; the teacher is absent during use.
+
+Two non-ARC spatial lessons produce a strictly persistent `output := north`
+mechanism. On the complete pinned ARC corpus at 1,000 candidates, blank and
+distilled-memory conditions both score 32/400 with zero incorrect. One proof
+trace actually reuses memory and reduces task-local search from two candidates
+to one. The full memory-on run is approximately 38 seconds slower, so the
+current unconditional retrieval policy fails the systems-efficiency objective
+despite zero accuracy negative transfer. D2 has an initial safe reuse result,
+not an ARC accuracy pass or broad teacher-independence pass.
+
+The first correction uses current demonstration bindings to refute impossible
+single-variable rebindings before compilation. The complete rerun remains
+32/400 with zero incorrect and falls from 458 derived seconds to an embedded
+390.85 seconds, while matching memory still removes one candidate. This clears
+the initial narrow retrieval-overhead regression; contextual retrieval for
+compound and composed mechanisms remains open.

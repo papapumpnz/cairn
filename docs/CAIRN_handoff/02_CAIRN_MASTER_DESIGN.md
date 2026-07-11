@@ -159,6 +159,22 @@ state. Authors cannot act as their own peer verifier; voting never substitutes
 for replay. Agents pull relevant knowledge by typed need and may push only
 critical revocations, security corrections, and high-value metadata.
 
+The first complete distilled-memory audit validates the correctness boundary
+but falsifies unconditional retrieval as an efficient policy. A single clean
+spatial mechanism is reused on one of 400 ARC tasks, reducing that local search
+from two candidates to one with zero incorrect acceptance, while the complete
+memory-on run is roughly 38 seconds slower. Retrieval must therefore be gated by
+typed unresolved cores or contextual evidence before shared libraries grow;
+proof-safe rejection alone is insufficient for CPU efficiency.
+
+Memory semantics 1.1.0 implements the first contextual correction. Rebound
+single-variable mechanisms are compared with current demonstration bindings and
+discarded before compilation if any observation contradicts them. This is a
+sound refutation, not heuristic acceptance: surviving proposals still receive
+complete dual-executor replay, and fresh search remains reachable. The full
+contextual audit recovers the measured overhead (390.85 seconds, 32/400, zero
+incorrect) while preserving actual reuse.
+
 ## 1. Requirements
 
 ### 1.1 Hard constraints

@@ -144,7 +144,26 @@ task `25ff71a9`. At an equal one-candidate budget, blank memory fails and the
 distilled-memory run is exact with one `MemoryProposal` execution.
 
 This demonstrates clean knowledge transfer and search/capability gain at the
-frozen tight budget. It does not update the full-corpus headline: adapter 1.15.0
-has not yet completed a new 400-task run, so the last complete result remains
-32/400 under 1.14.0. The first-20 regression remains 17/20 exact with zero
-incorrect accepts.
+frozen tight budget.
+
+The complete adapter 1.15.0 paired ablation has now finished. Blank and
+distilled-memory runs both produce 32/400 exact, 368 resource-limited, and zero
+incorrect. Distilled memory is actually used once: `25ff71a9` changes from two
+fresh candidates to one verified memory proposal. Thus clean non-ARC transfer
+reduces local search but does not increase ordinary-budget accuracy. The paired
+test took 878.33 seconds, and artifact timestamps indicate the memory-on pass
+was roughly 38 seconds slower overall. This retained negative result means
+contextual retrieval is required before expanding the shared library.
+
+Memory semantics 1.1.0 now rejects a rebound single-variable module before
+compilation when current demonstrations directly contradict its binding. The
+complete contextual memory rerun preserves 32/400 and zero incorrect in 390.85
+seconds. It retains the useful `25ff71a9` proposal and removes the extra rejected
+proposal from `a79310a0` (search work 280 back to 279). This is 67 seconds faster
+than unconditional memory-on; comparison with the approximately 420-second
+memory-off split is favorable but not a repeated paired timing.
+
+Raw reports are `full-400-distill-memory-off-v1.15.0.json`,
+`full-400-distill-memory-on-v1.15.0.json`, and
+`full-400-distill-contextual-memory-v1.15.0-memory1.1.0.json`. Their SHA-256
+hashes are recorded in `BASIC_CHAT_DISTILLATION.md`.

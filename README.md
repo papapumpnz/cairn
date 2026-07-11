@@ -255,6 +255,15 @@ swarm transfer, and a clean non-ARC spatial lesson lets one pinned ARC task solv
 under a one-candidate budget where blank memory fails. This is a tight-budget
 transfer result, not a new 400-task score. See
 [BASIC_CHAT_DISTILLATION.md](docs/experiments/BASIC_CHAT_DISTILLATION.md).
+The complete 400-task distilled-memory ablation is now finished. Accuracy stays
+32/400 with zero incorrect in both conditions; one official task genuinely
+reuses the non-ARC law and reduces its search from two candidates to one. The
+memory-on pass is roughly 38 seconds slower overall, so this is safe causal
+transfer but also clear evidence that unconditional retrieval will not scale.
+Memory semantics 1.1.0 now refutes directly contradicted variable bindings
+before compilation. The complete contextual rerun keeps 32/400 and zero
+incorrect, retains the useful one-candidate reuse, removes the known rejected
+proposal, and completes in 390.85 seconds versus roughly 458 seconds before.
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and durable proof-DAG artifact storage, arbitrary internal-subgraph compilation,

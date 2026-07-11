@@ -38,6 +38,21 @@ fn shift_right(input: &FiniteField) -> FiniteField {
     }
 }
 
+fn shift_left(input: &FiniteField) -> FiniteField {
+    let rows = usize::try_from(input.shape[0]).expect("small field");
+    let columns = usize::try_from(input.shape[1]).expect("small field");
+    let mut values = vec![0; input.values.len()];
+    for row in 0..rows {
+        for column in 0..columns.saturating_sub(1) {
+            values[row * columns + column] = input.values[row * columns + column + 1];
+        }
+    }
+    FiniteField {
+        shape: input.shape.clone(),
+        values,
+    }
+}
+
 fn limits(maximum_candidates: u64) -> InventionLimits {
     InventionLimits {
         maximum_cost: 5,
@@ -156,6 +171,16 @@ fn verified_local_law_reuse_reduces_search_and_examples() {
             .expect("held-out prediction"),
         shift_right(&held_out)
     );
+    let contrary = field(3, 6, &[(4, 7), (13, 2)]);
+    let contrary_problem = LocalFieldLearner
+        .learning_problem(&[(contrary.clone(), shift_left(&contrary))], limits(10_000))
+        .expect("contrary local law");
+    let contrary = MemoryAssistedInventor
+        .invent(&contrary_problem, &store)
+        .expect("fresh fallback after contextual refutation");
+    assert_eq!(contrary.origin, SolveOrigin::FreshSearch);
+    assert_eq!(contrary.metrics.memory_proposals_evaluated, 0);
+    assert_eq!(contrary.metrics.rejected_memory_proposals, 0);
     eprintln!("CONTINUAL_LOCAL_LAW candidates=4->1 examples=21->3 held_out_cells=35 exact=35");
 }
 

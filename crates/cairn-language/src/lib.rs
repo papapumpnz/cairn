@@ -7,8 +7,11 @@
 
 use cairn_core::Hash32;
 use std::collections::{BTreeMap, BTreeSet};
+use std::process::{Command, Stdio};
+use std::thread;
+use std::time::{Duration, Instant};
 
-pub const LANGUAGE_SEMANTICS_VERSION: &str = "1.0.0";
+pub const LANGUAGE_SEMANTICS_VERSION: &str = "1.1.0";
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum SpeechAct {
@@ -69,6 +72,7 @@ pub struct LanguageLesson {
 #[derive(Clone, Debug, Default)]
 pub struct LanguageCompiler {
     lessons: BTreeMap<String, LanguageLesson>,
+    structural_lessons: Vec<(BTreeSet<String>, LanguageLesson)>,
 }
 
 impl LanguageCompiler {
@@ -76,19 +80,43 @@ impl LanguageCompiler {
     pub const fn new() -> Self {
         Self {
             lessons: BTreeMap::new(),
+            structural_lessons: Vec::new(),
         }
     }
 
     pub fn install_lesson(&mut self, lesson: LanguageLesson) -> bool {
-        self.lessons
-            .insert(normalize(&lesson.utterance), lesson)
-            .is_none()
+        let normalized = normalize(&lesson.utterance);
+        let signature = semantic_signature(&normalized);
+        if !signature.is_empty()
+            && !self.structural_lessons.iter().any(|(existing, item)| {
+                existing == &signature && item.objective == lesson.objective
+            })
+        {
+            self.structural_lessons.push((signature, lesson.clone()));
+        }
+        self.lessons.insert(normalized, lesson).is_none()
     }
 
     #[must_use]
     pub fn compile(&self, prompt: &str) -> UserIntent {
         let normalized = normalize(prompt);
         if let Some(lesson) = self.lessons.get(&normalized) {
+            return UserIntent {
+                speech_act: SpeechAct::Request,
+                objective: lesson.objective.clone(),
+                constraints: Vec::new(),
+                referenced_entities: Vec::new(),
+                requested_output: lesson.requested_output.clone(),
+                uncertainty: Vec::new(),
+            };
+        }
+        let signature = semantic_signature(&normalized);
+        if let Some((_, lesson)) = self
+            .structural_lessons
+            .iter()
+            .filter(|(required, _)| required.is_subset(&signature))
+            .max_by_key(|(required, _)| required.len())
+        {
             return UserIntent {
                 speech_act: SpeechAct::Request,
                 objective: lesson.objective.clone(),
@@ -204,6 +232,9 @@ pub enum CodeError {
     Arity,
     NonFinite,
     ExampleMismatch,
+    SandboxUnavailable,
+    SandboxTimeout,
+    SandboxRejected,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -253,6 +284,63 @@ impl PythonVerifier {
             }
         }
         Ok(())
+    }
+
+    /// Execute the rendered typed AST in isolated Python mode with a cleared
+    /// environment, closed stdin, CPU/address-space limits, and a wall timeout.
+    /// Only ASTs that already pass `verify` reach this boundary.
+    ///
+    /// # Errors
+    ///
+    /// Returns structural verification, unavailable runtime, timeout, or
+    /// nonzero sandbox result errors.
+    pub fn verify_in_sandbox(
+        &self,
+        function: &PythonFunction,
+        examples: &[FunctionExample],
+    ) -> Result<(), CodeError> {
+        self.verify(function, examples)?;
+        let assertions = examples
+            .iter()
+            .map(|example| {
+                let inputs = example
+                    .inputs
+                    .iter()
+                    .map(|value| format!("{value:?}"))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("assert {}({inputs}) == {:?}", function.name, example.output)
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        let script = format!(
+            "import resource\nresource.setrlimit(resource.RLIMIT_CPU, (1, 1))\nresource.setrlimit(resource.RLIMIT_AS, (134217728, 134217728))\n{}\n{}\n",
+            render_function(function),
+            assertions
+        );
+        let mut child = Command::new("python3")
+            .args(["-I", "-S", "-c", &script])
+            .env_clear()
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .map_err(|_| CodeError::SandboxUnavailable)?;
+        let started = Instant::now();
+        loop {
+            if let Some(status) = child.try_wait().map_err(|_| CodeError::SandboxRejected)? {
+                return status
+                    .success()
+                    .then_some(())
+                    .ok_or(CodeError::SandboxRejected);
+            }
+            if started.elapsed() >= Duration::from_secs(2) {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(CodeError::SandboxTimeout);
+            }
+            thread::sleep(Duration::from_millis(2));
+        }
     }
 }
 
@@ -313,19 +401,17 @@ impl TechnicalChatbot {
                 operation: ProgramOperation::IllustrativeFunction | ProgramOperation::AddNumbers,
             } => {
                 let function = addition_function();
-                PythonVerifier.verify(
-                    &function,
-                    &[
-                        FunctionExample {
-                            inputs: vec![2.0, 3.0],
-                            output: 5.0,
-                        },
-                        FunctionExample {
-                            inputs: vec![-4.5, 1.5],
-                            output: -3.0,
-                        },
-                    ],
-                )?;
+                let examples = [
+                    FunctionExample {
+                        inputs: vec![2.0, 3.0],
+                        output: 5.0,
+                    },
+                    FunctionExample {
+                        inputs: vec![-4.5, 1.5],
+                        output: -3.0,
+                    },
+                ];
+                PythonVerifier.verify_in_sandbox(&function, &examples)?;
                 AnswerPlan::CodeExample {
                     introduction: "Here is a basic Python function that adds two numbers."
                         .to_owned(),
@@ -464,4 +550,18 @@ fn normalize(value: &str) -> String {
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+fn semantic_signature(normalized: &str) -> BTreeSet<String> {
+    normalized
+        .split_whitespace()
+        .filter_map(|word| match word {
+            "python" | "py" => Some("python"),
+            "function" | "callable" | "method" => Some("function"),
+            "add" | "sum" | "total" | "totals" | "adding" => Some("add"),
+            "number" | "numbers" | "value" | "values" => Some("number"),
+            _ => None,
+        })
+        .map(str::to_owned)
+        .collect()
 }

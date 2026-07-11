@@ -11,7 +11,10 @@
       "intent": "GenerateProgram",
       "language": "Python",
       "operation": "AddNumbers",
-      "held_out_utterances": []
+      "held_out_utterances": [
+        "make a Python function to sum numbers",
+        "write a py method adding values"
+      ]
     }
   ],
   "mechanism_lessons": [
@@ -24,6 +27,38 @@
         {"inputs": {"left": 7, "right": 6}, "output": 13}
       ],
       "literals": [0, 1]
+    }
+  ],
+  "knowledge_claims": [
+    {
+      "subject": "PythonFunction",
+      "predicate": "can_represent",
+      "object": "numeric_addition",
+      "verification_method": "typed_ast_execution",
+      "evidence": ["teacher_proposed_sum examples 1-3"]
+    }
+  ],
+  "procedures": [
+    {
+      "name": "construct_verified_addition_function",
+      "goal": "generate an addition function",
+      "parameters": ["left", "right"],
+      "steps": [
+        {"id": "specify", "operation": "construct typed contract", "depends_on": []},
+        {"id": "synthesize", "operation": "construct typed AST", "depends_on": ["specify"]},
+        {"id": "verify", "operation": "execute examples", "depends_on": ["synthesize"]},
+        {"id": "render", "operation": "render source", "depends_on": ["verify"]}
+      ],
+      "preconditions": ["numeric addition requested"],
+      "postconditions": ["all executable examples pass before rendering"]
+    }
+  ],
+  "counterexamples": [
+    {
+      "mechanism_name": "teacher_proposed_sum",
+      "inputs": {"left": 2, "right": 3},
+      "forbidden_output": 6,
+      "reason": "addition must not be confused with multiplication"
     }
   ],
   "uncertainties": ["floating-point exceptional values are not covered"]

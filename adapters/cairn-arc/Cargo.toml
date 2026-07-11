@@ -28,6 +28,7 @@ serde_json = { version = "=1.0.133", default-features = false, features = ["std"
 [dev-dependencies]
 cairn-distill = { path = "../../crates/cairn-distill" }
 cairn-memory = { path = "../../crates/cairn-memory" }
+cairn-mechanism = { path = "../../crates/cairn-mechanism" }
 
 [lints]
 workspace = true

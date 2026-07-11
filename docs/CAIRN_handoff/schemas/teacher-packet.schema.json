@@ -4,7 +4,7 @@
   "title": "CAIRN untrusted structured teacher packet",
   "type": "object",
   "additionalProperties": false,
-  "required": ["packet_version", "domain", "origin", "semantic_intents", "mechanism_lessons", "uncertainties"],
+  "required": ["packet_version", "domain", "origin", "semantic_intents", "mechanism_lessons", "knowledge_claims", "procedures", "counterexamples", "uncertainties"],
   "properties": {
     "packet_version": {"const": "1.0"},
     "domain": {"type": "string", "minLength": 1, "maxLength": 128},
@@ -26,6 +26,21 @@
       "type": "array",
       "items": {"$ref": "#/$defs/mechanism"},
       "maxItems": 10000
+    },
+    "knowledge_claims": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/knowledge_claim"},
+      "maxItems": 10000
+    },
+    "procedures": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/procedure"},
+      "maxItems": 10000
+    },
+    "counterexamples": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/counterexample"},
+      "maxItems": 100000
     },
     "uncertainties": {
       "type": "array",
@@ -88,6 +103,61 @@
           "maxItems": 256,
           "uniqueItems": true
         }
+      }
+    },
+    "knowledge_claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "predicate", "object", "verification_method", "evidence"],
+      "properties": {
+        "subject": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "predicate": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "object": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "verification_method": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "evidence": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1, "maxLength": 4096},
+          "minItems": 1,
+          "maxItems": 10000
+        }
+      }
+    },
+    "procedure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "goal", "parameters", "steps", "preconditions", "postconditions"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1, "maxLength": 256},
+        "goal": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "parameters": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true, "maxItems": 256},
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "operation", "depends_on"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1, "maxLength": 256},
+              "operation": {"type": "string", "minLength": 1, "maxLength": 4096},
+              "depends_on": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true, "maxItems": 10000}
+            }
+          }
+        },
+        "preconditions": {"type": "array", "items": {"type": "string", "minLength": 1}, "maxItems": 10000},
+        "postconditions": {"type": "array", "items": {"type": "string", "minLength": 1}, "maxItems": 10000}
+      }
+    },
+    "counterexample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mechanism_name", "inputs", "forbidden_output", "reason"],
+      "properties": {
+        "mechanism_name": {"type": "string", "minLength": 1, "maxLength": 256},
+        "inputs": {"type": "object", "additionalProperties": {"type": "integer", "minimum": -1000000, "maximum": 1000000}, "minProperties": 1, "maxProperties": 256},
+        "forbidden_output": {"type": "integer", "minimum": -1000000, "maximum": 1000000},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 4096}
       }
     }
   }

@@ -35,6 +35,7 @@ dependencies = [
  "cairn-distill",
  "cairn-field",
  "cairn-invent",
+ "cairn-mechanism",
  "cairn-memory",
  "cairn-reg",
  "cairn-rkl",
@@ -123,7 +124,10 @@ dependencies = [
  "cairn-core",
  "cairn-invent",
  "cairn-language",
+ "cairn-mechanism",
+ "cairn-memory",
  "cairn-rkl",
+ "cairn-verifier",
  "serde",
  "serde_json",
 ]

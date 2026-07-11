@@ -15,11 +15,19 @@ use cairn_language::{
     GoalExpression, LanguageCompiler, LanguageLesson, OutputSpecification, ProgramOperation,
     ProgrammingLanguage,
 };
-use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
+use cairn_mechanism::{
+    DerivationCertificate, InventionEvidence, Mechanism, Signature,
+    SupportGeometry as MechanismSupport,
+};
+use cairn_memory::{
+    MechanismStore, PromotionError, PromotionRunner, SupportGeometry as MemorySupport,
+};
+use cairn_rkl::{Binder, Effect, Expr, IntRange, RuntimeEnvironment, Type, Value, VarName};
+use cairn_verifier::PromotionVerifier;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
-pub const DISTILLATION_SEMANTICS_VERSION: &str = "1.0.0";
+pub const DISTILLATION_SEMANTICS_VERSION: &str = "1.1.0";
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -31,6 +39,12 @@ pub struct TeacherPacket {
     pub semantic_intents: Vec<TeacherIntent>,
     #[serde(default)]
     pub mechanism_lessons: Vec<ScalarMechanismLesson>,
+    #[serde(default)]
+    pub knowledge_claims: Vec<TeacherKnowledgeClaim>,
+    #[serde(default)]
+    pub procedures: Vec<TeacherProcedure>,
+    #[serde(default)]
+    pub counterexamples: Vec<TeacherCounterexample>,
     #[serde(default)]
     pub uncertainties: Vec<String>,
 }
@@ -70,6 +84,63 @@ pub struct ScalarExample {
     pub output: i64,
 }
 
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct TeacherKnowledgeClaim {
+    pub subject: String,
+    pub predicate: String,
+    pub object: String,
+    pub verification_method: String,
+    pub evidence: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct TeacherProcedure {
+    pub name: String,
+    pub goal: String,
+    pub parameters: Vec<String>,
+    pub steps: Vec<TeacherProcedureStep>,
+    pub preconditions: Vec<String>,
+    pub postconditions: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct TeacherProcedureStep {
+    pub id: String,
+    pub operation: String,
+    pub depends_on: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct TeacherCounterexample {
+    pub mechanism_name: String,
+    pub inputs: BTreeMap<String, i64>,
+    pub forbidden_output: i64,
+    pub reason: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProvisionalKnowledgeClaim {
+    pub subject: String,
+    pub predicate: String,
+    pub object: String,
+    pub verification_method: String,
+    pub evidence: Vec<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ValidatedProcedureGraph {
+    pub name: String,
+    pub goal: String,
+    pub parameters: Vec<String>,
+    pub steps: Vec<TeacherProcedureStep>,
+    pub preconditions: Vec<String>,
+    pub postconditions: Vec<String>,
+}
+
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum DistillationTrust {
     TeacherProposed,
@@ -87,6 +158,9 @@ pub struct CompiledTeacherPacket {
     language_lessons: Vec<LanguageLesson>,
     language_tests: Vec<(String, GoalExpression)>,
     invention_problems: Vec<InventionProblem>,
+    knowledge_candidates: Vec<ProvisionalKnowledgeClaim>,
+    procedures: Vec<ValidatedProcedureGraph>,
+    counterexamples: Vec<TeacherCounterexample>,
     uncertainties: Vec<String>,
 }
 
@@ -113,8 +187,11 @@ pub struct VerifiedTeacherPacket {
     origin: TeacherOrigin,
     language_lessons: Vec<LanguageLesson>,
     mechanisms: Vec<DefinitionProposal>,
+    knowledge_candidates: Vec<ProvisionalKnowledgeClaim>,
+    procedures: Vec<ValidatedProcedureGraph>,
     verified_language_cases: u64,
     verified_mechanism_examples: u64,
+    verified_counterexamples: u64,
 }
 
 #[derive(Clone, Debug)]
@@ -155,6 +232,21 @@ impl VerifiedTeacherPacket {
     pub const fn verified_mechanism_examples(&self) -> u64 {
         self.verified_mechanism_examples
     }
+
+    #[must_use]
+    pub fn knowledge_candidates(&self) -> &[ProvisionalKnowledgeClaim] {
+        &self.knowledge_candidates
+    }
+
+    #[must_use]
+    pub fn procedures(&self) -> &[ValidatedProcedureGraph] {
+        &self.procedures
+    }
+
+    #[must_use]
+    pub const fn verified_counterexamples(&self) -> u64 {
+        self.verified_counterexamples
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -178,6 +270,12 @@ pub enum DistillationError {
     DuplicatePeer,
     EmptyTransfer,
     Revoked,
+    Promotion(PromotionError),
+    PersistentAdmission,
+    InvalidKnowledgeClaim,
+    InvalidProcedure,
+    InvalidCounterexample,
+    CounterexampleReplay,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -212,7 +310,11 @@ impl TeacherPacketCompiler {
         if packet.origin.kind.trim().is_empty() || packet.origin.identifier.trim().is_empty() {
             return Err(DistillationError::InvalidOrigin);
         }
-        if packet.semantic_intents.is_empty() && packet.mechanism_lessons.is_empty() {
+        if packet.semantic_intents.is_empty()
+            && packet.mechanism_lessons.is_empty()
+            && packet.knowledge_claims.is_empty()
+            && packet.procedures.is_empty()
+        {
             return Err(DistillationError::EmptyPacket);
         }
         let mut language_lessons = Vec::new();
@@ -240,6 +342,19 @@ impl TeacherPacketCompiler {
             .iter()
             .map(|lesson| compile_mechanism(lesson, limits))
             .collect::<Result<Vec<_>, _>>()?;
+        let knowledge_candidates = packet
+            .knowledge_claims
+            .iter()
+            .map(compile_knowledge_claim)
+            .collect::<Result<Vec<_>, _>>()?;
+        let procedures = packet
+            .procedures
+            .iter()
+            .map(compile_procedure)
+            .collect::<Result<Vec<_>, _>>()?;
+        for counterexample in &packet.counterexamples {
+            validate_counterexample(counterexample, &packet.mechanism_lessons)?;
+        }
         let id = packet_identity(packet);
         Ok(CompiledTeacherPacket {
             id,
@@ -247,6 +362,9 @@ impl TeacherPacketCompiler {
             language_lessons,
             language_tests,
             invention_problems,
+            knowledge_candidates,
+            procedures,
+            counterexamples: packet.counterexamples.clone(),
             uncertainties: packet.uncertainties.clone(),
         })
     }
@@ -289,14 +407,39 @@ impl DistillationVerifier {
                 Ok(outcome.proposal)
             })
             .collect::<Result<Vec<_>, DistillationError>>()?;
+        let mut verified_counterexamples = 0_u64;
+        for counterexample in &compiled.counterexamples {
+            let proposal = mechanisms
+                .iter()
+                .find(|proposal| proposal.definition.name == counterexample.mechanism_name)
+                .ok_or(DistillationError::InvalidCounterexample)?;
+            let mut inputs = RuntimeEnvironment::new();
+            for parameter in &proposal.definition.parameters {
+                let value = counterexample
+                    .inputs
+                    .get(&parameter.name.0)
+                    .ok_or(DistillationError::InvalidCounterexample)?;
+                inputs.insert(parameter.name.clone(), Value::Int(*value));
+            }
+            let actual = DefinitionInventor
+                .predict(proposal, &inputs, cairn_rkl::ExecLimits::default())
+                .map_err(DistillationError::Invention)?;
+            if actual == Value::Int(counterexample.forbidden_output) {
+                return Err(DistillationError::CounterexampleReplay);
+            }
+            verified_counterexamples = verified_counterexamples.saturating_add(1);
+        }
         Ok(VerifiedTeacherPacket {
             id: compiled.id,
             origin: compiled.origin,
             language_lessons: compiled.language_lessons,
             mechanisms,
+            knowledge_candidates: compiled.knowledge_candidates,
+            procedures: compiled.procedures,
             verified_language_cases: u64::try_from(compiled.language_tests.len())
                 .unwrap_or(u64::MAX),
             verified_mechanism_examples,
+            verified_counterexamples,
         })
     }
 
@@ -318,6 +461,72 @@ impl DistillationVerifier {
             replayed_language_cases: verified.verified_language_cases,
             replayed_mechanism_examples: verified.verified_mechanism_examples,
         })
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct PersistentDistillationPromoter;
+
+impl PersistentDistillationPromoter {
+    /// Promote independently invented packet mechanisms through both the
+    /// mechanism evidence gate and verifier token boundary, returning a store
+    /// containing only the resulting persistent proposal module.
+    ///
+    /// # Errors
+    ///
+    /// Rejects insufficient/incompatible source definitions, invalid support,
+    /// failed learning evidence, or token application disagreement.
+    pub fn promote(
+        &self,
+        packet: &VerifiedTeacherPacket,
+        memory_support: MemorySupport,
+        mechanism_support: MechanismSupport,
+        evidence: &InventionEvidence,
+    ) -> Result<MechanismStore, DistillationError> {
+        let module = PromotionRunner
+            .promote(packet.mechanisms(), memory_support)
+            .map_err(DistillationError::Promotion)?;
+        let definition = module.definition().clone();
+        let mechanism = Mechanism {
+            signature: Signature {
+                inputs: definition
+                    .parameters
+                    .iter()
+                    .map(|parameter| parameter.ty.clone())
+                    .collect(),
+                output: definition.return_type.clone(),
+            },
+            variables: definition.parameters.clone(),
+            entity_definitions: vec![definition.clone()],
+            preconditions: Expr::Bool(true),
+            transition_rules: Vec::new(),
+            invariants: vec![Expr::Bool(true)],
+            termination: Expr::Bool(true),
+            effects: vec![Effect::Emit(Expr::Call {
+                function: definition.name.clone(),
+                arguments: definition
+                    .parameters
+                    .iter()
+                    .map(|parameter| Expr::Var(parameter.name.clone()))
+                    .collect(),
+            })],
+            support: mechanism_support,
+            proof: DerivationCertificate {
+                source_proofs: module.lineage().iter().copied().collect(),
+                verifier_semantics: "distillation-dual-rkl-replay".to_owned(),
+                verified_cases: evidence.held_out_verified_cases,
+            },
+        };
+        let token = PromotionVerifier
+            .verify(&mechanism, evidence)
+            .map_err(|_| DistillationError::PersistentAdmission)?;
+        let id = module.id();
+        let mut store = MechanismStore::new();
+        store.insert(module);
+        if !store.apply_verified_promotion(id, &token) {
+            return Err(DistillationError::PersistentAdmission);
+        }
+        Ok(store)
     }
 }
 
@@ -473,6 +682,90 @@ fn promote_if_ready(artifact: &mut SharedKnowledgeArtifact) {
     if artifact.peer_verifiers.len() >= 2 && artifact.transfer_cases > 0 {
         artifact.trust = DistillationTrust::SwarmAccepted;
     }
+}
+
+fn compile_knowledge_claim(
+    claim: &TeacherKnowledgeClaim,
+) -> Result<ProvisionalKnowledgeClaim, DistillationError> {
+    if claim.subject.trim().is_empty()
+        || claim.predicate.trim().is_empty()
+        || claim.object.trim().is_empty()
+        || claim.verification_method.trim().is_empty()
+        || claim.evidence.is_empty()
+        || claim.evidence.iter().any(|item| item.trim().is_empty())
+    {
+        return Err(DistillationError::InvalidKnowledgeClaim);
+    }
+    Ok(ProvisionalKnowledgeClaim {
+        subject: claim.subject.clone(),
+        predicate: claim.predicate.clone(),
+        object: claim.object.clone(),
+        verification_method: claim.verification_method.clone(),
+        evidence: claim.evidence.clone(),
+    })
+}
+
+fn compile_procedure(
+    procedure: &TeacherProcedure,
+) -> Result<ValidatedProcedureGraph, DistillationError> {
+    if procedure.name.trim().is_empty()
+        || procedure.goal.trim().is_empty()
+        || procedure.steps.is_empty()
+        || procedure
+            .preconditions
+            .iter()
+            .any(|item| item.trim().is_empty())
+        || procedure
+            .postconditions
+            .iter()
+            .any(|item| item.trim().is_empty())
+    {
+        return Err(DistillationError::InvalidProcedure);
+    }
+    let parameters = procedure.parameters.iter().collect::<BTreeSet<_>>();
+    if parameters.len() != procedure.parameters.len() {
+        return Err(DistillationError::InvalidProcedure);
+    }
+    let mut known = BTreeSet::new();
+    for step in &procedure.steps {
+        if step.id.trim().is_empty()
+            || step.operation.trim().is_empty()
+            || !known.insert(step.id.clone())
+            || step
+                .depends_on
+                .iter()
+                .any(|dependency| !known.contains(dependency))
+        {
+            return Err(DistillationError::InvalidProcedure);
+        }
+    }
+    Ok(ValidatedProcedureGraph {
+        name: procedure.name.clone(),
+        goal: procedure.goal.clone(),
+        parameters: procedure.parameters.clone(),
+        steps: procedure.steps.clone(),
+        preconditions: procedure.preconditions.clone(),
+        postconditions: procedure.postconditions.clone(),
+    })
+}
+
+fn validate_counterexample(
+    counterexample: &TeacherCounterexample,
+    lessons: &[ScalarMechanismLesson],
+) -> Result<(), DistillationError> {
+    if counterexample.reason.trim().is_empty() {
+        return Err(DistillationError::InvalidCounterexample);
+    }
+    let lesson = lessons
+        .iter()
+        .find(|lesson| lesson.name == counterexample.mechanism_name)
+        .ok_or(DistillationError::InvalidCounterexample)?;
+    let expected = lesson.parameters.iter().collect::<BTreeSet<_>>();
+    let actual = counterexample.inputs.keys().collect::<BTreeSet<_>>();
+    if expected != actual {
+        return Err(DistillationError::InvalidCounterexample);
+    }
+    Ok(())
 }
 
 fn compile_objective(lesson: &TeacherIntent) -> Result<GoalExpression, DistillationError> {

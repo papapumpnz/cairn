@@ -653,6 +653,28 @@ pub fn run_training_batch(
     invention: InventionLimits,
     execution: ExecLimits,
 ) -> Result<ArcBatchReport, String> {
+    run_training_batch_with_runtime(
+        directory,
+        maximum_tasks,
+        invention,
+        execution,
+        &CognitionRuntime::new(),
+    )
+}
+
+/// Run a deterministic batch with caller-supplied verified general memory.
+/// The runtime is read-only during evaluation; no corpus task is promoted.
+///
+/// # Errors
+///
+/// Returns an I/O diagnostic if the corpus directory cannot be enumerated.
+pub fn run_training_batch_with_runtime(
+    directory: &Path,
+    maximum_tasks: usize,
+    invention: InventionLimits,
+    execution: ExecLimits,
+    runtime: &CognitionRuntime,
+) -> Result<ArcBatchReport, String> {
     let mut paths = fs::read_dir(directory)
         .map_err(|error| error.to_string())?
         .filter_map(Result::ok)
@@ -715,7 +737,7 @@ pub fn run_training_batch(
         };
         batch.parsed_tasks += 1;
         let Ok((generic_observations, relational_nodes, relational_facts)) =
-            admit_batch_boundary(&task, &task_name)
+            admit_batch_boundary(&task, &task_name, runtime)
         else {
             record_report(
                 &mut batch,
@@ -739,7 +761,7 @@ pub fn run_training_batch(
             .saturating_add(generic_observations);
         batch.relational_nodes = batch.relational_nodes.saturating_add(relational_nodes);
         batch.relational_facts = batch.relational_facts.saturating_add(relational_facts);
-        let report = evaluate_task(task_name, task, invention, execution);
+        let report = evaluate_task(task_name, task, invention, execution, runtime);
         record_report(&mut batch, report);
     }
     Ok(batch)
@@ -748,13 +770,14 @@ pub fn run_training_batch(
 fn admit_batch_boundary(
     task: &ArcTask,
     task_name: &str,
+    runtime: &CognitionRuntime,
 ) -> Result<(usize, usize, usize), ArcAdapterError> {
     let experience = lower_relational_experience(
         task,
         &format!("urn:cairn:corpus-task:{task_name}"),
         RegLimits::default(),
     )?;
-    CognitionRuntime::new()
+    runtime
         .admit_experience(&experience.problem)
         .map_err(ArcAdapterError::Runtime)?;
     let nodes = experience
@@ -775,6 +798,7 @@ fn evaluate_task(
     task: ArcTask,
     invention: InventionLimits,
     execution: ExecLimits,
+    runtime: &CognitionRuntime,
 ) -> ArcTaskReport {
     let expected = task
         .test
@@ -792,7 +816,7 @@ fn evaluate_task(
             })
             .collect(),
     };
-    match attempt_task(&sealed, invention, execution) {
+    match attempt_task_with_runtime(&sealed, invention, execution, runtime) {
         Ok(attempt) => {
             let evaluated = expected.iter().filter(|item| item.is_some()).count();
             let exact = attempt
