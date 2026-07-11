@@ -324,6 +324,13 @@ ablated exact solve, raising the complete frozen result to 36/400 (9.00%) with
 cross-frontend result, not general intelligence or an ARC pass. See
 [CROSS_FRONTEND_ENTITY_ROLE_TRANSFER.md](docs/experiments/CROSS_FRONTEND_ENTITY_ROLE_TRANSFER.md).
 See [OFFLINE_AI_RELATIONAL_DISTILLATION.md](docs/experiments/OFFLINE_AI_RELATIONAL_DISTILLATION.md).
+Actual-use evidence for procedural mechanisms is now canonical and restart
+safe. Verifier-issued reuse receipts persist to CAS, reload as untrusted values,
+and must be reconstructed from fresh exact replay and fresh counterfactual
+measurements before consolidation can promote a mechanism. A two-experience
+restart test reduces synthetic candidate work from 200 to 2 and examples from 8
+to 2 while rejecting changed theory, result, metrics, lineage, and payload. See
+[PERSISTED_REUSE_CONSOLIDATION.md](docs/experiments/PERSISTED_REUSE_CONSOLIDATION.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and durable proof-DAG artifact storage, arbitrary internal-subgraph compilation,

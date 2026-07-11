@@ -4,8 +4,13 @@
 //! and replayed against the complete current problem by `cairn-invent` before
 //! it can influence a prediction.
 
+use cairn_cas::{Cas, CasError, StoredArtifact};
 use cairn_consolidator::GraphCompressionProposal;
-use cairn_core::{CanonicalEncode, Hash32};
+use cairn_core::{
+    ArtifactEnvelope, ArtifactError, ArtifactId, ArtifactKind, BlobId, BudgetRecord,
+    CanonicalEncode, CanonicalLimits, CanonicalValue, Hash32, ProducerRecord, SchemaDescriptor,
+    SchemaRef, SchemaRegistry, SemanticsVersion,
+};
 use cairn_invent::{
     DefinitionInventor, DefinitionProposal, InventionError, InventionOutcome, InventionProblem,
 };
@@ -13,12 +18,15 @@ use cairn_mechanism::SupportGeometry as MechanismSupportGeometry;
 use cairn_rkl::CheckedTheory;
 use cairn_rkl::{BoundChecker, Definition, Expr, Type, TypeChecker, VarName};
 use cairn_verifier::{
-    VerifiedCompression, VerifiedProceduralPromotion, VerifiedProceduralReuse, VerifiedPromotion,
+    CounterfactualReuseMetrics, PromotionVerifier, VerifiedCompression,
+    VerifiedProceduralPromotion, VerifiedProceduralReuse, VerifiedPromotion,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
-pub const MEMORY_SEMANTICS_VERSION: &str = "1.4.0";
+pub const MEMORY_SEMANTICS_VERSION: &str = "1.5.0";
+pub const REUSE_EVIDENCE_SCHEMA: &str = "cairn.memory.reuse-evidence";
+pub const REUSE_EVIDENCE_SCHEMA_VERSION: u32 = 1;
 const MAXIMUM_REBOUND_PROPOSALS: usize = 1_024;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -243,6 +251,310 @@ pub struct ReuseEvidence {
     pub examples_with: u32,
     pub proof_nodes_without: u64,
     pub proof_nodes_with: u64,
+}
+
+/// Canonical, content-addressable evidence that an independently verified
+/// procedural mechanism changed one task's learning cost.
+///
+/// Loading this value does not make it trusted. A caller must supply the
+/// referenced experience again to [`ReuseArtifactArchive::replay`] before the
+/// receipt may enter a reuse ledger or promotion decision.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ReuseEvidenceArtifact {
+    theory_hash: Hash32,
+    experience: Hash32,
+    verified_cases: u64,
+    metrics: CounterfactualReuseMetrics,
+}
+
+impl ReuseEvidenceArtifact {
+    fn from_receipt(receipt: &VerifiedProceduralReuse) -> Self {
+        Self {
+            theory_hash: receipt.theory_hash(),
+            experience: receipt.experience(),
+            verified_cases: receipt.verified_cases(),
+            metrics: receipt.metrics(),
+        }
+    }
+
+    #[must_use]
+    pub const fn theory_hash(self) -> Hash32 {
+        self.theory_hash
+    }
+
+    #[must_use]
+    pub const fn experience(self) -> Hash32 {
+        self.experience
+    }
+
+    #[must_use]
+    pub const fn verified_cases(self) -> u64 {
+        self.verified_cases
+    }
+
+    #[must_use]
+    pub const fn metrics(self) -> CounterfactualReuseMetrics {
+        self.metrics
+    }
+
+    fn from_value(value: CanonicalValue) -> Result<Self, ReuseArchiveError> {
+        let CanonicalValue::Array(values) = value else {
+            return Err(ReuseArchiveError::InvalidPayload("payload is not an array"));
+        };
+        let [marker, theory, experience, verified_cases, blank_solved, candidates_without, candidates_with, examples_without, examples_with, proof_without, proof_with] =
+            values.as_slice()
+        else {
+            return Err(ReuseArchiveError::InvalidPayload(
+                "payload field count is not eleven",
+            ));
+        };
+        if marker != &CanonicalValue::Text("cairn.memory.reuse-evidence.v1".to_owned()) {
+            return Err(ReuseArchiveError::InvalidPayload("payload marker mismatch"));
+        }
+        Ok(Self {
+            theory_hash: artifact_hash(theory)?,
+            experience: artifact_hash(experience)?,
+            verified_cases: artifact_u64(verified_cases)?,
+            metrics: CounterfactualReuseMetrics {
+                blank_solved: artifact_bool(blank_solved)?,
+                candidate_executions_without: artifact_u64(candidates_without)?,
+                candidate_executions_with: artifact_u64(candidates_with)?,
+                examples_without: artifact_u32(examples_without)?,
+                examples_with: artifact_u32(examples_with)?,
+                proof_nodes_without: artifact_u64(proof_without)?,
+                proof_nodes_with: artifact_u64(proof_with)?,
+            },
+        })
+    }
+}
+
+impl CanonicalEncode for ReuseEvidenceArtifact {
+    fn encode_canonical(&self) -> Result<Vec<u8>, cairn_core::CanonicalError> {
+        CanonicalValue::Array(vec![
+            CanonicalValue::Text("cairn.memory.reuse-evidence.v1".to_owned()),
+            CanonicalValue::Bytes(self.theory_hash.as_bytes().to_vec()),
+            CanonicalValue::Bytes(self.experience.as_bytes().to_vec()),
+            CanonicalValue::Unsigned(self.verified_cases),
+            CanonicalValue::Bool(self.metrics.blank_solved),
+            CanonicalValue::Unsigned(self.metrics.candidate_executions_without),
+            CanonicalValue::Unsigned(self.metrics.candidate_executions_with),
+            CanonicalValue::Unsigned(u64::from(self.metrics.examples_without)),
+            CanonicalValue::Unsigned(u64::from(self.metrics.examples_with)),
+            CanonicalValue::Unsigned(self.metrics.proof_nodes_without),
+            CanonicalValue::Unsigned(self.metrics.proof_nodes_with),
+        ])
+        .encode_canonical()
+    }
+}
+
+/// Non-semantic producer and resource observations attached to a persisted
+/// reuse receipt. Parent IDs must identify the evidence needed for replay.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReuseArtifactMetadata {
+    pub parent_ids: Vec<ArtifactId>,
+    pub producer: ProducerRecord,
+    pub budget: BudgetRecord,
+    pub created_at_logical: u64,
+}
+
+/// File-backed archive boundary for verifier-issued reuse receipts.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ReuseArtifactArchive;
+
+impl ReuseArtifactArchive {
+    /// Persist one verifier-issued receipt in the canonical append-only CAS.
+    ///
+    /// # Errors
+    ///
+    /// Rejects missing lineage, invalid artifact metadata, capacity, storage,
+    /// hash, and canonicalization failures before returning an identity.
+    pub fn persist(
+        &self,
+        cas: &Cas,
+        receipt: &VerifiedProceduralReuse,
+        metadata: ReuseArtifactMetadata,
+    ) -> Result<StoredArtifact, ReuseArchiveError> {
+        if metadata.parent_ids.is_empty() {
+            return Err(ReuseArchiveError::MissingParent);
+        }
+        let payload = ReuseEvidenceArtifact::from_receipt(receipt);
+        let envelope = ArtifactEnvelope::new(
+            reuse_schema()?,
+            reuse_kind()?,
+            reuse_semantics(),
+            metadata.parent_ids,
+            Some(receipt.experience()),
+            metadata.producer,
+            metadata.budget,
+            metadata.created_at_logical,
+            payload,
+        )?;
+        cas.put_envelope(&envelope)
+            .map_err(ReuseArchiveError::Storage)
+    }
+
+    /// Load and structurally validate an untrusted reuse-evidence artifact.
+    ///
+    /// # Errors
+    ///
+    /// Rejects storage corruption, unsupported schema or semantics, malformed
+    /// payloads, missing lineage, and mismatched task scope.
+    pub fn load(
+        &self,
+        cas: &Cas,
+        blob_id: BlobId,
+    ) -> Result<ReuseEvidenceArtifact, ReuseArchiveError> {
+        let mut registry = SchemaRegistry::new();
+        registry.register(SchemaDescriptor {
+            name: REUSE_EVIDENCE_SCHEMA.to_owned(),
+            current_version: REUSE_EVIDENCE_SCHEMA_VERSION,
+            additive_read_versions: BTreeSet::new(),
+            maximum_payload_bytes: 2_048,
+        })?;
+        let envelope = cas.get_envelope(
+            blob_id,
+            &registry,
+            &BTreeSet::from([reuse_semantics()]),
+            CanonicalLimits {
+                max_input_bytes: 16_384,
+                max_depth: 16,
+                max_collection_items: 64,
+                max_scalar_bytes: 4_096,
+            },
+        )?;
+        if envelope.artifact_kind != reuse_kind()? || envelope.parent_ids.is_empty() {
+            return Err(ReuseArchiveError::InvalidEnvelope);
+        }
+        let artifact = ReuseEvidenceArtifact::from_value(envelope.payload)?;
+        if envelope.task_scope != Some(artifact.experience) {
+            return Err(ReuseArchiveError::InvalidEnvelope);
+        }
+        Ok(artifact)
+    }
+
+    /// Independently reconstruct a verifier receipt from a loaded artifact and
+    /// the referenced evidence. The artifact's measured fields are proposals;
+    /// the verifier re-executes the theory using freshly measured
+    /// counterfactual metrics before returning an opaque receipt.
+    ///
+    /// # Errors
+    ///
+    /// Rejects theory identity mismatch, failed exact replay, changed metrics,
+    /// or changed verified-case count.
+    pub fn replay(
+        &self,
+        artifact: ReuseEvidenceArtifact,
+        theory: &CheckedTheory,
+        problem: &cairn_core::CollectionProcedureProblem,
+        expected_prediction: &BTreeSet<i64>,
+        replayed_metrics: CounterfactualReuseMetrics,
+    ) -> Result<VerifiedProceduralReuse, ReuseArchiveError> {
+        let theory_hash = Hash32::digest(
+            &theory
+                .encode_canonical()
+                .map_err(|_| ReuseArchiveError::Canonicalization)?,
+        );
+        if theory_hash != artifact.theory_hash {
+            return Err(ReuseArchiveError::TheoryMismatch);
+        }
+        let receipt = PromotionVerifier
+            .verify_collection_reuse(
+                theory,
+                problem,
+                expected_prediction,
+                artifact.experience,
+                replayed_metrics,
+            )
+            .map_err(|_| ReuseArchiveError::VerificationFailure)?;
+        if receipt.theory_hash() != artifact.theory_hash
+            || receipt.experience() != artifact.experience
+            || receipt.verified_cases() != artifact.verified_cases
+            || receipt.metrics() != artifact.metrics
+        {
+            return Err(ReuseArchiveError::ReplayMismatch);
+        }
+        Ok(receipt)
+    }
+}
+
+#[derive(Debug)]
+pub enum ReuseArchiveError {
+    MissingParent,
+    InvalidEnvelope,
+    InvalidPayload(&'static str),
+    Canonicalization,
+    TheoryMismatch,
+    VerificationFailure,
+    ReplayMismatch,
+    Artifact(ArtifactError),
+    Storage(CasError),
+}
+
+impl fmt::Display for ReuseArchiveError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidPayload(message) => write!(formatter, "invalid reuse artifact: {message}"),
+            Self::Artifact(error) => error.fmt(formatter),
+            Self::Storage(error) => error.fmt(formatter),
+            other => write!(formatter, "{other:?}"),
+        }
+    }
+}
+
+impl std::error::Error for ReuseArchiveError {}
+
+impl From<ArtifactError> for ReuseArchiveError {
+    fn from(value: ArtifactError) -> Self {
+        Self::Artifact(value)
+    }
+}
+
+impl From<CasError> for ReuseArchiveError {
+    fn from(value: CasError) -> Self {
+        Self::Storage(value)
+    }
+}
+
+fn reuse_schema() -> Result<SchemaRef, ArtifactError> {
+    SchemaRef::new(REUSE_EVIDENCE_SCHEMA, REUSE_EVIDENCE_SCHEMA_VERSION)
+}
+
+fn reuse_kind() -> Result<ArtifactKind, ArtifactError> {
+    ArtifactKind::new("memory.reuse-evidence")
+}
+
+const fn reuse_semantics() -> SemanticsVersion {
+    SemanticsVersion::new(1, 0, 0)
+}
+
+fn artifact_hash(value: &CanonicalValue) -> Result<Hash32, ReuseArchiveError> {
+    let CanonicalValue::Bytes(bytes) = value else {
+        return Err(ReuseArchiveError::InvalidPayload("hash is not bytes"));
+    };
+    let fixed: [u8; 32] = bytes
+        .as_slice()
+        .try_into()
+        .map_err(|_| ReuseArchiveError::InvalidPayload("hash is not 32 bytes"))?;
+    Ok(Hash32::from_bytes(fixed))
+}
+
+fn artifact_u64(value: &CanonicalValue) -> Result<u64, ReuseArchiveError> {
+    let CanonicalValue::Unsigned(value) = value else {
+        return Err(ReuseArchiveError::InvalidPayload("metric is not unsigned"));
+    };
+    Ok(*value)
+}
+
+fn artifact_u32(value: &CanonicalValue) -> Result<u32, ReuseArchiveError> {
+    u32::try_from(artifact_u64(value)?)
+        .map_err(|_| ReuseArchiveError::InvalidPayload("metric exceeds u32"))
+}
+
+fn artifact_bool(value: &CanonicalValue) -> Result<bool, ReuseArchiveError> {
+    let CanonicalValue::Bool(value) = value else {
+        return Err(ReuseArchiveError::InvalidPayload("flag is not Boolean"));
+    };
+    Ok(*value)
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]

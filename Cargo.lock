@@ -215,6 +215,7 @@ name = "cairn-memory"
 version = "0.1.0"
 dependencies = [
  "cairn-bench",
+ "cairn-cas",
  "cairn-consolidator",
  "cairn-core",
  "cairn-invent",

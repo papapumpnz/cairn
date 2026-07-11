@@ -682,3 +682,17 @@ from 35 to 36 exact, with 364 resource-limited and zero incorrect. This is
 evidence for one learned predicate transferring across four frontends. It does
 not establish broad ontology invention, unrestricted language competence,
 general intelligence, or the 80% ARC target.
+
+## 25. Durable self-compression evidence checkpoint
+
+Procedural actual-use evidence now persists under a canonical content-addressed
+schema rather than existing only in runtime memory. A frozen restart experiment
+persists two verifier receipts, discards process-local authority, reopens the
+CAS, independently replays both checked-theory experiences with fresh
+counterfactual measurements, and promotes only from the reconstructed receipts.
+Candidate work remains 200 versus 2, examples remain 8 versus 2, proof depth
+remains 40 versus 6, and no negative transfer occurs in the synthetic gate.
+
+This strengthens G1 and the self-compression loop across process boundaries. It
+does not broaden the small bounded G0-G6 task distributions, and therefore does
+not change the general-intelligence claim boundary.

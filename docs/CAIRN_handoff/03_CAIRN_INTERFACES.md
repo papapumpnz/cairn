@@ -595,6 +595,16 @@ Memory-enabled and memory-disabled runs use the same frozen problems, verifier,
 CPU budget, and answer policy. The store is successful only when it improves
 future sample or search efficiency without reducing exact accuracy.
 
+Actual-use evidence crosses process boundaries through
+`cairn.memory.reuse-evidence` version 1. The canonical payload binds theory and
+experience hashes, verified-case count, and counterfactual search, sample, and
+proof-depth metrics. Its envelope is experience-scoped and requires parent
+lineage. A loaded payload remains untrusted: `ReuseArtifactArchive::replay`
+must reconstruct an opaque verifier receipt from the referenced checked theory
+and evidence plus freshly measured counterfactual metrics before the store or
+consolidator may count it. Persisted metrics are comparison targets, never
+replay inputs. CAS identity proves immutability, not correctness.
+
 ## 19. Planner interfaces
 
 ```rust

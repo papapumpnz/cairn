@@ -54,6 +54,12 @@ The frozen initial suite satisfies G1: no stored-but-unused definition is
 counted, and every counted mechanism has direct actual-use, necessity, search,
 sample, and proof-depth evidence.
 
-The ledger is currently part of the in-memory mechanism store and is not yet a
-canonical CAS artifact. G2 remains open until equal-budget wall-clock runs,
-unrelated-task negative transfer, and persistence/reload are measured.
+The original frozen pass used an in-memory ledger. A later WP23 extension now
+persists each verifier-issued procedural reuse receipt as canonical
+content-addressed evidence. A restart test discards process-local receipts,
+reopens and recovers the CAS, reloads two artifacts as untrusted values,
+independently replays both experiences, and promotes only from the reconstructed
+receipts. Missing lineage, malformed payloads, changed theories, and changed
+expected behavior fail closed. The original G1 measurements above remain the
+frozen result; the new test closes their persistence/reload limitation rather
+than changing the measured counts.
