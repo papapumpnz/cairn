@@ -136,8 +136,11 @@ dependencies = [
  "cairn-core",
  "cairn-entity",
  "cairn-invent",
+ "cairn-mechanism",
+ "cairn-memory",
  "cairn-reg",
  "cairn-rkl",
+ "cairn-verifier",
 ]
 
 [[package]]

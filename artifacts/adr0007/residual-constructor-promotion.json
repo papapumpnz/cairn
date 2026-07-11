@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "date": "2026-07-11",
+  "status": "persistent_mechanism_pass",
+  "general_intelligence_claim": false,
+  "named_geometry_operator_supplied": false,
+  "invented_expression": "row == column",
+  "independent_source_families": 2,
+  "persistent_mechanisms": 1,
+  "fresh_candidates": 29,
+  "memory_candidates": 1,
+  "examples_without_memory": 34,
+  "examples_with_memory": 1,
+  "source_residual_cells": 8,
+  "held_out_geometry": [7, 7],
+  "held_out_cells_exact": 49,
+  "held_out_cells_total": 49,
+  "changed_categorical_value": true,
+  "mixed_effect_negative_rejected": true,
+  "unknown_support": [
+    "variable_cardinality",
+    "motif_copy",
+    "recursive_growth",
+    "deletion_residuals",
+    "overlapping_constructors",
+    "effect_scheduling"
+  ]
+}

@@ -38,6 +38,8 @@ pub enum FieldError {
     Prediction,
     ObservationMismatch,
     Reg(RegError),
+    NoResidual,
+    ResidualConflict,
 }
 
 #[derive(Clone, Debug)]
@@ -344,6 +346,146 @@ impl PointwiseFieldLearner {
             values,
         })
     }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct LearnedResidualConstructor {
+    pub proposal: DefinitionProposal,
+    pub background: i64,
+    pub paint: i64,
+    pub training_cells: usize,
+    pub residual_cells: usize,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ResidualConstructorInventor;
+
+impl ResidualConstructorInventor {
+    /// Synthesize a Boolean emission condition from cells created in otherwise
+    /// unexplained output residuals.
+    ///
+    /// # Errors
+    ///
+    /// Rejects empty/invalid evidence, mixed paints, deletion/update residuals,
+    /// absent created cells, or bounded invention failure.
+    pub fn invent(
+        &self,
+        pairs: &[(FiniteField, FiniteField)],
+        background: i64,
+        limits: InventionLimits,
+    ) -> Result<LearnedResidualConstructor, FieldError> {
+        if pairs.is_empty() {
+            return Err(FieldError::NoResidual);
+        }
+        let parameters = residual_parameters();
+        let mut demonstrations = Vec::new();
+        let mut paint = None;
+        let mut residual_cells = 0_usize;
+        for (input, output) in pairs {
+            input.validate()?;
+            output.validate()?;
+            if input.shape != output.shape || input.shape.len() != 2 {
+                return Err(FieldError::ResidualConflict);
+            }
+            for (index, (&before, &after)) in input.values.iter().zip(&output.values).enumerate() {
+                let created = before == background && after != background;
+                if before != after && !created {
+                    return Err(FieldError::ResidualConflict);
+                }
+                if created {
+                    residual_cells = residual_cells.saturating_add(1);
+                    if paint.replace(after).is_some_and(|current| current != after) {
+                        return Err(FieldError::ResidualConflict);
+                    }
+                }
+                demonstrations.push(BindingExample {
+                    inputs: residual_bindings(input, index)?,
+                    output: Value::Bool(created),
+                });
+            }
+        }
+        let paint = paint.ok_or(FieldError::NoResidual)?;
+        let outcome = DefinitionInventor
+            .invent(&InventionProblem {
+                definition_name: "invented_residual_emission".to_owned(),
+                parameters,
+                return_type: Type::Bool,
+                literals: vec![Value::Int(0), Value::Int(1)],
+                demonstrations,
+                limits,
+            })
+            .map_err(FieldError::Invention)?;
+        Ok(LearnedResidualConstructor {
+            training_cells: outcome.admission.training_examples,
+            proposal: outcome.proposal,
+            background,
+            paint,
+            residual_cells,
+        })
+    }
+
+    /// Apply the frozen invented emission condition to changed geometry.
+    ///
+    /// # Errors
+    ///
+    /// Rejects invalid fields or non-Boolean/failed predicate execution.
+    pub fn predict(
+        &self,
+        constructor: &LearnedResidualConstructor,
+        input: &FiniteField,
+        limits: cairn_rkl::ExecLimits,
+    ) -> Result<FiniteField, FieldError> {
+        input.validate()?;
+        if input.shape.len() != 2 {
+            return Err(FieldError::ResidualConflict);
+        }
+        let mut output = input.clone();
+        for index in 0..input.values.len() {
+            let emit = DefinitionInventor
+                .predict(
+                    &constructor.proposal,
+                    &residual_bindings(input, index)?,
+                    limits,
+                )
+                .map_err(FieldError::Invention)?;
+            match emit {
+                Value::Bool(true) if input.values[index] == constructor.background => {
+                    output.values[index] = constructor.paint;
+                }
+                Value::Bool(_) => {}
+                _ => return Err(FieldError::Prediction),
+            }
+        }
+        Ok(output)
+    }
+}
+
+fn residual_parameters() -> Vec<Binder> {
+    ["row", "column", "rows", "columns"]
+        .into_iter()
+        .map(|name| Binder {
+            name: VarName(name.to_owned()),
+            ty: Type::Int(IntRange {
+                lower: 0,
+                upper: i64::from(u16::MAX),
+            }),
+        })
+        .collect()
+}
+
+fn residual_bindings(field: &FiniteField, index: usize) -> Result<RuntimeEnvironment, FieldError> {
+    let columns = usize::try_from(field.shape[1]).map_err(|_| FieldError::Capacity)?;
+    let values = [
+        i64::try_from(index / columns).map_err(|_| FieldError::Capacity)?,
+        i64::try_from(index % columns).map_err(|_| FieldError::Capacity)?,
+        i64::from(field.shape[0]),
+        i64::from(field.shape[1]),
+    ];
+    let mut environment = RuntimeEnvironment::new();
+    for (parameter, value) in residual_parameters().into_iter().zip(values) {
+        environment.insert(parameter.name, Value::Int(value));
+    }
+    Ok(environment)
 }
 
 fn parameters() -> Vec<Binder> {

@@ -157,6 +157,11 @@ relation; the verifier promotes it, and a third renamed family reuses it from
 one example. Search falls from 236 candidates to one proposal and five unseen
 geometries remain exact. See
 [INVENTED_ENCLOSURE_PROMOTION.md](docs/experiments/INVENTED_ENCLOSURE_PROMOTION.md).
+The residual route now learns a constructor condition directly from unexplained
+created cells. It invented `row == column`, was independently re-induced and
+verifier-promoted, then rebound on a 7x7 field with a new paint value from one
+example. Search fell 29 to one and all 49 held-out cells were exact. See
+[RESIDUAL_CONSTRUCTOR_PROMOTION.md](docs/experiments/RESIDUAL_CONSTRUCTOR_PROMOTION.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and proof DAGs, richer ontology invention, one shared orchestrating runtime,

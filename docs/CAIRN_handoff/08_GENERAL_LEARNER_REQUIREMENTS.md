@@ -210,6 +210,15 @@ from one example, reducing 236 conjunction candidates to one verified proposal
 while preserving 5/5 held-out geometry. See
 docs/experiments/INVENTED_ENCLOSURE_PROMOTION.md.
 
+Residual-driven constructor invention is now independently exercised. The
+frontend computes created-cell residuals but supplies no shape operator. The
+learner synthesizes the Boolean emission definition `row == column`, rejects
+mixed-effect residuals, re-invents the rule across changed sizes and categorical
+values, and passes verifier-gated promotion. A third 7x7 construction reuses the
+predicate from one example with a new paint value: candidates fall 29 to one,
+examples 34 to one, and 49/49 held-out cells are exact. See
+docs/experiments/RESIDUAL_CONSTRUCTOR_PROMOTION.md.
+
 ## 5. Proof-backed knowledge learning
 
 The knowledge subsystem stores:

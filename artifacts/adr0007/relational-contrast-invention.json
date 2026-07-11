@@ -16,7 +16,6 @@
   "target_present_as_named_primitive": false,
   "persistent_promotion": true,
   "open_requirements": [
-    "residual_constructor_invention",
     "cross_domain_transfer",
     "verifier_gated_promotion"
   ]
