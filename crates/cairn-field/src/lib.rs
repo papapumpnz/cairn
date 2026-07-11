@@ -1,8 +1,8 @@
 //! Adapter-neutral finite categorical fields and a first learned field model.
 
 use cairn_core::{
-    CanonicalValue, Hash32, ModalityId, Observation, ObservationCertainty, ObservationError,
-    SourceReference,
+    CanonicalValue, CollectionDemonstration, CollectionProcedureProblem, Hash32, ModalityId,
+    Observation, ObservationCertainty, ObservationError, SourceReference,
 };
 use cairn_invent::{
     BindingExample, DefinitionInventor, DefinitionProposal, InventionError, InventionLimits,
@@ -22,6 +22,96 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 pub struct FiniteField {
     pub shape: Vec<u32>,
     pub values: Vec<i64>,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct FieldValueCollectionAdapter;
+
+impl FieldValueCollectionAdapter {
+    /// Lower distinct categorical values, never coordinates or benchmark
+    /// concepts, into the shared collection-procedure contract.
+    ///
+    /// # Errors
+    ///
+    /// Rejects invalid fields, missing training evidence, shape mismatch, and
+    /// cardinalities outside the bounded generic contract.
+    pub fn lower(
+        &self,
+        training: &[(FiniteField, FiniteField)],
+        prediction: &FiniteField,
+    ) -> Result<CollectionProcedureProblem, FieldError> {
+        prediction.validate()?;
+        if training.is_empty() {
+            return Err(FieldError::NoCorrespondence);
+        }
+        let demonstrations = training
+            .iter()
+            .map(|(input, output)| {
+                input.validate()?;
+                output.validate()?;
+                if input.shape != output.shape {
+                    return Err(FieldError::ObservationMismatch);
+                }
+                Ok(CollectionDemonstration {
+                    input: input
+                        .values
+                        .iter()
+                        .copied()
+                        .collect::<BTreeSet<_>>()
+                        .into_iter()
+                        .collect(),
+                    output: output.values.iter().copied().collect(),
+                })
+            })
+            .collect::<Result<Vec<_>, FieldError>>()?;
+        let maximum = training
+            .iter()
+            .map(|(input, _)| input.values.iter().collect::<BTreeSet<_>>().len())
+            .chain(std::iter::once(
+                prediction.values.iter().collect::<BTreeSet<_>>().len(),
+            ))
+            .max()
+            .ok_or(FieldError::Capacity)?;
+        Ok(CollectionProcedureProblem {
+            maximum_cardinality: u32::try_from(maximum).map_err(|_| FieldError::Capacity)?,
+            demonstrations,
+            prediction_input: prediction
+                .values
+                .iter()
+                .copied()
+                .collect::<BTreeSet<_>>()
+                .into_iter()
+                .collect(),
+            maximum_predictions: 16,
+        })
+    }
+
+    /// Reconstruct a field from an independently verified value binding.
+    ///
+    /// # Errors
+    ///
+    /// Rejects an invalid input field or a missing categorical binding.
+    pub fn reconstruct(
+        &self,
+        input: &FiniteField,
+        bindings: &BTreeMap<i64, i64>,
+    ) -> Result<FiniteField, FieldError> {
+        input.validate()?;
+        let values = input
+            .values
+            .iter()
+            .map(|value| {
+                bindings
+                    .get(value)
+                    .copied()
+                    .ok_or(FieldError::NoCorrespondence)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(FiniteField {
+            shape: input.shape.clone(),
+            values,
+        })
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

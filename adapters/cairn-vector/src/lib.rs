@@ -1,5 +1,6 @@
 //! Vector-scene observations lowered to the generic learning contract.
 
+use cairn_core::{CollectionDemonstration, CollectionProcedureProblem};
 use cairn_invent::{BindingExample, InventionLimits, InventionProblem};
 use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
 
@@ -9,10 +10,39 @@ pub struct VectorTranslation {
     pub displacement: (i64, i64),
 }
 
+/// A batch of scalar attributes attached to otherwise frontend-owned vector
+/// entities. Cognition sees only the generic collection contract.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VectorAttributeBatch {
+    pub input_attributes: Vec<i64>,
+    pub output_attributes: Vec<i64>,
+}
+
 #[derive(Clone, Copy, Debug, Default)]
 pub struct VectorAdapter;
 
 impl VectorAdapter {
+    #[must_use]
+    pub fn lower_attribute_collection(
+        &self,
+        maximum_cardinality: u32,
+        examples: &[VectorAttributeBatch],
+        prediction_attributes: Vec<i64>,
+    ) -> CollectionProcedureProblem {
+        CollectionProcedureProblem {
+            maximum_cardinality,
+            demonstrations: examples
+                .iter()
+                .map(|example| CollectionDemonstration {
+                    input: example.input_attributes.clone(),
+                    output: example.output_attributes.iter().copied().collect(),
+                })
+                .collect(),
+            prediction_input: prediction_attributes,
+            maximum_predictions: 16,
+        }
+    }
+
     #[must_use]
     pub fn lower(
         &self,

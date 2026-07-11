@@ -16,7 +16,7 @@ use cairn_verifier::{VerifiedCompression, VerifiedProceduralPromotion, VerifiedP
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
-pub const MEMORY_SEMANTICS_VERSION: &str = "1.2.0";
+pub const MEMORY_SEMANTICS_VERSION: &str = "1.3.0";
 const MAXIMUM_REBOUND_PROPOSALS: usize = 1_024;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -221,34 +221,7 @@ impl MechanismModule {
 
     #[must_use]
     pub fn reuse_metrics(&self) -> ReuseMetrics {
-        let mut metrics = ReuseMetrics::default();
-        for evidence in self.reuse.values() {
-            metrics.verified_invocations += 1;
-            metrics.necessary_invocations += u64::from(evidence.necessary_under_ablation);
-            metrics.candidate_executions_without = metrics
-                .candidate_executions_without
-                .saturating_add(evidence.candidate_executions_without);
-            metrics.candidate_executions_with = metrics
-                .candidate_executions_with
-                .saturating_add(evidence.candidate_executions_with);
-            metrics.examples_without = metrics
-                .examples_without
-                .saturating_add(u64::from(evidence.examples_without));
-            metrics.examples_with = metrics
-                .examples_with
-                .saturating_add(u64::from(evidence.examples_with));
-            metrics.proof_nodes_without = metrics
-                .proof_nodes_without
-                .saturating_add(evidence.proof_nodes_without);
-            metrics.proof_nodes_with = metrics
-                .proof_nodes_with
-                .saturating_add(evidence.proof_nodes_with);
-            metrics.negative_transfers += u64::from(
-                evidence.candidate_executions_with > evidence.candidate_executions_without
-                    || evidence.examples_with > evidence.examples_without,
-            );
-        }
-        metrics
+        reuse_metrics(self.reuse.values())
     }
 
     #[must_use]
@@ -281,6 +254,53 @@ pub struct ReuseMetrics {
     pub proof_nodes_without: u64,
     pub proof_nodes_with: u64,
     pub negative_transfers: u64,
+}
+
+fn reuse_metrics<'a>(evidence: impl Iterator<Item = &'a ReuseEvidence>) -> ReuseMetrics {
+    let mut metrics = ReuseMetrics::default();
+    for evidence in evidence {
+        metrics.verified_invocations += 1;
+        metrics.necessary_invocations += u64::from(evidence.necessary_under_ablation);
+        metrics.candidate_executions_without = metrics
+            .candidate_executions_without
+            .saturating_add(evidence.candidate_executions_without);
+        metrics.candidate_executions_with = metrics
+            .candidate_executions_with
+            .saturating_add(evidence.candidate_executions_with);
+        metrics.examples_without = metrics
+            .examples_without
+            .saturating_add(u64::from(evidence.examples_without));
+        metrics.examples_with = metrics
+            .examples_with
+            .saturating_add(u64::from(evidence.examples_with));
+        metrics.proof_nodes_without = metrics
+            .proof_nodes_without
+            .saturating_add(evidence.proof_nodes_without);
+        metrics.proof_nodes_with = metrics
+            .proof_nodes_with
+            .saturating_add(evidence.proof_nodes_with);
+        metrics.negative_transfers += u64::from(
+            evidence.candidate_executions_with > evidence.candidate_executions_without
+                || evidence.examples_with > evidence.examples_without,
+        );
+    }
+    metrics
+}
+
+fn validate_reuse(
+    existing: &BTreeMap<Hash32, ReuseEvidence>,
+    evidence: &ReuseEvidence,
+) -> Result<(), ReuseError> {
+    if !evidence.independently_verified {
+        return Err(ReuseError::Unverified);
+    }
+    if evidence.candidate_executions_without == 0 || evidence.examples_without == 0 {
+        return Err(ReuseError::EmptyCounterfactual);
+    }
+    if existing.contains_key(&evidence.experience) {
+        return Err(ReuseError::DuplicateExperience);
+    }
+    Ok(())
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -437,6 +457,7 @@ pub struct ProceduralMechanismModule {
     source_proofs: BTreeSet<Hash32>,
     verified_cases: u64,
     actual_reuse_count: u32,
+    reuse: BTreeMap<Hash32, ReuseEvidence>,
     status: ModuleStatus,
 }
 
@@ -459,6 +480,26 @@ impl ProceduralMechanismModule {
     #[must_use]
     pub const fn status(&self) -> ModuleStatus {
         self.status
+    }
+
+    #[must_use]
+    pub const fn source_proofs(&self) -> &BTreeSet<Hash32> {
+        &self.source_proofs
+    }
+
+    #[must_use]
+    pub const fn verified_cases(&self) -> u64 {
+        self.verified_cases
+    }
+
+    #[must_use]
+    pub const fn actual_reuse_count(&self) -> u32 {
+        self.actual_reuse_count
+    }
+
+    #[must_use]
+    pub fn reuse_metrics(&self) -> ReuseMetrics {
+        reuse_metrics(self.reuse.values())
     }
 }
 
@@ -521,6 +562,7 @@ impl ProceduralMechanismStore {
                 source_proofs,
                 verified_cases,
                 actual_reuse_count: 0,
+                reuse: BTreeMap::new(),
                 status: ModuleStatus::Provisional,
             },
         );
@@ -565,6 +607,7 @@ impl ProceduralMechanismStore {
                 source_proofs: token.source_proofs().clone(),
                 verified_cases: token.verified_cases(),
                 actual_reuse_count: token.actual_reuse_count(),
+                reuse: BTreeMap::new(),
                 status: ModuleStatus::Persistent,
             },
         );
@@ -592,6 +635,56 @@ impl ProceduralMechanismStore {
                 ModuleStatus::Provisional | ModuleStatus::Persistent | ModuleStatus::Compiled
             )
         })
+    }
+
+    /// Record independently checked use of a whole theory, including the
+    /// frozen no-memory counterfactual needed to distinguish reuse from luck.
+    ///
+    /// # Errors
+    ///
+    /// Rejects unknown or unavailable modules, unverified/duplicate evidence,
+    /// and receipts without a non-empty counterfactual.
+    pub fn record_verified_reuse(
+        &mut self,
+        id: Hash32,
+        evidence: ReuseEvidence,
+    ) -> Result<(), ReuseError> {
+        let module = self.modules.get_mut(&id).ok_or(ReuseError::UnknownModule)?;
+        if !matches!(
+            module.status,
+            ModuleStatus::Provisional | ModuleStatus::Persistent | ModuleStatus::Compiled
+        ) {
+            return Err(ReuseError::NotPersistent);
+        }
+        validate_reuse(&module.reuse, &evidence)?;
+        module.reuse.insert(evidence.experience, evidence);
+        module.actual_reuse_count = u32::try_from(module.reuse.len()).unwrap_or(u32::MAX);
+        Ok(())
+    }
+
+    /// Promote an existing provisional theory only when a verifier token is
+    /// bound to the same canonical theory, complete lineage, and measured use.
+    #[must_use]
+    pub fn apply_verified_promotion(
+        &mut self,
+        id: Hash32,
+        promotion: &VerifiedProceduralPromotion,
+    ) -> bool {
+        let Some(module) = self.modules.get_mut(&id) else {
+            return false;
+        };
+        if module.status != ModuleStatus::Provisional
+            || id != promotion.theory_hash()
+            || module.source_proofs != *promotion.source_proofs()
+            || module.verified_cases == 0
+            || promotion.verified_cases() < module.verified_cases
+            || promotion.actual_reuse_count() == 0
+            || promotion.actual_reuse_count() > module.actual_reuse_count
+        {
+            return false;
+        }
+        module.status = ModuleStatus::Persistent;
+        true
     }
 }
 
@@ -676,15 +769,7 @@ impl MechanismStore {
         ) {
             return Err(ReuseError::NotPersistent);
         }
-        if !evidence.independently_verified {
-            return Err(ReuseError::Unverified);
-        }
-        if evidence.candidate_executions_without == 0 || evidence.examples_without == 0 {
-            return Err(ReuseError::EmptyCounterfactual);
-        }
-        if module.reuse.contains_key(&evidence.experience) {
-            return Err(ReuseError::DuplicateExperience);
-        }
+        validate_reuse(&module.reuse, &evidence)?;
         module.reuse.insert(evidence.experience, evidence);
         Ok(())
     }

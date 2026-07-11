@@ -743,6 +743,146 @@ impl CollectionMechanismInventor {
             observed_cardinalities,
         })
     }
+
+    /// Invent an element-selection predicate from changing-cardinality traces
+    /// and lift it into a guarded `ForEach` theory.
+    ///
+    /// # Errors
+    ///
+    /// Rejects insufficient, duplicate, fixed-cardinality, non-subset, or
+    /// one-class traces and propagates bounded invention/checking failures.
+    pub fn invent_filter(
+        &self,
+        traces: &[CollectionTrace],
+        maximum_cardinality: u32,
+        limits: InventionLimits,
+    ) -> Result<LearnedCollectionMechanism, CollectionInventionError> {
+        let (source_episodes, observed_cardinalities) =
+            validate_filter_traces(traces, maximum_cardinality)?;
+        let item = VarName("item".to_owned());
+        let integer = Type::Int(cairn_rkl::IntRange {
+            lower: -i64::from(u16::MAX),
+            upper: i64::from(u16::MAX),
+        });
+        let demonstrations = traces
+            .iter()
+            .flat_map(|trace| {
+                let selected = trace.outputs.iter().copied().collect::<BTreeSet<_>>();
+                let item = item.clone();
+                trace.inputs.iter().map(move |input| {
+                    let mut inputs = RuntimeEnvironment::new();
+                    inputs.insert(item.clone(), Value::Int(*input));
+                    BindingExample {
+                        inputs,
+                        output: Value::Bool(selected.contains(input)),
+                    }
+                })
+            })
+            .collect();
+        let element = DefinitionInventor
+            .invent(&InventionProblem {
+                definition_name: "invented_element_selector".to_owned(),
+                parameters: vec![Binder {
+                    name: item.clone(),
+                    ty: integer.clone(),
+                }],
+                return_type: Type::Bool,
+                literals: vec![Value::Int(0), Value::Int(1), Value::Int(2)],
+                demonstrations,
+                limits,
+            })
+            .map_err(CollectionInventionError::Invention)?;
+        let collection = VarName("collection".to_owned());
+        let rule_name = "invented_filter".to_owned();
+        let theory = Theory {
+            inputs: vec![Binder {
+                name: collection.clone(),
+                ty: Type::List {
+                    element: Box::new(integer.clone()),
+                    maximum: maximum_cardinality,
+                },
+            }],
+            definitions: vec![element.proposal.definition.clone()],
+            rules: vec![RewriteRule {
+                name: rule_name.clone(),
+                binders: vec![RuleBinder {
+                    variable: Binder {
+                        name: item.clone(),
+                        ty: integer,
+                    },
+                    domain: Expr::Var(collection.clone()),
+                    quantifier: Quantifier::ForEach,
+                }],
+                guard: Expr::Call {
+                    function: element.proposal.definition.name.clone(),
+                    arguments: vec![Expr::Var(item.clone())],
+                },
+                effects: vec![Effect::Emit(Expr::Var(item))],
+                priority: 0,
+            }],
+            schedule: Schedule::Sequence(vec![rule_name]),
+            renderer: Renderer {
+                canvas: Expr::Var(collection),
+                layers: Vec::new(),
+                conflict_policy: ConflictPolicy::SameValueIdempotent,
+                background: Expr::Int(0),
+            },
+            assumptions: Vec::new(),
+            proof_annotations: Vec::new(),
+        };
+        let theory = TypeChecker::new(10_000)
+            .check_theory(&theory)
+            .map_err(CollectionInventionError::Theory)?;
+        Ok(LearnedCollectionMechanism {
+            element,
+            theory,
+            source_episodes,
+            observed_cardinalities,
+        })
+    }
+}
+
+fn validate_filter_traces(
+    traces: &[CollectionTrace],
+    maximum_cardinality: u32,
+) -> Result<(BTreeSet<cairn_core::Hash32>, BTreeSet<usize>), CollectionInventionError> {
+    if traces.len() < 2 {
+        return Err(CollectionInventionError::InsufficientEpisodes);
+    }
+    let source = traces
+        .iter()
+        .map(|trace| trace.episode)
+        .collect::<BTreeSet<_>>();
+    if source.len() != traces.len() {
+        return Err(CollectionInventionError::DuplicateEpisode);
+    }
+    if maximum_cardinality == 0
+        || traces.iter().any(|trace| {
+            let inputs = trace.inputs.iter().copied().collect::<BTreeSet<_>>();
+            trace.inputs.is_empty()
+                || inputs.len() != trace.inputs.len()
+                || trace.inputs.len() > maximum_cardinality as usize
+                || trace.outputs.iter().any(|value| !inputs.contains(value))
+        })
+    {
+        return Err(CollectionInventionError::InvalidTrace);
+    }
+    let cardinalities = traces
+        .iter()
+        .map(|trace| trace.inputs.len())
+        .collect::<BTreeSet<_>>();
+    if cardinalities.len() < 2 {
+        return Err(CollectionInventionError::FixedCardinalityOnly);
+    }
+    let selected = traces
+        .iter()
+        .map(|trace| trace.outputs.len())
+        .sum::<usize>();
+    let total = traces.iter().map(|trace| trace.inputs.len()).sum::<usize>();
+    if selected == 0 || selected == total {
+        return Err(CollectionInventionError::InvalidTrace);
+    }
+    Ok((source, cardinalities))
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

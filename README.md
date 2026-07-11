@@ -299,6 +299,13 @@ offline theory on changed examples and an unseen eight-element input in one
 proposal; blank memory fails and a different collection law is correctly
 rejected. No ARC claim is made because ARC does not yet expose a valid entity
 collection binding for this theory.
+That binding now exists generically: the same whole theory replays through
+sequence, vector, and finite-field frontends; contrast evidence can invent a
+variable-output selector; and runtime pair search composes independently learned
+map and filter theories when neither works alone. The field bridge reconstructs
+all training cells before ARC use. The frozen first-20 ARC checkpoint remains 17
+exact, 3 resource-limited, and 0 incorrect, so no ARC score gain is claimed. See
+[PROCEDURAL_REUSE_COMPOSITION_FIELD_TRANSFER.md](docs/experiments/PROCEDURAL_REUSE_COMPOSITION_FIELD_TRANSFER.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding
 and durable proof-DAG artifact storage, arbitrary internal-subgraph compilation,

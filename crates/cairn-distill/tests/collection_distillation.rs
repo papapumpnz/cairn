@@ -84,6 +84,30 @@ fn collection_packet_rejects_fixed_cardinality_and_duplicate_set_values() {
         .is_err());
 }
 
+#[test]
+fn offline_filter_lesson_invents_a_guard_and_changes_output_cardinality() {
+    let packet = TeacherPacketCompiler
+        .parse(include_bytes!("fixtures/filter.json"))
+        .expect("filter packet");
+    let verified = DistillationVerifier
+        .verify(
+            TeacherPacketCompiler
+                .compile(&packet, InventionLimits::default())
+                .expect("compile"),
+        )
+        .expect("verified filter");
+    let learned = &verified.collection_mechanisms()[0];
+    assert_eq!(learned.theory.theory().rules[0].name, "invented_filter");
+    assert_ne!(
+        learned.theory.theory().rules[0].guard,
+        cairn_rkl::Expr::Bool(true)
+    );
+    assert_eq!(
+        execute(&learned.theory, &[-12, -2, 0, 3, 11]),
+        BTreeSet::from([Value::Int(-12), Value::Int(-2)])
+    );
+}
+
 fn execute(theory: &CheckedTheory, inputs: &[i64]) -> BTreeSet<Value> {
     let integer = Type::Int(cairn_rkl::IntRange {
         lower: -i64::from(u16::MAX),

@@ -1,0 +1,21 @@
+{
+  "packet_version": "1.0",
+  "domain": "non_benchmark_variable_cardinality_selection",
+  "origin": {"kind": "gpt_offline_teacher_session", "identifier": "variable-cardinality-filter-2026-07-11"},
+  "semantic_intents": [],
+  "mechanism_lessons": [],
+  "collection_mechanism_lessons": [{
+    "name": "retain_members_satisfying_invented_predicate",
+    "kind": "filter",
+    "maximum_cardinality": 32,
+    "episodes": [
+      {"episode": "selection-a", "inputs": [-4, 2], "outputs": [-4]},
+      {"episode": "selection-b", "inputs": [-7, -1, 0, 5], "outputs": [-7, -1]},
+      {"episode": "selection-c", "inputs": [-9, -3, 1, 4, 8], "outputs": [-9, -3]}
+    ]
+  }],
+  "knowledge_claims": [],
+  "procedures": [],
+  "counterexamples": [],
+  "uncertainties": ["selection has only been transfer-tested over signed integers"]
+}

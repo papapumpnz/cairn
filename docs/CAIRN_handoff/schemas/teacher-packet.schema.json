@@ -116,6 +116,7 @@
       "required": ["name", "maximum_cardinality", "episodes"],
       "properties": {
         "name": {"type": "string", "minLength": 1, "maxLength": 256},
+        "kind": {"enum": ["map", "filter"]},
         "maximum_cardinality": {"type": "integer", "minimum": 1, "maximum": 100000},
         "episodes": {
           "type": "array",

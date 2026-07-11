@@ -4,7 +4,9 @@ use cairn_mechanism::{
     CardinalityRange, DerivationCertificate, DomainClass, InventionEvidence, Mechanism, Signature,
     SupportGeometry, VariableId,
 };
-use cairn_memory::{MechanismStore, ProceduralMechanismStore, ProceduralStoreError};
+use cairn_memory::{
+    MechanismStore, ModuleStatus, ProceduralMechanismStore, ProceduralStoreError, ReuseEvidence,
+};
 use cairn_rkl::{
     CheckedTheory, Effect, ExecLimits, Expr, Quantifier, ReferenceTheoryExecutor,
     RuntimeEnvironment, TheoryExecLimits, TheoryExecutionRequest, Type, TypeEnvironment, Value,
@@ -89,14 +91,36 @@ fn quantified_collection_theory_is_canonically_verified_and_persisted() {
         .expect("canonical procedural token");
     let mut store = ProceduralMechanismStore::new();
     let id = store
-        .insert_verified(
+        .insert_provisional(
             first.theory.clone(),
             learned_mechanism.support.clone(),
-            &token,
+            learned_mechanism.proof.source_proofs.clone(),
+            learned_mechanism.proof.verified_cases,
         )
-        .expect("procedural persistence");
+        .expect("provisional procedure");
+    assert!(!store.apply_verified_promotion(id, &token));
+    store
+        .record_verified_reuse(
+            id,
+            ReuseEvidence {
+                experience: Hash32::digest(b"held-out-collection-reuse"),
+                independently_verified: true,
+                necessary_under_ablation: true,
+                candidate_executions_without: first.element.proposal.candidates_evaluated,
+                candidate_executions_with: 1,
+                examples_without: 11,
+                examples_with: 2,
+                proof_nodes_without: u64::from(first.element.proposal.structural_cost),
+                proof_nodes_with: 1,
+            },
+        )
+        .expect("independent reuse receipt");
+    assert!(store.apply_verified_promotion(id, &token));
     assert_eq!(store.len(), 1);
-    assert_eq!(store.modules().next().expect("stored theory").id(), id);
+    let stored = store.modules().next().expect("stored theory");
+    assert_eq!(stored.id(), id);
+    assert_eq!(stored.status(), ModuleStatus::Persistent);
+    assert_eq!(stored.reuse_metrics().necessary_invocations, 1);
     let runtime = CognitionRuntime::with_memories(MechanismStore::new(), store);
     assert_eq!(runtime.procedural_memory().len(), 1);
     let held_out = [-11, -6, -1, 0, 3, 8, 15];

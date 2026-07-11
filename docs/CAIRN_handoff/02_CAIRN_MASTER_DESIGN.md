@@ -6,6 +6,13 @@ Version: 1.0 architecture handoff
 
 Status: implementable research design; no benchmark result is claimed by this document
 
+Implemented checkpoint (2026-07-11): whole-theory procedural memory now records
+independently verified reuse and requires it for promotion. The unchanged
+cognition runtime replays learned map and selector theories through sequence,
+vector, and finite-field frontends and searches two-procedure schedules without
+a supplied composite. Finite-field reconstruction must exactly replay training
+observations before the quarantined ARC adapter may consume a prediction.
+
 ## 0. Executive decision
 
 CAIRN is a CPU-only, transformer-free self-compressing causal theory learner.

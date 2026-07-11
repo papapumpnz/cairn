@@ -35,7 +35,7 @@ use cairn_verifier::PromotionVerifier;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
-pub const DISTILLATION_SEMANTICS_VERSION: &str = "1.2.0";
+pub const DISTILLATION_SEMANTICS_VERSION: &str = "1.3.0";
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -98,8 +98,18 @@ pub struct ScalarExample {
 #[serde(deny_unknown_fields)]
 pub struct CollectionMechanismLesson {
     pub name: String,
+    #[serde(default)]
+    pub kind: CollectionLessonKind,
     pub maximum_cardinality: u32,
     pub episodes: Vec<CollectionEpisode>,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CollectionLessonKind {
+    #[default]
+    Map,
+    Filter,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -193,6 +203,7 @@ pub struct CompiledTeacherPacket {
 
 #[derive(Clone, Debug)]
 struct CompiledCollectionLesson {
+    kind: CollectionLessonKind,
     traces: Vec<CollectionTrace>,
     maximum_cardinality: u32,
     limits: InventionLimits,
@@ -462,9 +473,19 @@ impl DistillationVerifier {
             .collection_lessons
             .iter()
             .map(|lesson| {
-                let learned = CollectionMechanismInventor
-                    .invent(&lesson.traces, lesson.maximum_cardinality, lesson.limits)
-                    .map_err(DistillationError::CollectionInvention)?;
+                let learned = match lesson.kind {
+                    CollectionLessonKind::Map => CollectionMechanismInventor.invent(
+                        &lesson.traces,
+                        lesson.maximum_cardinality,
+                        lesson.limits,
+                    ),
+                    CollectionLessonKind::Filter => CollectionMechanismInventor.invent_filter(
+                        &lesson.traces,
+                        lesson.maximum_cardinality,
+                        lesson.limits,
+                    ),
+                }
+                .map_err(DistillationError::CollectionInvention)?;
                 verified_mechanism_examples = verified_mechanism_examples
                     .saturating_add(replay_collection_lesson(&learned, lesson)?);
                 Ok(learned)
@@ -942,7 +963,8 @@ fn compile_collection_lesson(
         if episode.episode.trim().is_empty()
             || !episode_names.insert(episode.episode.clone())
             || episode.inputs.is_empty()
-            || episode.inputs.len() != episode.outputs.len()
+            || (lesson.kind == CollectionLessonKind::Map
+                && episode.inputs.len() != episode.outputs.len())
             || episode.inputs.len() > lesson.maximum_cardinality as usize
             || episode
                 .inputs
@@ -965,6 +987,7 @@ fn compile_collection_lesson(
         return Err(DistillationError::InvalidCollectionLesson);
     }
     Ok(CompiledCollectionLesson {
+        kind: lesson.kind,
         traces,
         maximum_cardinality: lesson.maximum_cardinality,
         limits,
@@ -1018,8 +1041,11 @@ fn replay_collection_lesson(
             .copied()
             .map(Value::Int)
             .collect::<BTreeSet<_>>();
-        if execution.rendered.facts != expected
-            || execution.rule_firings.len() != trace.inputs.len()
+        let expected_firings = match lesson.kind {
+            CollectionLessonKind::Map => trace.inputs.len(),
+            CollectionLessonKind::Filter => trace.outputs.len(),
+        };
+        if execution.rendered.facts != expected || execution.rule_firings.len() != expected_firings
         {
             return Err(DistillationError::CollectionReplay);
         }

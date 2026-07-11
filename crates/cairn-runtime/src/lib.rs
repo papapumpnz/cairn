@@ -63,6 +63,19 @@ pub struct CollectionSolveOutcome {
     pub demonstration_replays: u64,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CollectionCompositionPrediction {
+    pub modules: Vec<Hash32>,
+    pub output: BTreeSet<i64>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CollectionCompositionOutcome {
+    pub predictions: Vec<CollectionCompositionPrediction>,
+    pub schedules_attempted: u64,
+    pub demonstration_replays: u64,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProceduralSolveError {
     EmptyDemonstrations,
@@ -70,6 +83,7 @@ pub enum ProceduralSolveError {
     EmptyBound,
     DuplicateInput,
     NoVerifiedProposal,
+    UnknownProcedure,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -201,6 +215,100 @@ impl CognitionRuntime {
             proposals_attempted,
             demonstration_replays,
         })
+    }
+
+    /// Enumerate ordered pairs of independently stored procedures. No composite
+    /// mechanism is supplied: every schedule is replayed end-to-end against
+    /// the current demonstrations before it may predict.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed evidence or the absence of an exactly replayed pair.
+    pub fn solve_collection_pair(
+        &self,
+        problem: &CollectionProcedureProblem,
+    ) -> Result<CollectionCompositionOutcome, ProceduralSolveError> {
+        validate_collection_problem(problem)?;
+        let modules = self.procedures.reusable_modules().collect::<Vec<_>>();
+        let mut schedules_attempted = 0_u64;
+        let mut demonstration_replays = 0_u64;
+        let mut predictions = Vec::new();
+        let mut observed_outputs = BTreeSet::new();
+        for first in &modules {
+            for second in &modules {
+                if first.id() == second.id() {
+                    continue;
+                }
+                schedules_attempted = schedules_attempted.saturating_add(1);
+                let mut exact = true;
+                for demonstration in &problem.demonstrations {
+                    demonstration_replays = demonstration_replays.saturating_add(1);
+                    let Some(intermediate) =
+                        execute_collection(first.theory(), &demonstration.input)
+                    else {
+                        exact = false;
+                        break;
+                    };
+                    let input = intermediate.iter().copied().collect::<Vec<_>>();
+                    let Some(output) = execute_collection(second.theory(), &input) else {
+                        exact = false;
+                        break;
+                    };
+                    if output != demonstration.output {
+                        exact = false;
+                        break;
+                    }
+                }
+                if !exact {
+                    continue;
+                }
+                let Some(intermediate) =
+                    execute_collection(first.theory(), &problem.prediction_input)
+                else {
+                    continue;
+                };
+                let input = intermediate.iter().copied().collect::<Vec<_>>();
+                let Some(output) = execute_collection(second.theory(), &input) else {
+                    continue;
+                };
+                if observed_outputs.insert(output.clone()) {
+                    predictions.push(CollectionCompositionPrediction {
+                        modules: vec![first.id(), second.id()],
+                        output,
+                    });
+                }
+                if predictions.len() == problem.maximum_predictions {
+                    break;
+                }
+            }
+        }
+        if predictions.is_empty() {
+            return Err(ProceduralSolveError::NoVerifiedProposal);
+        }
+        Ok(CollectionCompositionOutcome {
+            predictions,
+            schedules_attempted,
+            demonstration_replays,
+        })
+    }
+
+    /// Execute one checked procedural module by content identity. Callers
+    /// remain responsible for current-task replay before trusting the result.
+    ///
+    /// # Errors
+    ///
+    /// Rejects an unknown module or bounded execution failure.
+    pub fn apply_collection_module(
+        &self,
+        module: Hash32,
+        input: &[i64],
+    ) -> Result<BTreeSet<i64>, ProceduralSolveError> {
+        let module = self
+            .procedures
+            .reusable_modules()
+            .find(|candidate| candidate.id() == module)
+            .ok_or(ProceduralSolveError::UnknownProcedure)?;
+        execute_collection(module.theory(), input).ok_or(ProceduralSolveError::NoVerifiedProposal)
     }
 
     /// Admit one modality-neutral experience envelope before any proposal

@@ -2,6 +2,13 @@
 
 The ladder is designed to test the central architecture before expensive full-suite runs. Thresholds are hypotheses to pre-register before implementation of each measured stage. A failed gate is recorded; it is not weakened retroactively. Section order is reporting order, not permission to defer a learning loop: task learning, continual learning, and interactive causal learning begin as soon as their foundation contracts exist.
 
+Latest checkpoint (2026-07-11): verifier-gated procedural reuse, unchanged
+whole-theory transfer through sequence and vector adapters, variable-output
+selector invention, unseen two-procedure composition, and generic finite-field
+rebinding pass. The frozen ARC-AGI-1 first 20 remain 17 exact, 3
+resource-limited, and 0 incorrect. This advances reuse and composition evidence,
+not the general-intelligence or ARC completion gates.
+
 ## 0. Dataset policy
 
 ### Development partitions

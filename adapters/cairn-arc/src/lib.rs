@@ -11,8 +11,8 @@ use cairn_core::{
     TaskId,
 };
 use cairn_field::{
-    EntityFrameLearner, FieldError, FieldEvidence, FiniteField, LocalFieldLearner,
-    PointwiseFieldLearner, RemappedFieldLearner, ResidualConstructorInventor,
+    EntityFrameLearner, FieldError, FieldEvidence, FieldValueCollectionAdapter, FiniteField,
+    LocalFieldLearner, PointwiseFieldLearner, RemappedFieldLearner, ResidualConstructorInventor,
 };
 use cairn_invent::InventionLimits;
 use cairn_reg::RegLimits;
@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.15.0";
+pub const ARC_ADAPTER_SEMANTICS_VERSION: &str = "1.16.0";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ArcGrid {
@@ -364,6 +364,9 @@ pub fn attempt_task_with_runtime(
             Ok((input, output))
         })
         .collect::<Result<Vec<_>, ArcAdapterError>>()?;
+    if let Some(attempt) = attempt_value_collection(task, &training, evidence, runtime)? {
+        return Ok(attempt);
+    }
     match FieldSchemaLearner.learn(&training) {
         Ok(learned) => {
             let predictions = task
@@ -420,6 +423,96 @@ pub fn attempt_task_with_runtime(
         return Ok(attempt);
     }
     attempt_pointwise(task, &training, invention, execution, evidence)
+}
+
+fn attempt_value_collection(
+    task: &ArcTask,
+    training: &[(FiniteField, FiniteField)],
+    evidence: AttemptEvidence,
+    runtime: &CognitionRuntime,
+) -> Result<Option<ArcAttempt>, ArcAdapterError> {
+    if training
+        .iter()
+        .any(|(input, output)| input.shape != output.shape)
+    {
+        return Ok(None);
+    }
+    let test_inputs = task
+        .test
+        .iter()
+        .map(|case| lower(&case.input))
+        .collect::<Result<Vec<_>, _>>()?;
+    let Some(first) = test_inputs.first() else {
+        return Ok(None);
+    };
+    let Ok(problem) = FieldValueCollectionAdapter.lower(training, first) else {
+        return Ok(None);
+    };
+    let Ok(solved) = runtime.solve_collection(&problem) else {
+        return Ok(None);
+    };
+    for prediction in solved.predictions {
+        let mut valid = true;
+        for (input, output) in training {
+            let Ok(candidate) = reconstruct_with_module(runtime, prediction.module, input) else {
+                valid = false;
+                break;
+            };
+            if candidate != *output {
+                valid = false;
+                break;
+            }
+        }
+        if !valid {
+            continue;
+        }
+        let predictions = test_inputs
+            .iter()
+            .map(|input| {
+                reconstruct_with_module(runtime, prediction.module, input)
+                    .and_then(|field| raise(&field))
+            })
+            .collect::<Result<Vec<_>, _>>();
+        let Ok(predictions) = predictions else {
+            continue;
+        };
+        return Ok(Some(ArcAttempt {
+            predictions,
+            evaluated_tests: 0,
+            exact_tests: 0,
+            training_cells: training.iter().map(|(input, _)| input.values.len()).sum(),
+            generic_observations: evidence.observations,
+            relational_nodes: evidence.relational_nodes,
+            relational_facts: evidence.relational_facts,
+            learned_expression: format!("generic_collection_module={:?}", prediction.module),
+        }));
+    }
+    Ok(None)
+}
+
+fn reconstruct_with_module(
+    runtime: &CognitionRuntime,
+    module: Hash32,
+    input: &FiniteField,
+) -> Result<FiniteField, ArcAdapterError> {
+    let mut bindings = std::collections::BTreeMap::new();
+    for value in input
+        .values
+        .iter()
+        .copied()
+        .collect::<std::collections::BTreeSet<_>>()
+    {
+        let output = runtime
+            .apply_collection_module(module, &[value])
+            .map_err(|_| ArcAdapterError::Field(FieldError::Prediction))?;
+        if output.len() != 1 {
+            return Err(ArcAdapterError::Field(FieldError::NoCorrespondence));
+        }
+        bindings.insert(value, *output.iter().next().expect("singleton checked"));
+    }
+    FieldValueCollectionAdapter
+        .reconstruct(input, &bindings)
+        .map_err(ArcAdapterError::Field)
 }
 
 fn attempt_entity_frame(
