@@ -108,6 +108,53 @@ fn unverified_results_and_counterexamples_fail_closed() {
     );
 }
 
+#[test]
+fn checkpoint_replay_restores_learning_counterexamples_and_next_choice() {
+    let mut curriculum = AutonomousCurriculum::new(objectives(), 8).expect("curriculum");
+    for prior_tasks in 0..2 {
+        let decision = curriculum.select_next().expect("base decision");
+        curriculum
+            .record(success(&decision, prior_tasks))
+            .expect("verified result");
+    }
+    let deprecated = MechanismTarget("mechanism-a".to_owned());
+    curriculum
+        .record_counterexample(&deprecated, "counterexample-a".to_owned(), true)
+        .expect("quarantine");
+    curriculum
+        .record_counterexample(&deprecated, "counterexample-b".to_owned(), true)
+        .expect("deprecate");
+
+    let checkpoint = curriculum.checkpoint();
+    let mut restored = AutonomousCurriculum::restore(&checkpoint).expect("replay checkpoint");
+    assert_eq!(restored.history(), curriculum.history());
+    assert_eq!(restored.mechanisms(), curriculum.mechanisms());
+    assert_eq!(
+        restored
+            .mechanisms()
+            .get(&deprecated)
+            .expect("restored mechanism")
+            .status,
+        LearnedMechanismStatus::Deprecated
+    );
+    let next = restored.select_next().expect("next eligible objective");
+    assert_eq!(next.objective, ExperienceId("later-independent".to_owned()));
+}
+
+#[test]
+fn checkpoint_replay_preserves_an_outstanding_decision() {
+    let mut curriculum = AutonomousCurriculum::new(objectives(), 8).expect("curriculum");
+    let expected = curriculum.select_next().expect("decision");
+    let checkpoint = curriculum.checkpoint();
+    assert_eq!(checkpoint.outstanding(), Some(&expected));
+
+    let mut restored = AutonomousCurriculum::restore(&checkpoint).expect("restore");
+    assert_eq!(
+        restored.select_next(),
+        Err(AutonomousCurriculumError::OutstandingDecision)
+    );
+}
+
 fn objectives() -> Vec<DevelopmentalObjective> {
     let a = MechanismTarget("mechanism-a".to_owned());
     let b = MechanismTarget("mechanism-b".to_owned());

@@ -1,12 +1,21 @@
 //! Deterministic developmental curriculum selection from support uncertainty.
 
+use cairn_cas::{Cas, CasError, StoredArtifact};
+use cairn_core::{
+    ArtifactEnvelope, ArtifactError, ArtifactId, ArtifactKind, BlobId, BudgetRecord,
+    CanonicalEncode, CanonicalLimits, CanonicalValue, ProducerRecord, SchemaDescriptor, SchemaRef,
+    SchemaRegistry, SemanticsVersion,
+};
 use cairn_invent::{InventionError, InventionProblem};
 use cairn_rkl::{Type, Value};
 use serde::Serialize;
 use std::collections::{btree_map::Entry, BTreeMap, BTreeSet};
+use std::fmt;
 
 pub const FAILURE_CORE_SEMANTICS_VERSION: &str = "1.0.0";
-pub const DEVELOPMENTAL_CURRICULUM_SEMANTICS_VERSION: &str = "1.0.0";
+pub const DEVELOPMENTAL_CURRICULUM_SEMANTICS_VERSION: &str = "1.1.0";
+pub const CURRICULUM_CHECKPOINT_SCHEMA: &str = "cairn.curriculum.checkpoint";
+pub const CURRICULUM_CHECKPOINT_SCHEMA_VERSION: u32 = 1;
 
 /// Redacted structural evidence for generating a new learning curriculum.
 /// It deliberately contains no task identifier, observation payload, literal
@@ -524,6 +533,47 @@ pub struct LearnedMechanismRecord {
     counterexamples: BTreeSet<String>,
 }
 
+/// Immutable semantic journal entry used to reconstruct developmental state.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CurriculumEvent {
+    Learned {
+        decision: CurriculumDecision,
+        outcome: DevelopmentalOutcome,
+    },
+    Counterexample {
+        target: MechanismTarget,
+        evidence: String,
+    },
+}
+
+/// Canonical replay input for a curriculum process. It contains no task
+/// payloads, answers, verifier tokens, or mutable store snapshot.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CurriculumCheckpoint {
+    semantics_version: String,
+    objectives: Vec<DevelopmentalObjective>,
+    maximum_decisions: u64,
+    events: Vec<CurriculumEvent>,
+    outstanding: Option<CurriculumDecision>,
+}
+
+impl CurriculumCheckpoint {
+    #[must_use]
+    pub fn objectives(&self) -> &[DevelopmentalObjective] {
+        &self.objectives
+    }
+
+    #[must_use]
+    pub fn events(&self) -> &[CurriculumEvent] {
+        &self.events
+    }
+
+    #[must_use]
+    pub const fn outstanding(&self) -> Option<&CurriculumDecision> {
+        self.outstanding.as_ref()
+    }
+}
+
 impl LearnedMechanismRecord {
     #[must_use]
     pub fn counterexamples(&self) -> &BTreeSet<String> {
@@ -549,6 +599,8 @@ pub enum AutonomousCurriculumError {
     NegativeTransfer,
     UnknownMechanism,
     DuplicateCounterexample,
+    UnsupportedCheckpointSemantics,
+    CheckpointReplayMismatch,
 }
 
 /// Stateful deterministic developmental controller. It selects only eligible
@@ -561,6 +613,7 @@ pub struct AutonomousCurriculum {
     completed: BTreeSet<ExperienceId>,
     mechanisms: BTreeMap<MechanismTarget, LearnedMechanismRecord>,
     history: Vec<DevelopmentalOutcome>,
+    events: Vec<CurriculumEvent>,
     outstanding: Option<CurriculumDecision>,
     issued: u64,
     maximum_decisions: u64,
@@ -605,6 +658,7 @@ impl AutonomousCurriculum {
             completed: BTreeSet::new(),
             mechanisms: BTreeMap::new(),
             history: Vec::new(),
+            events: Vec::new(),
             outstanding: None,
             issued: 0,
             maximum_decisions,
@@ -758,7 +812,11 @@ impl AutonomousCurriculum {
             }
         }
         self.completed.insert(decision.objective.clone());
-        self.history.push(outcome);
+        self.history.push(outcome.clone());
+        self.events.push(CurriculumEvent::Learned {
+            decision: decision.clone(),
+            outcome,
+        });
         self.outstanding = None;
         Ok(())
     }
@@ -775,9 +833,13 @@ impl AutonomousCurriculum {
         evidence: String,
         independently_verified: bool,
     ) -> Result<LearnedMechanismStatus, AutonomousCurriculumError> {
+        if self.outstanding.is_some() {
+            return Err(AutonomousCurriculumError::OutstandingDecision);
+        }
         if !independently_verified || evidence.trim().is_empty() {
             return Err(AutonomousCurriculumError::UnverifiedOutcome);
         }
+        let event_evidence = evidence.clone();
         let record = self
             .mechanisms
             .get_mut(target)
@@ -790,7 +852,62 @@ impl AutonomousCurriculum {
         } else {
             LearnedMechanismStatus::Quarantined
         };
-        Ok(record.status)
+        let status = record.status;
+        self.events.push(CurriculumEvent::Counterexample {
+            target: target.clone(),
+            evidence: event_evidence,
+        });
+        Ok(status)
+    }
+
+    /// Produce an immutable content-free replay checkpoint.
+    #[must_use]
+    pub fn checkpoint(&self) -> CurriculumCheckpoint {
+        CurriculumCheckpoint {
+            semantics_version: DEVELOPMENTAL_CURRICULUM_SEMANTICS_VERSION.to_owned(),
+            objectives: self.objectives.values().cloned().collect(),
+            maximum_decisions: self.maximum_decisions,
+            events: self.events.clone(),
+            outstanding: self.outstanding.clone(),
+        }
+    }
+
+    /// Reconstruct curriculum state only by replaying every journal entry
+    /// through ordinary selection, outcome, and counterexample methods.
+    ///
+    /// # Errors
+    ///
+    /// Rejects unsupported semantics or any decision, evidence, ordering, or
+    /// terminal-state divergence.
+    pub fn restore(checkpoint: &CurriculumCheckpoint) -> Result<Self, AutonomousCurriculumError> {
+        if checkpoint.semantics_version != DEVELOPMENTAL_CURRICULUM_SEMANTICS_VERSION {
+            return Err(AutonomousCurriculumError::UnsupportedCheckpointSemantics);
+        }
+        let mut restored = Self::new(checkpoint.objectives.clone(), checkpoint.maximum_decisions)?;
+        for event in &checkpoint.events {
+            match event {
+                CurriculumEvent::Learned { decision, outcome } => {
+                    let replayed = restored.select_next()?;
+                    if &replayed != decision {
+                        return Err(AutonomousCurriculumError::CheckpointReplayMismatch);
+                    }
+                    restored.record(outcome.clone())?;
+                }
+                CurriculumEvent::Counterexample { target, evidence } => {
+                    restored.record_counterexample(target, evidence.clone(), true)?;
+                }
+            }
+        }
+        if let Some(expected) = &checkpoint.outstanding {
+            let replayed = restored.select_next()?;
+            if &replayed != expected {
+                return Err(AutonomousCurriculumError::CheckpointReplayMismatch);
+            }
+        }
+        if restored.events != checkpoint.events || restored.outstanding != checkpoint.outstanding {
+            return Err(AutonomousCurriculumError::CheckpointReplayMismatch);
+        }
+        Ok(restored)
     }
 
     #[must_use]
@@ -806,6 +923,427 @@ impl AutonomousCurriculum {
     #[must_use]
     pub fn completed_objectives(&self) -> usize {
         self.completed.len()
+    }
+}
+
+impl CanonicalEncode for CurriculumCheckpoint {
+    fn encode_canonical(&self) -> Result<Vec<u8>, cairn_core::CanonicalError> {
+        curriculum_checkpoint_value(self).encode_canonical()
+    }
+}
+
+/// Non-semantic provenance and resource observations for one checkpoint.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CurriculumCheckpointMetadata {
+    pub parent_ids: Vec<ArtifactId>,
+    pub producer: ProducerRecord,
+    pub budget: BudgetRecord,
+    pub created_at_logical: u64,
+}
+
+/// Canonical CAS boundary for replay-validated curriculum checkpoints.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct CurriculumCheckpointArchive;
+
+impl CurriculumCheckpointArchive {
+    /// Persist a checkpoint only after deterministic semantic replay succeeds.
+    ///
+    /// # Errors
+    ///
+    /// Rejects missing lineage, replay divergence, artifact/canonicalization
+    /// failures, and storage errors.
+    pub fn persist(
+        &self,
+        cas: &Cas,
+        checkpoint: &CurriculumCheckpoint,
+        metadata: CurriculumCheckpointMetadata,
+    ) -> Result<StoredArtifact, CurriculumCheckpointArchiveError> {
+        if metadata.parent_ids.is_empty() {
+            return Err(CurriculumCheckpointArchiveError::MissingParent);
+        }
+        AutonomousCurriculum::restore(checkpoint)
+            .map_err(CurriculumCheckpointArchiveError::Replay)?;
+        let envelope = ArtifactEnvelope::new(
+            curriculum_checkpoint_schema()?,
+            curriculum_checkpoint_kind()?,
+            curriculum_checkpoint_semantics(),
+            metadata.parent_ids,
+            None,
+            metadata.producer,
+            metadata.budget,
+            metadata.created_at_logical,
+            checkpoint.clone(),
+        )?;
+        cas.put_envelope(&envelope)
+            .map_err(CurriculumCheckpointArchiveError::Storage)
+    }
+
+    /// Load, bound, decode, and deterministically replay a checkpoint before
+    /// returning usable curriculum state.
+    ///
+    /// # Errors
+    ///
+    /// Rejects corruption, unsupported versions, missing lineage, non-global
+    /// scope, malformed payloads, and any replay divergence.
+    pub fn load(
+        &self,
+        cas: &Cas,
+        blob_id: BlobId,
+    ) -> Result<AutonomousCurriculum, CurriculumCheckpointArchiveError> {
+        let mut registry = SchemaRegistry::new();
+        registry.register(SchemaDescriptor {
+            name: CURRICULUM_CHECKPOINT_SCHEMA.to_owned(),
+            current_version: CURRICULUM_CHECKPOINT_SCHEMA_VERSION,
+            additive_read_versions: BTreeSet::new(),
+            maximum_payload_bytes: 1_048_576,
+        })?;
+        let envelope = cas.get_envelope(
+            blob_id,
+            &registry,
+            &BTreeSet::from([curriculum_checkpoint_semantics()]),
+            CanonicalLimits {
+                max_input_bytes: 1_200_000,
+                max_depth: 32,
+                max_collection_items: 100_000,
+                max_scalar_bytes: 65_536,
+            },
+        )?;
+        if envelope.artifact_kind != curriculum_checkpoint_kind()?
+            || envelope.parent_ids.is_empty()
+            || envelope.task_scope.is_some()
+        {
+            return Err(CurriculumCheckpointArchiveError::InvalidEnvelope);
+        }
+        let checkpoint = curriculum_checkpoint_from_value(envelope.payload)?;
+        AutonomousCurriculum::restore(&checkpoint).map_err(CurriculumCheckpointArchiveError::Replay)
+    }
+}
+
+#[derive(Debug)]
+pub enum CurriculumCheckpointArchiveError {
+    MissingParent,
+    InvalidEnvelope,
+    InvalidPayload(&'static str),
+    Replay(AutonomousCurriculumError),
+    Artifact(ArtifactError),
+    Storage(CasError),
+}
+
+impl fmt::Display for CurriculumCheckpointArchiveError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidPayload(message) => {
+                write!(formatter, "invalid curriculum checkpoint: {message}")
+            }
+            Self::Replay(error) => write!(formatter, "curriculum replay failed: {error:?}"),
+            Self::Artifact(error) => error.fmt(formatter),
+            Self::Storage(error) => error.fmt(formatter),
+            other => write!(formatter, "{other:?}"),
+        }
+    }
+}
+
+impl std::error::Error for CurriculumCheckpointArchiveError {}
+
+impl From<ArtifactError> for CurriculumCheckpointArchiveError {
+    fn from(value: ArtifactError) -> Self {
+        Self::Artifact(value)
+    }
+}
+
+impl From<CasError> for CurriculumCheckpointArchiveError {
+    fn from(value: CasError) -> Self {
+        Self::Storage(value)
+    }
+}
+
+fn curriculum_checkpoint_schema() -> Result<SchemaRef, ArtifactError> {
+    SchemaRef::new(
+        CURRICULUM_CHECKPOINT_SCHEMA,
+        CURRICULUM_CHECKPOINT_SCHEMA_VERSION,
+    )
+}
+
+fn curriculum_checkpoint_kind() -> Result<ArtifactKind, ArtifactError> {
+    ArtifactKind::new("curriculum.checkpoint")
+}
+
+const fn curriculum_checkpoint_semantics() -> SemanticsVersion {
+    SemanticsVersion::new(1, 1, 0)
+}
+
+fn curriculum_checkpoint_value(checkpoint: &CurriculumCheckpoint) -> CanonicalValue {
+    CanonicalValue::Array(vec![
+        CanonicalValue::Text("cairn.curriculum.checkpoint.v1".to_owned()),
+        CanonicalValue::Text(checkpoint.semantics_version.clone()),
+        CanonicalValue::Unsigned(checkpoint.maximum_decisions),
+        CanonicalValue::Array(
+            checkpoint
+                .objectives
+                .iter()
+                .map(curriculum_objective_value)
+                .collect(),
+        ),
+        CanonicalValue::Array(
+            checkpoint
+                .events
+                .iter()
+                .map(curriculum_event_value)
+                .collect(),
+        ),
+        checkpoint
+            .outstanding
+            .as_ref()
+            .map_or(CanonicalValue::Null, curriculum_decision_value),
+    ])
+}
+
+fn curriculum_objective_value(objective: &DevelopmentalObjective) -> CanonicalValue {
+    CanonicalValue::Array(vec![
+        CanonicalValue::Text(objective.id.0.clone()),
+        CanonicalValue::Unsigned(learning_axis_code(objective.axis)),
+        CanonicalValue::Text(objective.produces.0.clone()),
+        CanonicalValue::Array(
+            objective
+                .prerequisites
+                .iter()
+                .map(|target| CanonicalValue::Text(target.0.clone()))
+                .collect(),
+        ),
+        CanonicalValue::Unsigned(objective.competing_hypotheses),
+        CanonicalValue::Unsigned(objective.expected_transfer_microunits),
+        CanonicalValue::Unsigned(objective.action_cost),
+        CanonicalValue::Unsigned(objective.irreversible_risk),
+    ])
+}
+
+fn curriculum_decision_value(decision: &CurriculumDecision) -> CanonicalValue {
+    CanonicalValue::Array(vec![
+        CanonicalValue::Unsigned(decision.sequence),
+        CanonicalValue::Text(decision.objective.0.clone()),
+        CanonicalValue::Unsigned(learning_axis_code(decision.axis)),
+        CanonicalValue::Text(decision.produces.0.clone()),
+        CanonicalValue::Unsigned(decision.expected_information_microunits),
+        CanonicalValue::Unsigned(decision.expected_transfer_microunits),
+        CanonicalValue::Unsigned(decision.underuse_bonus),
+    ])
+}
+
+fn curriculum_outcome_value(outcome: &DevelopmentalOutcome) -> CanonicalValue {
+    CanonicalValue::Array(vec![
+        CanonicalValue::Unsigned(outcome.decision_sequence),
+        CanonicalValue::Text(outcome.objective.0.clone()),
+        CanonicalValue::Text(outcome.mechanism_evidence.clone()),
+        CanonicalValue::Bool(outcome.independently_verified),
+        CanonicalValue::Unsigned(u64::from(outcome.held_out_transfer_cases)),
+        CanonicalValue::Unsigned(outcome.candidate_work_without),
+        CanonicalValue::Unsigned(outcome.candidate_work_with),
+        CanonicalValue::Unsigned(u64::from(outcome.examples_without)),
+        CanonicalValue::Unsigned(u64::from(outcome.examples_with)),
+        CanonicalValue::Unsigned(u64::from(outcome.retained_prior_tasks)),
+        CanonicalValue::Unsigned(u64::from(outcome.prior_tasks)),
+        CanonicalValue::Unsigned(u64::from(outcome.negative_transfers)),
+    ])
+}
+
+fn curriculum_event_value(event: &CurriculumEvent) -> CanonicalValue {
+    match event {
+        CurriculumEvent::Learned { decision, outcome } => CanonicalValue::Array(vec![
+            CanonicalValue::Unsigned(0),
+            curriculum_decision_value(decision),
+            curriculum_outcome_value(outcome),
+        ]),
+        CurriculumEvent::Counterexample { target, evidence } => CanonicalValue::Array(vec![
+            CanonicalValue::Unsigned(1),
+            CanonicalValue::Text(target.0.clone()),
+            CanonicalValue::Text(evidence.clone()),
+        ]),
+    }
+}
+
+fn curriculum_checkpoint_from_value(
+    value: CanonicalValue,
+) -> Result<CurriculumCheckpoint, CurriculumCheckpointArchiveError> {
+    let values = checkpoint_array(value, 6, "checkpoint field count")?;
+    if checkpoint_text(&values[0])? != "cairn.curriculum.checkpoint.v1" {
+        return Err(CurriculumCheckpointArchiveError::InvalidPayload(
+            "checkpoint marker mismatch",
+        ));
+    }
+    let objectives = checkpoint_values(&values[3])?
+        .iter()
+        .cloned()
+        .map(curriculum_objective_from_value)
+        .collect::<Result<Vec<_>, _>>()?;
+    let events = checkpoint_values(&values[4])?
+        .iter()
+        .cloned()
+        .map(curriculum_event_from_value)
+        .collect::<Result<Vec<_>, _>>()?;
+    let outstanding = match &values[5] {
+        CanonicalValue::Null => None,
+        value => Some(curriculum_decision_from_value(value.clone())?),
+    };
+    Ok(CurriculumCheckpoint {
+        semantics_version: checkpoint_text(&values[1])?.to_owned(),
+        maximum_decisions: checkpoint_u64(&values[2])?,
+        objectives,
+        events,
+        outstanding,
+    })
+}
+
+fn curriculum_objective_from_value(
+    value: CanonicalValue,
+) -> Result<DevelopmentalObjective, CurriculumCheckpointArchiveError> {
+    let values = checkpoint_array(value, 8, "objective field count")?;
+    let prerequisites = checkpoint_values(&values[3])?
+        .iter()
+        .map(|value| checkpoint_text(value).map(|value| MechanismTarget(value.to_owned())))
+        .collect::<Result<BTreeSet<_>, _>>()?;
+    Ok(DevelopmentalObjective {
+        id: ExperienceId(checkpoint_text(&values[0])?.to_owned()),
+        axis: learning_axis_from_code(checkpoint_u64(&values[1])?)?,
+        produces: MechanismTarget(checkpoint_text(&values[2])?.to_owned()),
+        prerequisites,
+        competing_hypotheses: checkpoint_u64(&values[4])?,
+        expected_transfer_microunits: checkpoint_u64(&values[5])?,
+        action_cost: checkpoint_u64(&values[6])?,
+        irreversible_risk: checkpoint_u64(&values[7])?,
+    })
+}
+
+fn curriculum_decision_from_value(
+    value: CanonicalValue,
+) -> Result<CurriculumDecision, CurriculumCheckpointArchiveError> {
+    let values = checkpoint_array(value, 7, "decision field count")?;
+    Ok(CurriculumDecision {
+        sequence: checkpoint_u64(&values[0])?,
+        objective: ExperienceId(checkpoint_text(&values[1])?.to_owned()),
+        axis: learning_axis_from_code(checkpoint_u64(&values[2])?)?,
+        produces: MechanismTarget(checkpoint_text(&values[3])?.to_owned()),
+        expected_information_microunits: checkpoint_u64(&values[4])?,
+        expected_transfer_microunits: checkpoint_u64(&values[5])?,
+        underuse_bonus: checkpoint_u64(&values[6])?,
+    })
+}
+
+fn curriculum_outcome_from_value(
+    value: CanonicalValue,
+) -> Result<DevelopmentalOutcome, CurriculumCheckpointArchiveError> {
+    let values = checkpoint_array(value, 12, "outcome field count")?;
+    Ok(DevelopmentalOutcome {
+        decision_sequence: checkpoint_u64(&values[0])?,
+        objective: ExperienceId(checkpoint_text(&values[1])?.to_owned()),
+        mechanism_evidence: checkpoint_text(&values[2])?.to_owned(),
+        independently_verified: checkpoint_bool(&values[3])?,
+        held_out_transfer_cases: checkpoint_u32(&values[4])?,
+        candidate_work_without: checkpoint_u64(&values[5])?,
+        candidate_work_with: checkpoint_u64(&values[6])?,
+        examples_without: checkpoint_u32(&values[7])?,
+        examples_with: checkpoint_u32(&values[8])?,
+        retained_prior_tasks: checkpoint_u32(&values[9])?,
+        prior_tasks: checkpoint_u32(&values[10])?,
+        negative_transfers: checkpoint_u32(&values[11])?,
+    })
+}
+
+fn curriculum_event_from_value(
+    value: CanonicalValue,
+) -> Result<CurriculumEvent, CurriculumCheckpointArchiveError> {
+    let values = checkpoint_array(value, 3, "event field count")?;
+    match checkpoint_u64(&values[0])? {
+        0 => Ok(CurriculumEvent::Learned {
+            decision: curriculum_decision_from_value(values[1].clone())?,
+            outcome: curriculum_outcome_from_value(values[2].clone())?,
+        }),
+        1 => Ok(CurriculumEvent::Counterexample {
+            target: MechanismTarget(checkpoint_text(&values[1])?.to_owned()),
+            evidence: checkpoint_text(&values[2])?.to_owned(),
+        }),
+        _ => Err(CurriculumCheckpointArchiveError::InvalidPayload(
+            "unknown event code",
+        )),
+    }
+}
+
+fn checkpoint_array(
+    value: CanonicalValue,
+    expected: usize,
+    error: &'static str,
+) -> Result<Vec<CanonicalValue>, CurriculumCheckpointArchiveError> {
+    let CanonicalValue::Array(values) = value else {
+        return Err(CurriculumCheckpointArchiveError::InvalidPayload(error));
+    };
+    if values.len() != expected {
+        return Err(CurriculumCheckpointArchiveError::InvalidPayload(error));
+    }
+    Ok(values)
+}
+
+fn checkpoint_values(
+    value: &CanonicalValue,
+) -> Result<&[CanonicalValue], CurriculumCheckpointArchiveError> {
+    let CanonicalValue::Array(values) = value else {
+        return Err(CurriculumCheckpointArchiveError::InvalidPayload(
+            "value is not an array",
+        ));
+    };
+    Ok(values)
+}
+
+fn checkpoint_text(value: &CanonicalValue) -> Result<&str, CurriculumCheckpointArchiveError> {
+    let CanonicalValue::Text(value) = value else {
+        return Err(CurriculumCheckpointArchiveError::InvalidPayload(
+            "value is not text",
+        ));
+    };
+    Ok(value)
+}
+
+fn checkpoint_u64(value: &CanonicalValue) -> Result<u64, CurriculumCheckpointArchiveError> {
+    let CanonicalValue::Unsigned(value) = value else {
+        return Err(CurriculumCheckpointArchiveError::InvalidPayload(
+            "value is not unsigned",
+        ));
+    };
+    Ok(*value)
+}
+
+fn checkpoint_u32(value: &CanonicalValue) -> Result<u32, CurriculumCheckpointArchiveError> {
+    u32::try_from(checkpoint_u64(value)?)
+        .map_err(|_| CurriculumCheckpointArchiveError::InvalidPayload("unsigned value exceeds u32"))
+}
+
+fn checkpoint_bool(value: &CanonicalValue) -> Result<bool, CurriculumCheckpointArchiveError> {
+    let CanonicalValue::Bool(value) = value else {
+        return Err(CurriculumCheckpointArchiveError::InvalidPayload(
+            "value is not Boolean",
+        ));
+    };
+    Ok(*value)
+}
+
+const fn learning_axis_code(axis: LearningAxis) -> u64 {
+    match axis {
+        LearningAxis::CausalLaw => 0,
+        LearningAxis::Cardinality => 1,
+        LearningAxis::Value => 2,
+        LearningAxis::Layout => 3,
+        LearningAxis::Composition => 4,
+    }
+}
+
+fn learning_axis_from_code(code: u64) -> Result<LearningAxis, CurriculumCheckpointArchiveError> {
+    match code {
+        0 => Ok(LearningAxis::CausalLaw),
+        1 => Ok(LearningAxis::Cardinality),
+        2 => Ok(LearningAxis::Value),
+        3 => Ok(LearningAxis::Layout),
+        4 => Ok(LearningAxis::Composition),
+        _ => Err(CurriculumCheckpointArchiveError::InvalidPayload(
+            "unknown learning axis",
+        )),
     }
 }
 

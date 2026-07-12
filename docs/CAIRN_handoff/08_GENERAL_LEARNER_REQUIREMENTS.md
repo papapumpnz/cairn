@@ -785,7 +785,30 @@ sizes are not used to claim marginal improvement.
 
 Counterexample policy is executable: one distinct verified counterexample
 quarantines and a second deprecates; duplicate or unverified evidence is
-rejected. The finite objective set is still authored by a generator, composition
-is only selected rather than executed in this new integration, and deprecation
-status is not restart persistent. This advances G6 without completing open-ended
-curriculum generation or broad general intelligence.
+rejected. Section 31 records the subsequent restart-safe curriculum result. The
+finite objective set is still authored by a generator and composition is only
+selected rather than executed in this integration. This advances G6 without
+completing open-ended curriculum generation or broad general intelligence.
+
+## 31. Restartable developmental-authority checkpoint
+
+Developmental curriculum semantics 1.1.0 adds a bounded canonical event journal
+and CAS archive. The checkpoint carries objective definitions, fixed decision
+budget, accepted decision/outcome events, verified counterexamples, and an
+optional outstanding decision. It carries no observations, answers, verifier
+tokens, cached status, task scope, or domain labels.
+
+Restore creates an empty controller and replays every event through ordinary
+deterministic selection and evidence admission. Learned prerequisites, reuse
+counts, completion, quarantine, and deprecation are recalculated; they are not
+trusted from storage. Nonempty lineage, schema, semantics, kind, canonical
+bounds, global scope, and exact decision reproduction are mandatory.
+
+In frozen G6, curriculum state is lost and restored at both mechanism-memory
+restart boundaries. The final checkpoint includes two counterexamples and
+reproduces `target-d` as deprecated, while `target-a` and `target-b` still unlock
+the composition objective. A modified recorded objective, malformed payload,
+and missing lineage fail closed. This closes the prior process-local curriculum
+authority gap. It does not generate new objective schemas, execute the newly
+selected composition, establish long-horizon unknown-world learning, or satisfy
+the general-intelligence and ARC targets.

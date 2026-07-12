@@ -8,8 +8,9 @@ use cairn_core::{
     SchemaRef, SemanticsVersion,
 };
 use cairn_curriculum::{
-    AutonomousCurriculum, DevelopmentalObjective, DevelopmentalOutcome, ExperienceId, LearningAxis,
-    MechanismTarget, SustainedLearningGate, SustainedLearningPoint,
+    AutonomousCurriculum, CurriculumCheckpointArchive, CurriculumCheckpointMetadata,
+    DevelopmentalObjective, DevelopmentalOutcome, ExperienceId, LearnedMechanismStatus,
+    LearningAxis, MechanismTarget, SustainedLearningGate, SustainedLearningPoint,
 };
 use cairn_memory::{
     InternalMechanismStore, InternalPromotionProgress, InternalReuseArtifactArchive,
@@ -53,6 +54,7 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
     let mut retention_hosts = Vec::<ProofGraph>::new();
     let mut points = Vec::<SustainedLearningPoint>::new();
     let mut completed_restarts = 0_u32;
+    let mut curriculum_restores = 0_u32;
     let mut selected = Vec::new();
 
     for stage in 0..families.len() {
@@ -193,9 +195,49 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
         });
 
         if stage == 1 || stage + 1 == families.len() {
+            if stage + 1 == families.len() {
+                let target = MechanismTarget("target-d".to_owned());
+                assert_eq!(
+                    curriculum
+                        .record_counterexample(
+                            &target,
+                            "held-out-overlap-failure".to_owned(),
+                            true,
+                        )
+                        .expect("quarantine failed mechanism"),
+                    LearnedMechanismStatus::Quarantined
+                );
+                assert_eq!(
+                    curriculum
+                        .record_counterexample(
+                            &target,
+                            "held-out-nesting-failure".to_owned(),
+                            true,
+                        )
+                        .expect("deprecate failed mechanism"),
+                    LearnedMechanismStatus::Deprecated
+                );
+            }
+            let curriculum_parent = parent(&cas, &format!("curriculum-stage-{stage}"));
+            let checkpoint = CurriculumCheckpointArchive
+                .persist(
+                    &cas,
+                    &curriculum.checkpoint(),
+                    CurriculumCheckpointMetadata {
+                        parent_ids: vec![curriculum_parent],
+                        producer: producer(),
+                        budget: budget(),
+                        created_at_logical: 1_000 + u64::try_from(stage).expect("small"),
+                    },
+                )
+                .expect("persist curriculum checkpoint");
             drop(cas);
             cas = Cas::open(&fixture.path, CasLimits::default()).expect("restart CAS");
             cas.recover().expect("recover CAS");
+            curriculum = CurriculumCheckpointArchive
+                .load(&cas, checkpoint.envelope_blob_id)
+                .expect("restore curriculum by replay");
+            curriculum_restores = curriculum_restores.saturating_add(1);
             store = reconstruct_store(&cas, &persisted);
             completed_restarts = completed_restarts.saturating_add(1);
             points.last_mut().expect("point").completed_restarts = completed_restarts;
@@ -218,6 +260,15 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
     );
     assert_eq!(selected, ["family-a", "family-b", "family-c", "family-d"]);
     assert_eq!(completed_restarts, 2);
+    assert_eq!(curriculum_restores, 2);
+    assert_eq!(
+        curriculum
+            .mechanisms()
+            .get(&MechanismTarget("target-d".to_owned()))
+            .expect("restored deprecated mechanism")
+            .status,
+        LearnedMechanismStatus::Deprecated
+    );
     SustainedLearningGate
         .verify(&points)
         .expect("sustained autonomous learning gate");
@@ -228,7 +279,7 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
     assert!(points.iter().all(|point| point.proof_units_with == 4));
     assert_eq!(store.len(), 4);
     eprintln!(
-        "G6_AUTONOMOUS_INTERNAL selected=family-a,family-b,family-c,family-d next=compose-first-two mechanisms=1->2->3->4 mechanism_hashes={},{},{},{} candidate_windows=18->9_each examples=4->1_each proof_units=28->4_each restarts=2 retained=6/6 negative_transfer=0/10",
+        "G6_AUTONOMOUS_INTERNAL selected=family-a,family-b,family-c,family-d next=compose-first-two mechanisms=1->2->3->4 mechanism_hashes={},{},{},{} candidate_windows=18->9_each examples=4->1_each proof_units=28->4_each restarts=2 curriculum_restores=2 deprecated=target-d retained=6/6 negative_transfer=0/10",
         persisted[0].mechanism,
         persisted[1].mechanism,
         persisted[2].mechanism,

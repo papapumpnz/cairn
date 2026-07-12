@@ -8,6 +8,8 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+cairn-cas = { path = "../cairn-cas" }
+cairn-core = { path = "../cairn-core" }
 cairn-invent = { path = "../cairn-invent" }
 cairn-rkl = { path = "../cairn-rkl" }
 serde = { version = "=1.0.217", default-features = false, features = ["derive", "std"] }

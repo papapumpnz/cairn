@@ -364,6 +364,14 @@ four mechanisms across two CAS restarts with repeated fixed memory-off gains,
 retains every prior task, rejects unrelated transfer, and then unlocks a
 composition objective from learned prerequisites. See
 [G6_AUTONOMOUS_RESTART_CURRICULUM.md](docs/experiments/G6_AUTONOMOUS_RESTART_CURRICULUM.md).
+The developmental controller itself is now restart-safe as well. Its canonical
+checkpoint stores objective definitions and an immutable content-free event
+journal, never learned-status authority. Both G6 restart boundaries rebuild a
+fresh controller by deterministic selection/admission replay; the final replay
+recovers a two-counterexample deprecation before selecting the still-eligible
+composition. A forged recorded decision fails closed. This is durable bounded
+curriculum learning, not open-ended curriculum generation or general
+intelligence.
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding,
 arbitrary non-contiguous internal-subgraph mining and RKL lowering,

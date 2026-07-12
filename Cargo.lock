@@ -123,6 +123,8 @@ dependencies = [
 name = "cairn-curriculum"
 version = "0.1.0"
 dependencies = [
+ "cairn-cas",
+ "cairn-core",
  "cairn-invent",
  "cairn-rkl",
  "serde",

@@ -843,3 +843,13 @@ counterexample quarantines; two deprecate. `SustainedLearningGate` requires at
 least three growing phases, strict within-phase candidate/sample/proof
 reduction, capability non-regression, complete retention, negative transfer
 below 2%, and restart evidence.
+
+Developmental semantics 1.1.0 adds `CurriculumCheckpoint`, `CurriculumEvent`,
+and `CurriculumCheckpointArchive`. The canonical checkpoint contains the
+ordered objective contract, fixed decision budget, accepted event journal, and
+optional outstanding decision. It deliberately omits derived mechanism maps
+and lifecycle statuses. Loading validates bounded schema/kind/semantics/scope
+and nonempty lineage, then reconstructs an empty `AutonomousCurriculum` and
+replays ordinary selection, admission, and counterexample operations. Every
+recorded decision must equal the deterministic recomputation. Restored state is
+usable authority only after this replay succeeds.

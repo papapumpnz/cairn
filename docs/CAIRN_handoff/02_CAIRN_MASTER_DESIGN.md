@@ -76,6 +76,14 @@ reductions, complete retention, and zero unrelated transfer. The finite
 objective set remains generator-authored, so this is bounded autonomy rather
 than open-ended self-generated experience.
 
+The controller no longer survives those restarts through process memory. A
+canonical content-free journal persists objective definitions, accepted
+learning summaries, counterexamples, and outstanding work. Restore creates a
+fresh controller and deterministically replays its public methods; learned
+support, quarantine, deprecation, and prerequisite eligibility are derived
+again rather than trusted from serialized flags. Changed decisions or malformed
+lineage fail closed.
+
 The architecture deliberately avoids two failed patterns:
 
 ```text

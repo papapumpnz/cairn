@@ -40,6 +40,8 @@ candidate windows: 18 -> 9 in every family
 examples: 4 -> 1 in every family
 proof units: 28 -> 4 in every family
 CAS restarts: 2
+curriculum checkpoint restores: 2
+restored lifecycle state: target-d deprecated from two verified counterexamples
 aggregate retained prior tasks: 6/6
 unrelated negative transfer: 0/10
 ```
@@ -59,18 +61,26 @@ execution; the separate G3/G6 composition suites validate execution and report
 the latest same-task marginal reductions from 24 to 16 candidates and ten to
 six examples.
 
-## Counterexample behavior
+## Restart and counterexample behavior
 
 One distinct independently verified counterexample quarantines its mechanism;
 a second deprecates it. Duplicate, empty, or unverified evidence cannot change
 status. Quarantined and deprecated mechanisms no longer satisfy curriculum
-prerequisites. Persistence of deprecation state itself remains future work.
+prerequisites.
+
+At both CAS boundaries the controller writes a canonical, parent-bound event
+journal, loses its process state, and reconstructs a fresh controller by
+replaying ordinary selection and admission. The final restart reproduces the
+two counterexamples and the deprecated status of `target-d`; it does not trust
+a serialized status flag. Malformed payloads, missing lineage, and a forged
+recorded choice fail closed.
 
 ## Claim boundary
 
 This replaces scripted curriculum order with bounded stateful selection and
-demonstrates four learned mechanisms across two restarts. The objective set is
-still finite and generator-authored. It does not establish open-ended experience
-generation, RKL lowering of arbitrary proof operations, unrestricted
-composition discovery, natural perception, broad general intelligence, or the
-80% ARC target. ARC remains at the last measured 36/400.
+demonstrates four learned mechanisms plus reconstructed developmental authority
+across two restarts. The objective set is still finite and generator-authored.
+It does not establish open-ended experience generation, RKL lowering of
+arbitrary proof operations, unrestricted composition discovery, natural
+perception, broad general intelligence, or the 80% ARC target. ARC remains at
+the last measured 36/400.

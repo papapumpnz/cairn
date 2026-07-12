@@ -23,6 +23,14 @@ entities. The causal ablation adds one exact solve and the full frozen result is
 cross-frontend transfer test; the 80% ARC and general-intelligence gates remain
 failed.
 
+The G6 developmental controller now crosses the same two restart boundaries as
+mechanism memory through canonical event replay. Four mechanisms and their
+verified reductions are reconstructed, two counterexamples reproduce one
+deprecation, and the remaining learned prerequisites unlock composition. This
+closes process-local curriculum authority but does not generate new objective
+schemas or execute the selected composition; the general-intelligence gate
+remains failed and ARC remains 36/400.
+
 ## 0. Dataset policy
 
 ### Development partitions

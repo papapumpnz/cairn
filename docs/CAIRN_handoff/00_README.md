@@ -55,6 +55,12 @@ The deployed answer path remains transformer-free and CPU-only. Verified
 non-ARC knowledge may be retrieved during ARC evaluation, but must be rebound
 and replayed on current demonstrations and may never encode benchmark answers.
 
+The bounded developmental controller now persists only a canonical,
+content-free event journal. After process loss, a fresh controller must
+reproduce every choice and evidence transition before learned prerequisites,
+quarantine, or deprecation regain authority. This improves restart integrity;
+it is not open-ended self-curriculum or a general-intelligence claim.
+
 ## Ground-up distinction
 
 SCEM persisted surface programs and labels. MOSAIC enumerated a fixed compositional language. CAIRN does neither.
