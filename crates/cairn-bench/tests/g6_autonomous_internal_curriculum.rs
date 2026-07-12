@@ -9,13 +9,16 @@ use cairn_core::{
 };
 use cairn_curriculum::{
     AutonomousCurriculum, CurriculumCheckpointArchive, CurriculumCheckpointMetadata,
-    DevelopmentalObjective, DevelopmentalOutcome, ExperienceId, LearnedMechanismStatus,
-    LearningAxis, MechanismTarget, SustainedLearningGate, SustainedLearningPoint,
+    DevelopmentalNeed, DevelopmentalObjective, DevelopmentalOutcome, ExperienceId,
+    FailureCoreExtractor, FailureDrivenObjectiveGenerator, LearnedMechanismStatus, LearningAxis,
+    MechanismTarget, SustainedLearningGate, SustainedLearningPoint,
 };
+use cairn_invent::{BindingExample, InventionError, InventionLimits, InventionProblem};
 use cairn_memory::{
     InternalMechanismStore, InternalPromotionProgress, InternalReuseArtifactArchive,
     InternalReuseReplay, ModuleStatus, ReuseArtifactMetadata,
 };
+use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
 use cairn_verifier::InternalMechanismVerifier;
 use std::collections::BTreeSet;
 use std::path::PathBuf;
@@ -252,18 +255,43 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
         }
     }
 
+    let active_support = BTreeSet::from([
+        MechanismTarget(families[0].target.to_owned()),
+        MechanismTarget(families[1].target.to_owned()),
+    ]);
+    let generated = FailureDrivenObjectiveGenerator
+        .generate(&unresolved_composition_core(), &active_support)
+        .expect("generate objective from failure core");
+    assert_eq!(generated.need, DevelopmentalNeed::MechanismComposition);
+    curriculum
+        .add_objective(generated.objective.clone())
+        .expect("admit generated objective");
+    let generated_checkpoint = CurriculumCheckpointArchive
+        .persist(
+            &cas,
+            &curriculum.checkpoint(),
+            CurriculumCheckpointMetadata {
+                parent_ids: vec![parent(&cas, "generated-objective")],
+                producer: producer(),
+                budget: budget(),
+                created_at_logical: 2_000,
+            },
+        )
+        .expect("persist generated objective event");
+    curriculum_checkpoints.push(generated_checkpoint.artifact_id);
+    curriculum = CurriculumCheckpointArchive
+        .load(&cas, generated_checkpoint.envelope_blob_id)
+        .expect("restore generated objective boundary");
+    curriculum_restores = curriculum_restores.saturating_add(1);
     let composition = curriculum
         .select_next()
-        .expect("prerequisites unlock composition objective");
+        .expect("generated composition objective");
     assert_eq!(composition.axis, LearningAxis::Composition);
-    assert_eq!(
-        composition.objective,
-        ExperienceId("compose-first-two".to_owned())
-    );
+    assert_eq!(composition.objective, generated.objective.id);
     assert_eq!(selected, ["family-a", "family-b", "family-c", "family-d"]);
     assert_eq!(completed_restarts, 2);
-    assert_eq!(curriculum_restores, 2);
-    assert_eq!(curriculum_checkpoints.len(), 2);
+    assert_eq!(curriculum_restores, 3);
+    assert_eq!(curriculum_checkpoints.len(), 3);
     assert_eq!(
         curriculum
             .mechanisms()
@@ -282,13 +310,16 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
     assert!(points.iter().all(|point| point.proof_units_with == 4));
     assert_eq!(store.len(), 4);
     eprintln!(
-        "G6_AUTONOMOUS_INTERNAL selected=family-a,family-b,family-c,family-d next=compose-first-two mechanisms=1->2->3->4 mechanism_hashes={},{},{},{} curriculum_checkpoints={},{} candidate_windows=18->9_each examples=4->1_each proof_units=28->4_each restarts=2 curriculum_restores=2 deprecated=target-d retained=6/6 negative_transfer=0/10",
+        "G6_AUTONOMOUS_INTERNAL selected=family-a,family-b,family-c,family-d next=generated-composition generated_core={} generated_objective={} mechanisms=1->2->3->4 mechanism_hashes={},{},{},{} curriculum_checkpoints={},{},{} candidate_windows=18->9_each examples=4->1_each proof_units=28->4_each restarts=2 curriculum_restores=3 deprecated=target-d retained=6/6 negative_transfer=0/10",
+        generated.failure_core,
+        generated.objective.id.0,
         persisted[0].mechanism,
         persisted[1].mechanism,
         persisted[2].mechanism,
         persisted[3].mechanism,
         curriculum_checkpoints[0],
         curriculum_checkpoints[1],
+        curriculum_checkpoints[2],
     );
 }
 
@@ -347,7 +378,7 @@ fn families() -> [FamilySpec; 4] {
 fn objectives() -> Vec<DevelopmentalObjective> {
     let specs = families();
     let hypotheses = [41, 31, 21, 11];
-    let mut objectives = specs
+    let objectives = specs
         .iter()
         .zip(hypotheses)
         .enumerate()
@@ -369,20 +400,48 @@ fn objectives() -> Vec<DevelopmentalObjective> {
             },
         )
         .collect::<Vec<_>>();
-    objectives.push(DevelopmentalObjective {
-        id: ExperienceId("compose-first-two".to_owned()),
-        axis: LearningAxis::Composition,
-        produces: MechanismTarget("target-composed".to_owned()),
-        prerequisites: BTreeSet::from([
-            MechanismTarget(specs[0].target.to_owned()),
-            MechanismTarget(specs[1].target.to_owned()),
-        ]),
-        competing_hypotheses: 2,
-        expected_transfer_microunits: 10,
-        action_cost: 100,
-        irreversible_risk: 0,
-    });
     objectives
+}
+
+fn unresolved_composition_core() -> cairn_curriculum::LearningFailureCore {
+    let integer = Type::Int(IntRange { lower: 0, upper: 8 });
+    let left = VarName("anonymous-left".to_owned());
+    let right = VarName("anonymous-right".to_owned());
+    let examples = [(0, 0, 0), (0, 2, 2), (3, 0, 3), (2, 4, 6)]
+        .into_iter()
+        .map(|(a, b, output)| {
+            let mut inputs = RuntimeEnvironment::new();
+            inputs.insert(left.clone(), Value::Int(a));
+            inputs.insert(right.clone(), Value::Int(b));
+            BindingExample {
+                inputs,
+                output: Value::Int(output),
+            }
+        })
+        .collect();
+    let problem = InventionProblem {
+        definition_name: "anonymous-unresolved-composition".to_owned(),
+        parameters: vec![
+            Binder {
+                name: left,
+                ty: integer.clone(),
+            },
+            Binder {
+                name: right,
+                ty: integer.clone(),
+            },
+        ],
+        return_type: integer,
+        literals: vec![Value::Int(0)],
+        demonstrations: examples,
+        limits: InventionLimits::default(),
+    };
+    FailureCoreExtractor
+        .extract(
+            &problem,
+            &InventionError::CandidateCapacity { maximum: 1_000 },
+        )
+        .expect("redacted failure core")
 }
 
 fn source_cohort(spec: &FamilySpec) -> [ProofGraph; 4] {

@@ -31,6 +31,13 @@ closes process-local curriculum authority but does not generate new objective
 schemas or execute the selected composition; the general-intelligence gate
 remains failed and ARC remains 36/400.
 
+The next bounded G6 revision removes the authored composition objective. A
+redacted failure core generates a canonical objective whose prerequisites are
+two learned mechanism roles; its introduction survives journal replay and it is
+selected next. This is objective-frontier expansion, not concrete curriculum
+instance generation or a new learned capability, so G6 and general intelligence
+remain incomplete.
+
 ## 0. Dataset policy
 
 ### Development partitions

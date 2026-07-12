@@ -812,3 +812,25 @@ and missing lineage fail closed. This closes the prior process-local curriculum
 authority gap. It does not generate new objective schemas, execute the newly
 selected composition, establish long-horizon unknown-world learning, or satisfy
 the general-intelligence and ARC targets.
+
+## 32. Failure-driven objective-generation checkpoint
+
+Developmental semantics 1.2.0 can now expand a running curriculum from a
+redacted failed-search core. The reference generator classifies structural gaps
+as latent context, variable cardinality, relational structure, composition, or
+value-law needs. It builds canonical opaque objective/mechanism identities and
+uses only active mechanism-role identities as possible prerequisites.
+
+Objective additions are semantic journal events. Restore begins from the
+original objective set and replays each addition at its historical point; using
+the final set from the beginning is forbidden because it could rewrite earlier
+selection. Unsupported semantics, restricted content, empty evidence,
+duplicates, and admission during outstanding work fail closed.
+
+In frozen G6, no composition objective is supplied initially. After learning
+four source-independent mechanisms, an independently bounded invention failure
+is redacted, classified, converted to a new composition objective, persisted,
+and reconstructed. The generated objective using the first two mechanism roles
+is selected next. This advances autonomous curriculum generation but does not
+yet materialize an environment that exercises the objective or execute the
+resulting composition. General intelligence and the ARC target remain unmet.

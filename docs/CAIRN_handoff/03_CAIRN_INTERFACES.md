@@ -853,3 +853,12 @@ and nonempty lineage, then reconstructs an empty `AutonomousCurriculum` and
 replays ordinary selection, admission, and counterexample operations. Every
 recorded decision must equal the deterministic recomputation. Restored state is
 usable authority only after this replay succeeds.
+
+Developmental semantics 1.2.0 adds `FailureDrivenObjectiveGenerator`,
+`GeneratedDevelopmentalObjective`, and `DevelopmentalNeed`. The generator sees
+only `LearningFailureCore` plus active mechanism-role identities and derives a
+canonical objective. `AutonomousCurriculum::add_objective` records the addition
+as an ordered `ObjectiveAdded` event. The checkpoint's objective list is the
+initial set; generated additions replay at their original boundary so a future
+objective cannot alter a past choice. The generator does not create task
+payloads and cannot report a successful learning outcome.

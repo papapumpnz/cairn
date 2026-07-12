@@ -110,7 +110,7 @@ fn checkpoint_archive_rejects_missing_lineage_malformed_and_divergent_state() {
         &cas,
         valid_payload.clone(),
         "unsupported",
-        SemanticsVersion::new(1, 0, 0),
+        SemanticsVersion::new(1, 1, 0),
         None,
     );
     assert!(matches!(
@@ -121,7 +121,7 @@ fn checkpoint_archive_rejects_missing_lineage_malformed_and_divergent_state() {
         &cas,
         valid_payload,
         "scoped",
-        SemanticsVersion::new(1, 1, 0),
+        SemanticsVersion::new(1, 2, 0),
         Some(Hash32::digest(b"forbidden-task-scope")),
     );
     assert!(matches!(
@@ -169,7 +169,7 @@ fn success(decision: &cairn_curriculum::CurriculumDecision) -> DevelopmentalOutc
 }
 
 fn put_payload(cas: &Cas, payload: CanonicalValue, name: &str) -> cairn_core::BlobId {
-    put_payload_with_contract(cas, payload, name, SemanticsVersion::new(1, 1, 0), None)
+    put_payload_with_contract(cas, payload, name, SemanticsVersion::new(1, 2, 0), None)
 }
 
 fn put_payload_with_contract(

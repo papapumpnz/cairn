@@ -3,8 +3,8 @@
 use cairn_cas::{Cas, CasError, StoredArtifact};
 use cairn_core::{
     ArtifactEnvelope, ArtifactError, ArtifactId, ArtifactKind, BlobId, BudgetRecord,
-    CanonicalEncode, CanonicalLimits, CanonicalValue, ProducerRecord, SchemaDescriptor, SchemaRef,
-    SchemaRegistry, SemanticsVersion,
+    CanonicalEncode, CanonicalLimits, CanonicalValue, Hash32, ProducerRecord, SchemaDescriptor,
+    SchemaRef, SchemaRegistry, SemanticsVersion,
 };
 use cairn_invent::{InventionError, InventionProblem};
 use cairn_rkl::{Type, Value};
@@ -13,7 +13,7 @@ use std::collections::{btree_map::Entry, BTreeMap, BTreeSet};
 use std::fmt;
 
 pub const FAILURE_CORE_SEMANTICS_VERSION: &str = "1.0.0";
-pub const DEVELOPMENTAL_CURRICULUM_SEMANTICS_VERSION: &str = "1.1.0";
+pub const DEVELOPMENTAL_CURRICULUM_SEMANTICS_VERSION: &str = "1.2.0";
 pub const CURRICULUM_CHECKPOINT_SCHEMA: &str = "cairn.curriculum.checkpoint";
 pub const CURRICULUM_CHECKPOINT_SCHEMA_VERSION: u32 = 1;
 
@@ -485,6 +485,217 @@ pub struct DevelopmentalObjective {
     pub irreversible_risk: u64,
 }
 
+/// Structural reason a new developmental objective was generated. This is a
+/// curriculum category, never a domain or benchmark family label.
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum DevelopmentalNeed {
+    LatentContext,
+    VariableCardinality,
+    RelationalStructure,
+    MechanismComposition,
+    ValueLaw,
+}
+
+/// Deterministic content-free proposal generated from one redacted failure
+/// core and the currently reusable mechanism roles.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct GeneratedDevelopmentalObjective {
+    pub objective: DevelopmentalObjective,
+    pub need: DevelopmentalNeed,
+    pub failure_core: Hash32,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ObjectiveGenerationError {
+    UnsupportedFailureCoreSemantics,
+    RestrictedContent,
+    InvalidEvidence,
+    Canonicalization,
+}
+
+/// Reference generator for turning structural failure evidence into a new
+/// experiment objective without access to observations or expected answers.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct FailureDrivenObjectiveGenerator;
+
+impl FailureDrivenObjectiveGenerator {
+    /// Generate one deterministic developmental objective. At most three
+    /// active support roles become prerequisites for a composition objective.
+    ///
+    /// # Errors
+    ///
+    /// Rejects unsupported semantics, non-redacted evidence, empty evidence,
+    /// and canonicalization failure.
+    pub fn generate(
+        &self,
+        core: &LearningFailureCore,
+        active_support: &BTreeSet<MechanismTarget>,
+    ) -> Result<GeneratedDevelopmentalObjective, ObjectiveGenerationError> {
+        if core.semantics_version != FAILURE_CORE_SEMANTICS_VERSION {
+            return Err(ObjectiveGenerationError::UnsupportedFailureCoreSemantics);
+        }
+        if core.redaction != RedactionStatus::ContentFree {
+            return Err(ObjectiveGenerationError::RestrictedContent);
+        }
+        if core.demonstrations == 0 || core.parameter_types.is_empty() {
+            return Err(ObjectiveGenerationError::InvalidEvidence);
+        }
+        let need = developmental_need(core, active_support.len());
+        let axis = match need {
+            DevelopmentalNeed::LatentContext => LearningAxis::CausalLaw,
+            DevelopmentalNeed::VariableCardinality => LearningAxis::Cardinality,
+            DevelopmentalNeed::RelationalStructure => LearningAxis::Layout,
+            DevelopmentalNeed::MechanismComposition => LearningAxis::Composition,
+            DevelopmentalNeed::ValueLaw => LearningAxis::Value,
+        };
+        let prerequisites = if need == DevelopmentalNeed::MechanismComposition {
+            active_support.iter().take(3).cloned().collect()
+        } else {
+            BTreeSet::new()
+        };
+        let failure_core = failure_core_hash(core)?;
+        let objective_identity = generated_objective_hash(failure_core, &prerequisites)?;
+        let suffix = objective_identity.to_hex();
+        let competing_hypotheses = u64::try_from(core.distinct_output_classes)
+            .unwrap_or(u64::MAX)
+            .saturating_add(u64::try_from(core.minimum_dependency_arity_lower_bound).unwrap_or(0))
+            .max(2);
+        let expected_transfer_microunits = u64::try_from(core.varying_parameters)
+            .unwrap_or(u64::MAX)
+            .saturating_add(1)
+            .saturating_mul(1_000_000);
+        Ok(GeneratedDevelopmentalObjective {
+            objective: DevelopmentalObjective {
+                id: ExperienceId(format!("generated-{suffix}")),
+                axis,
+                produces: MechanismTarget(format!("mechanism-{suffix}")),
+                prerequisites,
+                competing_hypotheses,
+                expected_transfer_microunits,
+                action_cost: u64::try_from(core.demonstrations).unwrap_or(u64::MAX),
+                irreversible_risk: u64::from(
+                    core.determinism == DeterminismStatus::ConflictingCompleteInputs,
+                ),
+            },
+            need,
+            failure_core,
+        })
+    }
+}
+
+fn developmental_need(core: &LearningFailureCore, available_support: usize) -> DevelopmentalNeed {
+    if core.determinism == DeterminismStatus::ConflictingCompleteInputs {
+        DevelopmentalNeed::LatentContext
+    } else if core.parameter_types.contains(&ValueClass::Collection)
+        || core.return_type == ValueClass::Collection
+    {
+        DevelopmentalNeed::VariableCardinality
+    } else if core.minimum_dependency_arity_lower_bound >= 2 && available_support >= 2 {
+        DevelopmentalNeed::MechanismComposition
+    } else if core.parameter_types.iter().any(|class| {
+        matches!(
+            class,
+            ValueClass::Entity | ValueClass::Relation | ValueClass::Shape | ValueClass::Coordinate
+        )
+    }) {
+        DevelopmentalNeed::RelationalStructure
+    } else {
+        DevelopmentalNeed::ValueLaw
+    }
+}
+
+fn failure_core_hash(core: &LearningFailureCore) -> Result<Hash32, ObjectiveGenerationError> {
+    let value = CanonicalValue::Array(vec![
+        CanonicalValue::Text("cairn.failure-core.objective.v1".to_owned()),
+        CanonicalValue::Text(core.semantics_version.clone()),
+        search_failure_value(core.failure),
+        CanonicalValue::Array(
+            core.parameter_types
+                .iter()
+                .map(|class| CanonicalValue::Unsigned(value_class_code(*class)))
+                .collect(),
+        ),
+        CanonicalValue::Unsigned(value_class_code(core.return_type)),
+        CanonicalValue::Unsigned(u64::try_from(core.demonstrations).unwrap_or(u64::MAX)),
+        CanonicalValue::Unsigned(u64::try_from(core.varying_parameters).unwrap_or(u64::MAX)),
+        CanonicalValue::Unsigned(u64::try_from(core.distinct_output_classes).unwrap_or(u64::MAX)),
+        CanonicalValue::Bool(core.constant_explanation_possible),
+        CanonicalValue::Unsigned(
+            u64::try_from(core.direct_projection_candidates).unwrap_or(u64::MAX),
+        ),
+        CanonicalValue::Unsigned(
+            u64::try_from(core.single_parameter_explanations).unwrap_or(u64::MAX),
+        ),
+        CanonicalValue::Array(
+            core.exact_two_parameter_families
+                .iter()
+                .map(|family| CanonicalValue::Unsigned(two_parameter_family_code(*family)))
+                .collect(),
+        ),
+        CanonicalValue::Array(
+            core.exact_three_parameter_families
+                .iter()
+                .map(|family| CanonicalValue::Unsigned(three_parameter_family_code(*family)))
+                .collect(),
+        ),
+        CanonicalValue::Unsigned(match core.determinism {
+            DeterminismStatus::Deterministic => 0,
+            DeterminismStatus::ConflictingCompleteInputs => 1,
+        }),
+        CanonicalValue::Unsigned(
+            u64::try_from(core.minimum_dependency_arity_lower_bound).unwrap_or(u64::MAX),
+        ),
+    ]);
+    value
+        .encode_canonical()
+        .map(|bytes| Hash32::digest(&bytes))
+        .map_err(|_| ObjectiveGenerationError::Canonicalization)
+}
+
+fn generated_objective_hash(
+    failure_core: Hash32,
+    prerequisites: &BTreeSet<MechanismTarget>,
+) -> Result<Hash32, ObjectiveGenerationError> {
+    CanonicalValue::Array(vec![
+        CanonicalValue::Text("cairn.generated-objective.v1".to_owned()),
+        CanonicalValue::Bytes(failure_core.as_bytes().to_vec()),
+        CanonicalValue::Array(
+            prerequisites
+                .iter()
+                .map(|target| CanonicalValue::Text(target.0.clone()))
+                .collect(),
+        ),
+    ])
+    .encode_canonical()
+    .map(|bytes| Hash32::digest(&bytes))
+    .map_err(|_| ObjectiveGenerationError::Canonicalization)
+}
+
+fn search_failure_value(failure: SearchFailure) -> CanonicalValue {
+    match failure {
+        SearchFailure::CandidateCapacity { maximum } => CanonicalValue::Array(vec![
+            CanonicalValue::Unsigned(0),
+            CanonicalValue::Unsigned(maximum),
+        ]),
+        SearchFailure::NoDefinition { maximum_cost } => CanonicalValue::Array(vec![
+            CanonicalValue::Unsigned(1),
+            CanonicalValue::Unsigned(u64::from(maximum_cost)),
+        ]),
+    }
+}
+
+const fn value_class_code(class: ValueClass) -> u64 {
+    class as u64
+}
+
+const fn two_parameter_family_code(family: TwoParameterFamily) -> u64 {
+    family as u64
+}
+
+const fn three_parameter_family_code(family: ThreeParameterFamily) -> u64 {
+    family as u64
+}
+
 /// Immutable explanation of one autonomous curriculum choice.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CurriculumDecision {
@@ -536,6 +747,9 @@ pub struct LearnedMechanismRecord {
 /// Immutable semantic journal entry used to reconstruct developmental state.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CurriculumEvent {
+    ObjectiveAdded {
+        objective: DevelopmentalObjective,
+    },
     Learned {
         decision: CurriculumDecision,
         outcome: DevelopmentalOutcome,
@@ -599,6 +813,7 @@ pub enum AutonomousCurriculumError {
     NegativeTransfer,
     UnknownMechanism,
     DuplicateCounterexample,
+    ObjectiveAdmissionWhileOutstanding,
     UnsupportedCheckpointSemantics,
     CheckpointReplayMismatch,
 }
@@ -608,6 +823,7 @@ pub enum AutonomousCurriculumError {
 /// and updates support solely from independently verified outcomes.
 #[derive(Clone, Debug)]
 pub struct AutonomousCurriculum {
+    initial_objectives: Vec<DevelopmentalObjective>,
     objectives: BTreeMap<ExperienceId, DevelopmentalObjective>,
     attempts: BTreeMap<ExperienceId, u64>,
     completed: BTreeSet<ExperienceId>,
@@ -652,7 +868,9 @@ impl AutonomousCurriculum {
                 }
             }
         }
+        let initial_objectives = indexed.values().cloned().collect();
         Ok(Self {
+            initial_objectives,
             objectives: indexed,
             attempts: BTreeMap::new(),
             completed: BTreeSet::new(),
@@ -663,6 +881,36 @@ impl AutonomousCurriculum {
             issued: 0,
             maximum_decisions,
         })
+    }
+
+    /// Admit a newly generated objective at a deterministic event boundary.
+    ///
+    /// # Errors
+    ///
+    /// Rejects admission while work is outstanding and duplicate objective or
+    /// produced-mechanism identities.
+    pub fn add_objective(
+        &mut self,
+        objective: DevelopmentalObjective,
+    ) -> Result<(), AutonomousCurriculumError> {
+        if self.outstanding.is_some() {
+            return Err(AutonomousCurriculumError::ObjectiveAdmissionWhileOutstanding);
+        }
+        if self.objectives.contains_key(&objective.id) {
+            return Err(AutonomousCurriculumError::DuplicateObjective);
+        }
+        if self
+            .objectives
+            .values()
+            .any(|existing| existing.produces == objective.produces)
+        {
+            return Err(AutonomousCurriculumError::DuplicateMechanismTarget);
+        }
+        self.objectives
+            .insert(objective.id.clone(), objective.clone());
+        self.events
+            .push(CurriculumEvent::ObjectiveAdded { objective });
+        Ok(())
     }
 
     /// Select the highest-value currently eligible objective. Completion,
@@ -865,7 +1113,7 @@ impl AutonomousCurriculum {
     pub fn checkpoint(&self) -> CurriculumCheckpoint {
         CurriculumCheckpoint {
             semantics_version: DEVELOPMENTAL_CURRICULUM_SEMANTICS_VERSION.to_owned(),
-            objectives: self.objectives.values().cloned().collect(),
+            objectives: self.initial_objectives.clone(),
             maximum_decisions: self.maximum_decisions,
             events: self.events.clone(),
             outstanding: self.outstanding.clone(),
@@ -886,6 +1134,9 @@ impl AutonomousCurriculum {
         let mut restored = Self::new(checkpoint.objectives.clone(), checkpoint.maximum_decisions)?;
         for event in &checkpoint.events {
             match event {
+                CurriculumEvent::ObjectiveAdded { objective } => {
+                    restored.add_objective(objective.clone())?;
+                }
                 CurriculumEvent::Learned { decision, outcome } => {
                     let replayed = restored.select_next()?;
                     if &replayed != decision {
@@ -1069,7 +1320,7 @@ fn curriculum_checkpoint_kind() -> Result<ArtifactKind, ArtifactError> {
 }
 
 const fn curriculum_checkpoint_semantics() -> SemanticsVersion {
-    SemanticsVersion::new(1, 1, 0)
+    SemanticsVersion::new(1, 2, 0)
 }
 
 fn curriculum_checkpoint_value(checkpoint: &CurriculumCheckpoint) -> CanonicalValue {
@@ -1148,6 +1399,11 @@ fn curriculum_outcome_value(outcome: &DevelopmentalOutcome) -> CanonicalValue {
 
 fn curriculum_event_value(event: &CurriculumEvent) -> CanonicalValue {
     match event {
+        CurriculumEvent::ObjectiveAdded { objective } => CanonicalValue::Array(vec![
+            CanonicalValue::Unsigned(2),
+            curriculum_objective_value(objective),
+            CanonicalValue::Null,
+        ]),
         CurriculumEvent::Learned { decision, outcome } => CanonicalValue::Array(vec![
             CanonicalValue::Unsigned(0),
             curriculum_decision_value(decision),
@@ -1261,6 +1517,16 @@ fn curriculum_event_from_value(
             target: MechanismTarget(checkpoint_text(&values[1])?.to_owned()),
             evidence: checkpoint_text(&values[2])?.to_owned(),
         }),
+        2 => {
+            if values[2] != CanonicalValue::Null {
+                return Err(CurriculumCheckpointArchiveError::InvalidPayload(
+                    "objective event reserved field is not null",
+                ));
+            }
+            Ok(CurriculumEvent::ObjectiveAdded {
+                objective: curriculum_objective_from_value(values[1].clone())?,
+            })
+        }
         _ => Err(CurriculumCheckpointArchiveError::InvalidPayload(
             "unknown event code",
         )),

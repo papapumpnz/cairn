@@ -34,13 +34,13 @@ cargo test -p cairn-bench --test g6_developmental_scaling -- --nocapture
 
 ```text
 selected: family-a, family-b, family-c, family-d
-next unlocked objective: compose-first-two
+next objective: generated composition from a redacted failed-search core
 learned mechanisms: 1 -> 2 -> 3 -> 4
 candidate windows: 18 -> 9 in every family
 examples: 4 -> 1 in every family
 proof units: 28 -> 4 in every family
 CAS restarts: 2
-curriculum checkpoint restores: 2
+curriculum checkpoint restores: 3
 restored lifecycle state: target-d deprecated from two verified counterexamples
 aggregate retained prior tasks: 6/6
 unrelated negative transfer: 0/10
@@ -58,15 +58,20 @@ a0c3bb5a8f164ee25b4c9658ff7879d090fa527006a919fed1c0122dc402c00e
 Curriculum checkpoint identities:
 
 ```text
-fd3442f9be14a37a2750e42a05c2ca864715e271dfb4887304a45c954341d149
-30a9186b5cf8ae37386753453ff21057fdaf06fb86860372f5aea385f1fc92a6
+107d19a230dd1d5e681cdacf75dc25dfff2cd07b56856fd38ad7cd98420685c9
+03291a681ebe3c59225a15447456500db91e62fe60f80465f5115f6da303ab97
+0271e0c8c5146a578a60340d8ca74e39c0c1a1d99cb2c9bb438464231d142897
 ```
 
-The composition objective is not selected until both prerequisite mechanism
-roles are active. This experiment validates curriculum choice, not composition
-execution; the separate G3/G6 composition suites validate execution and report
-the latest same-task marginal reductions from 24 to 16 candidates and ten to
-six examples.
+No composition objective exists in the initial curriculum. After all four
+families, a bounded failed invention is reduced to a content-free core. The
+failure-driven generator classifies it as a composition gap, binds the first two
+active mechanism roles as prerequisites, assigns a canonical identity, and
+journals the objective. A third curriculum reconstruction reproduces the
+objective-addition boundary before selecting it. This validates generation and
+choice, not materialization or composition execution; separate G3/G6 suites
+validate execution and report same-task reductions from 24 to 16 candidates and
+ten to six examples.
 
 ## Restart and counterexample behavior
 
@@ -84,10 +89,11 @@ recorded choice fail closed.
 
 ## Claim boundary
 
-This replaces scripted curriculum order with bounded stateful selection and
-demonstrates four learned mechanisms plus reconstructed developmental authority
-across two restarts. The objective set is still finite and generator-authored.
-It does not establish open-ended experience generation, RKL lowering of
-arbitrary proof operations, unrestricted composition discovery, natural
-perception, broad general intelligence, or the 80% ARC target. ARC remains at
-the last measured 36/400.
+This replaces scripted order and the authored composition objective with
+bounded failure-driven frontier expansion. It demonstrates four learned
+mechanisms plus reconstructed developmental authority across restart. The
+system still does not materialize concrete experiences for its generated
+objective. It does not establish open-ended environment generation, RKL
+lowering of arbitrary proof operations, unrestricted composition discovery,
+natural perception, broad general intelligence, or the 80% ARC target. ARC
+remains at the last measured 36/400.

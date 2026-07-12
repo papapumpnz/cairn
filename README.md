@@ -372,6 +372,12 @@ recovers a two-counterexample deprecation before selecting the still-eligible
 composition. A forged recorded decision fails closed. This is durable bounded
 curriculum learning, not open-ended curriculum generation or general
 intelligence.
+The next G6 step removes the authored composition objective. A failed bounded
+invention is redacted to structural counts and type classes; the curriculum
+generates a canonical composition objective from that core and two learned
+mechanism roles, journals its introduction, restores again, and selects it.
+This is autonomous objective generation. Concrete experience materialization
+and execution of the selected composition remain open.
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding,
 arbitrary non-contiguous internal-subgraph mining and RKL lowering,

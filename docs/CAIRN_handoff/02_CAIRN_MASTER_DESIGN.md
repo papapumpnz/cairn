@@ -84,6 +84,13 @@ support, quarantine, deprecation, and prerequisite eligibility are derived
 again rather than trusted from serialized flags. Changed decisions or malformed
 lineage fail closed.
 
+The controller may now expand its own objective frontier from a redacted
+failed-search core. Structural type/count/determinism evidence selects a
+developmental need and canonical objective identity; learned mechanism roles
+can become composition prerequisites. Each addition is replayed at its original
+event boundary. The generator proposes what capability should be exercised; it
+does not yet synthesize the environment that exercises it.
+
 The architecture deliberately avoids two failed patterns:
 
 ```text
