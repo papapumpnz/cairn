@@ -80,6 +80,18 @@ transitions. Duplicate evidence and blank memory fail closed. This passes one
 bounded G2/G4 coupling, not sustained scaling or general intelligence. ARC is
 unchanged at 36/400.
 
+The structural developmental checkpoint expands this single family before any
+new ARC run. A content-free frontier selects five mechanisms covering 1–4
+latent states, 2–4 actions, 1–2 visible dimensions, and distinct transition
+graphs. Ten source worlds independently promote five schemas. On five changed
+worlds, all five memory bindings are exact, fresh induction evaluates 1,225
+search nodes, visible evidence falls from 42 transitions to 10, and wrong
+schema acceptance is zero. Two evidence artifacts also survive process/CAS
+restart and independently re-promote their schema. A separate version-space
+case requires and synthesizes a two-action diagnostic. Interactive-to-sequence
+and interactive-to-vector transfer produces two exact predictions versus zero
+with blank memory. These freeze the general core for the next ARC ablation.
+
 ## 0. Dataset policy
 
 ### Development partitions

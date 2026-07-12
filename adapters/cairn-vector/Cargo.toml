@@ -11,6 +11,7 @@ repository.workspace = true
 cairn-core = { path = "../../crates/cairn-core" }
 cairn-invent = { path = "../../crates/cairn-invent" }
 cairn-rkl = { path = "../../crates/cairn-rkl" }
+cairn-world = { path = "../../crates/cairn-world" }
 
 [lints]
 workspace = true

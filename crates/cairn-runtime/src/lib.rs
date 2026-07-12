@@ -1,5 +1,9 @@
 //! Online version-space maintenance; permanent promotion belongs elsewhere.
 
+mod sequential_experiment;
+
+pub use sequential_experiment::*;
+
 use cairn_consolidator::{
     ConsolidationError, Consolidator, ConstructedInternalComposition, InternalCompositionPlan,
     InternalConstructionLimits, InternalConstructionPolicy, LoweredObservationFrontier,
@@ -198,7 +202,14 @@ pub enum LatentMemoryRuntimeError {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LatentMemoryOutcome {
     pub bindings: Vec<LatentSchemaBinding>,
+    pub proposals: Vec<LatentMemoryProposal>,
     pub persistent_schemas_attempted: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LatentMemoryProposal {
+    pub schema: Hash32,
+    pub binding: LatentSchemaBinding,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -600,11 +611,22 @@ impl CognitionRuntime {
     ) -> Result<LatentMemoryOutcome, CognitionError> {
         let mut persistent_schemas_attempted = 0_u64;
         let mut bindings = Vec::new();
+        let mut proposals = Vec::new();
         for schema in self.latent_mechanisms.persistent_schemas() {
             persistent_schemas_attempted = persistent_schemas_attempted.saturating_add(1);
             match LatentSchemaCompiler.bind(schema, space, actions, episodes, limits) {
-                Ok(mut rebound) => bindings.append(&mut rebound),
-                Err(LatentSchemaError::NoBinding | LatentSchemaError::DimensionMismatch) => {}
+                Ok(mut rebound) => {
+                    proposals.extend(rebound.iter().cloned().map(|binding| LatentMemoryProposal {
+                        schema: schema.semantic_hash(),
+                        binding,
+                    }));
+                    bindings.append(&mut rebound);
+                }
+                Err(
+                    LatentSchemaError::NoBinding
+                    | LatentSchemaError::DimensionMismatch
+                    | LatentSchemaError::ActionCountMismatch,
+                ) => {}
                 Err(error) => {
                     return Err(CognitionError::LatentMemory(
                         LatentMemoryRuntimeError::Schema(error),
@@ -619,6 +641,7 @@ impl CognitionRuntime {
         }
         Ok(LatentMemoryOutcome {
             bindings,
+            proposals,
             persistent_schemas_attempted,
         })
     }

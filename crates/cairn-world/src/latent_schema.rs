@@ -1,7 +1,7 @@
 use crate::{
     ActionId, LatentEpisode, LatentTransitionRule, LatentTransitionTheory, StateSpace, WorldState,
 };
-use cairn_core::{CanonicalEncode, CanonicalValue, Hash32};
+use cairn_core::{decode_canonical, CanonicalEncode, CanonicalLimits, CanonicalValue, Hash32};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -45,6 +45,61 @@ impl LatentMechanismSchema {
     pub const fn semantic_hash(&self) -> Hash32 {
         self.semantic_hash
     }
+
+    /// Decode and fully validate a canonical source-independent schema.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed canonical data, unsupported markers, invalid rule
+    /// shapes, latent targets, and declared decode limits.
+    pub fn decode_canonical(
+        bytes: &[u8],
+        limits: CanonicalLimits,
+    ) -> Result<Self, LatentSchemaError> {
+        let value =
+            decode_canonical(bytes, limits).map_err(|_| LatentSchemaError::InvalidEncoding)?;
+        let CanonicalValue::Array(fields) = value else {
+            return Err(LatentSchemaError::InvalidEncoding);
+        };
+        if fields.len() != 4
+            || fields.first()
+                != Some(&CanonicalValue::Text(
+                    "cairn.latent-mechanism-schema.v1".to_owned(),
+                ))
+        {
+            return Err(LatentSchemaError::InvalidEncoding);
+        }
+        let dimensions = schema_u16(&fields[1])?;
+        let latent_states = schema_u8(&fields[2])?;
+        let CanonicalValue::Array(role_values) = &fields[3] else {
+            return Err(LatentSchemaError::InvalidEncoding);
+        };
+        if dimensions == 0 || latent_states == 0 || role_values.is_empty() {
+            return Err(LatentSchemaError::InvalidEncoding);
+        }
+        let roles = role_values
+            .iter()
+            .map(|role_value| decode_role(role_value, latent_states, dimensions))
+            .collect::<Result<Vec<_>, _>>()?;
+        if !roles.windows(2).all(|pair| pair[0] <= pair[1]) {
+            return Err(LatentSchemaError::InvalidEncoding);
+        }
+        let canonical = schema_value(dimensions, latent_states, &roles)
+            .encode_canonical()
+            .map_err(|_| LatentSchemaError::Canonicalization)?;
+        Ok(Self {
+            dimensions,
+            latent_states,
+            roles,
+            semantic_hash: Hash32::digest(&canonical),
+        })
+    }
+}
+
+impl CanonicalEncode for LatentMechanismSchema {
+    fn encode_canonical(&self) -> Result<Vec<u8>, cairn_core::CanonicalError> {
+        schema_value(self.dimensions, self.latent_states, &self.roles).encode_canonical()
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -81,6 +136,7 @@ pub enum LatentSchemaError {
     Capacity,
     NoBinding,
     Canonicalization,
+    InvalidEncoding,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -403,4 +459,68 @@ fn schema_value(dimensions: u16, latent_states: u8, roles: &[LatentActionRole]) 
                 .collect(),
         ),
     ])
+}
+
+fn decode_role(
+    value: &CanonicalValue,
+    latent_states: u8,
+    dimensions: u16,
+) -> Result<LatentActionRole, LatentSchemaError> {
+    let CanonicalValue::Array(rule_values) = value else {
+        return Err(LatentSchemaError::InvalidEncoding);
+    };
+    if rule_values.len() != usize::from(latent_states) {
+        return Err(LatentSchemaError::InvalidEncoding);
+    }
+    let rules = rule_values
+        .iter()
+        .map(|rule_value| {
+            let CanonicalValue::Array(fields) = rule_value else {
+                return Err(LatentSchemaError::InvalidEncoding);
+            };
+            if fields.len() != 2 {
+                return Err(LatentSchemaError::InvalidEncoding);
+            }
+            let next_latent = schema_u8(&fields[0])?;
+            if next_latent >= latent_states {
+                return Err(LatentSchemaError::InvalidEncoding);
+            }
+            let CanonicalValue::Array(delta_values) = &fields[1] else {
+                return Err(LatentSchemaError::InvalidEncoding);
+            };
+            if delta_values.len() != usize::from(dimensions) {
+                return Err(LatentSchemaError::InvalidEncoding);
+            }
+            let delta = delta_values
+                .iter()
+                .map(schema_i64)
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(LatentSchemaRule { next_latent, delta })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(LatentActionRole { rules })
+}
+
+fn schema_u16(value: &CanonicalValue) -> Result<u16, LatentSchemaError> {
+    let CanonicalValue::Unsigned(value) = value else {
+        return Err(LatentSchemaError::InvalidEncoding);
+    };
+    u16::try_from(*value).map_err(|_| LatentSchemaError::InvalidEncoding)
+}
+
+fn schema_u8(value: &CanonicalValue) -> Result<u8, LatentSchemaError> {
+    let CanonicalValue::Unsigned(value) = value else {
+        return Err(LatentSchemaError::InvalidEncoding);
+    };
+    u8::try_from(*value).map_err(|_| LatentSchemaError::InvalidEncoding)
+}
+
+fn schema_i64(value: &CanonicalValue) -> Result<i64, LatentSchemaError> {
+    match value {
+        CanonicalValue::Unsigned(value) => {
+            i64::try_from(*value).map_err(|_| LatentSchemaError::InvalidEncoding)
+        }
+        CanonicalValue::Negative(value) if *value < 0 => Ok(*value),
+        _ => Err(LatentSchemaError::InvalidEncoding),
+    }
 }

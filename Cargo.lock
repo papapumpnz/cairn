@@ -274,6 +274,7 @@ dependencies = [
  "cairn-core",
  "cairn-invent",
  "cairn-rkl",
+ "cairn-world",
 ]
 
 [[package]]
@@ -314,6 +315,7 @@ dependencies = [
  "cairn-core",
  "cairn-invent",
  "cairn-rkl",
+ "cairn-world",
 ]
 
 [[package]]

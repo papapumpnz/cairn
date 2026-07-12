@@ -989,3 +989,28 @@ schema automatically. Duplicate evidence cannot satisfy the threshold.
 `CognitionRuntime::propose_latent_world_from_memory` retrieves only persistent
 schemas and performs bounded current rebinding. Returned theories remain
 proposals and require independent transfer verification before acceptance.
+
+## 28. Developmental world scaling and restart contracts
+
+`LatentSupportGeometry` reports only the visible dimensions, latent-state
+count, action-role count, and independently verified world count actually
+established for a schema. It does not infer untested ranges.
+
+`LatentMechanismSchema` implements canonical encoding and strict bounded
+decoding. `LatentWorldEvidenceArtifact` commits the schema, experience identity,
+and independent replay counts. `LatentWorldEvidenceArchive` persists it with
+parent lineage, loads it as untrusted, and reconstructs fresh compilation and
+transfer receipts through `LatentWorldReplay`. Serialized module status never
+restores authority.
+
+`SequentialVersionSpace` contains executable finite transition hypotheses.
+`next_discriminating_plan` enumerates action sequences in deterministic
+length/identity order under `SequentialExperimentLimits`; it selects the
+shortest depth with maximum visible-outcome partitioning. `observe_plan`
+retains exact trace matches and preserves the old space if every hypothesis is
+refuted.
+
+`LatentMemoryOutcome::proposals` binds every current proposal to its schema
+hash, preventing cross-schema attribution ambiguity. Sequence and vector
+frontends expose adapter-only transition lowering into `LatentEpisode`; core
+cognition contains no modality checks.

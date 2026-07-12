@@ -62,6 +62,15 @@ current replay preserves 510/510 held-out predictions while reducing selected
 interventions from one to zero. This is bounded continual causal learning, not
 a general-intelligence or ARC-score claim.
 
+The next developmental checkpoint broadens this to five different finite
+causal structures spanning one to four latent states, two to four actions, and
+one or two visible dimensions. Ten source worlds promote five schemas; five
+changed worlds reduce required visible transitions from 42 to 10 with exact
+prediction and zero negative transfer. Evidence survives CAS restart, a bounded
+planner invents a necessary two-action diagnostic, and one interactive schema
+rebinds through sequence and vector adapters. These remain controlled finite
+experiments, not a general-intelligence claim.
+
 The bounded developmental controller now persists only a canonical,
 content-free event journal. After process loss, a fresh controller must
 reproduce every choice and evidence transition before learned prerequisites,

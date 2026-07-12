@@ -3,6 +3,7 @@
 use cairn_core::{CollectionDemonstration, CollectionProcedureProblem};
 use cairn_invent::{BindingExample, InventionLimits, InventionProblem};
 use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
+use cairn_world::{ActionId, LatentEpisode, TransitionObservation, WorldState};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct VectorTranslation {
@@ -18,10 +19,34 @@ pub struct VectorAttributeBatch {
     pub output_attributes: Vec<i64>,
 }
 
+/// One exact action-conditioned point transition. Geometry is lowered to the
+/// same two-coordinate visible state used by cognition.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct VectorPointTransition {
+    pub before: (i64, i64),
+    pub action: u16,
+    pub after: (i64, i64),
+}
+
 #[derive(Clone, Copy, Debug, Default)]
 pub struct VectorAdapter;
 
 impl VectorAdapter {
+    /// Lower a vector point trace into the common visible transition protocol.
+    #[must_use]
+    pub fn lower_transition_episode(&self, transitions: &[VectorPointTransition]) -> LatentEpisode {
+        LatentEpisode {
+            transitions: transitions
+                .iter()
+                .map(|transition| TransitionObservation {
+                    before: WorldState(vec![transition.before.0, transition.before.1]),
+                    action: ActionId(transition.action),
+                    after: WorldState(vec![transition.after.0, transition.after.1]),
+                })
+                .collect(),
+        }
+    }
+
     #[must_use]
     pub fn lower_attribute_collection(
         &self,

@@ -60,6 +60,18 @@ predictions while reducing interventions from one to zero. This establishes a
 small experience-dependent reduction; it does not establish broad unknown-world
 competence, open-ended learning, or general intelligence.
 
+Developmental-world checkpoint (2026-07-13): the unchanged source-independent
+schema now covers a frozen curriculum of five structural signatures: one to
+four latent states, two to four action roles, one/two visible dimensions, and
+different transition graphs. A content-free frontier curriculum selects their
+order. Across five held-out worlds, persistent binding reduces visible evidence
+from 42 transitions to 10 and retains exact rules with no wrong schema accepted.
+Canonical CAS commitments reload as untrusted data and regain promotion only
+after independent compilation and transfer replay. A separate sequential
+version space synthesizes the shortest two-action diagnostic when every
+one-action observation is identical. The same learned interactive mechanism
+then predicts sequence and vector transitions through adapter-only lowering.
+
 ## 0. Executive decision
 
 CAIRN is a CPU-only, transformer-free self-compressing causal theory learner.

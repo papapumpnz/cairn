@@ -3,6 +3,7 @@
 use cairn_core::{CollectionDemonstration, CollectionProcedureProblem};
 use cairn_invent::{BindingExample, InventionLimits, InventionProblem};
 use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
+use cairn_world::{ActionId, LatentEpisode, TransitionObservation, WorldState};
 use std::collections::BTreeSet;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -20,7 +21,32 @@ pub struct CollectionSequenceExample {
     pub output: Vec<i64>,
 }
 
+/// One action-conditioned exact sequence observation. The adapter assigns no
+/// semantic meaning to positions or actions.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SequenceTransition {
+    pub before: Vec<i64>,
+    pub action: u16,
+    pub after: Vec<i64>,
+}
+
 impl SequenceAdapter {
+    /// Lower an exact sequence trace into the common visible transition
+    /// protocol used by world-mechanism learning.
+    #[must_use]
+    pub fn lower_transition_episode(&self, transitions: &[SequenceTransition]) -> LatentEpisode {
+        LatentEpisode {
+            transitions: transitions
+                .iter()
+                .map(|transition| TransitionObservation {
+                    before: WorldState(transition.before.clone()),
+                    action: ActionId(transition.action),
+                    after: WorldState(transition.after.clone()),
+                })
+                .collect(),
+        }
+    }
+
     #[must_use]
     pub fn lower(
         &self,

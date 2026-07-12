@@ -959,3 +959,33 @@ known episode resets, one-dimensional visible state, immediate effects, and no
 sensor-level entity induction. It does not satisfy G2's sustained curriculum
 threshold, broad G4, the complete G0-G6 suite, general intelligence, or the 80%
 ARC target. ARC was not run or modified and remains 36/400.
+
+## 38. Developmental world-mechanism scaling checkpoint
+
+ADR-0022 broadens persistent hidden-world learning before another ARC run. The
+frozen suite varies mechanism structure rather than only identifiers and
+layouts: one to four latent states, two to four action roles, one/two visible
+dimensions, and five distinct transition/effect tables. A content-free support
+frontier chooses the curriculum order `[4, 2, 3, 1, 0]`; it receives no hidden
+rules or expected predictions.
+
+Ten independently learned source worlds promote five canonical schemas. On five
+changed worlds, fresh induction uses 1,225 search nodes and 42 visible
+transitions. Persistent rebinding requires 10 transitions, with strict
+per-world sample reduction, five exact bindings, retained prediction, and zero
+wrong-schema acceptance. Two canonical evidence artifacts reload after CAS
+restart, undergo fresh verifier replay, and reconstruct persistent status; the
+serialized artifacts carry no trusted status.
+
+Separately, two executable world hypotheses make identical predictions for
+every single action but diverge after a probe/reveal sequence. The bounded
+version space synthesizes that shortest two-action experiment and resolves the
+correct theory; one-step and capacity ablations fail closed. A one-state
+interactive mechanism also rebinds to sequence and vector transition evidence,
+yielding two independently replayed predictions while blank memory yields none.
+
+This establishes broader finite structural learning, restart survival,
+multi-step experiment synthesis, curriculum-directed support expansion, and
+cross-domain use. It still assumes exact finite symbolic observations and
+candidate causal theories, does not learn raw entities, and is not general
+intelligence. The general core is frozen before the next ARC measurement.

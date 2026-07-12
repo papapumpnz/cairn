@@ -1,7 +1,8 @@
+use cairn_core::{CanonicalEncode, CanonicalLimits};
 use cairn_world::{
-    ActionId, BeliefState, LatentEpisode, LatentLimits, LatentSchemaCompiler, LatentSchemaError,
-    LatentSchemaLimits, LatentTransitionTheory, LatentWorldLearner, StateSpace,
-    TransitionObservation, WorldState,
+    ActionId, BeliefState, LatentEpisode, LatentLimits, LatentMechanismSchema,
+    LatentSchemaCompiler, LatentSchemaError, LatentSchemaLimits, LatentTransitionTheory,
+    LatentWorldLearner, StateSpace, TransitionObservation, WorldState,
 };
 use std::collections::BTreeMap;
 
@@ -73,6 +74,27 @@ fn schema_rebinds_changed_actions_and_layout_by_exact_episode_replay() {
             LatentSchemaLimits::default(),
         ),
         Err(LatentSchemaError::DimensionMismatch)
+    );
+}
+
+#[test]
+fn canonical_schema_round_trips_and_corruption_fails_closed() {
+    let theory = learned_world(0, 30, [ActionId(4), ActionId(9), ActionId(2)], 15);
+    let schema = LatentSchemaCompiler
+        .compile(&theory, LatentSchemaLimits::default())
+        .expect("schema");
+    let bytes = schema.encode_canonical().expect("canonical bytes");
+    assert_eq!(
+        LatentMechanismSchema::decode_canonical(&bytes, CanonicalLimits::default())
+            .expect("decode"),
+        schema
+    );
+    assert_eq!(
+        LatentMechanismSchema::decode_canonical(
+            &bytes[..bytes.len() - 1],
+            CanonicalLimits::default()
+        ),
+        Err(LatentSchemaError::InvalidEncoding)
     );
 }
 
