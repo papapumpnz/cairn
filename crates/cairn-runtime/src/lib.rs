@@ -2,9 +2,13 @@
 
 use cairn_consolidator::{
     ConsolidationError, Consolidator, ConstructedInternalComposition, InternalCompositionPlan,
-    InternalConstructionLimits, InternalConstructionPolicy, ProofFrontier, ProofGraph,
+    InternalConstructionLimits, InternalConstructionPolicy, LoweredObservationFrontier,
+    ObservationFrontierLimits, ProofFrontier, ProofGraph, RelationalConstructionPolicy,
 };
-use cairn_core::{CollectionProcedureProblem, Hash32, LearningProblem, ObservationId, TaskId};
+use cairn_core::{
+    CollectionProcedureProblem, Hash32, LearningProblem, ObservationId, RelationalObservation,
+    TaskId,
+};
 use cairn_invent::{InventionError, InventionProblem};
 use cairn_knowledge::KnowledgeBase;
 use cairn_memory::{
@@ -601,6 +605,27 @@ impl CognitionRuntime {
             })
     }
 
+    /// Deterministically lower modality-neutral relational evidence into an
+    /// untrusted proof frontier. No memory or expected output is consulted.
+    ///
+    /// # Errors
+    ///
+    /// Rejects invalid observation evidence, capacity excess, or canonical
+    /// lowering failure.
+    pub fn lower_relational_observation(
+        &self,
+        observation: &RelationalObservation,
+        limits: ObservationFrontierLimits,
+    ) -> Result<LoweredObservationFrontier, CognitionError> {
+        Consolidator
+            .lower_relational_observation(observation, limits)
+            .map_err(|error| {
+                CognitionError::InternalComposition(InternalCompositionRuntimeError::Proposal(
+                    error,
+                ))
+            })
+    }
+
     /// Apply a separately validated task-local typed correspondence policy to
     /// a changed evidence frontier and construct one proof candidate.
     ///
@@ -627,6 +652,48 @@ impl CognitionRuntime {
             .map_err(CognitionError::InternalComposition)?;
         Consolidator
             .apply_internal_construction_policy(&mechanisms, frontier, policy)
+            .map_err(|error| {
+                CognitionError::InternalComposition(InternalCompositionRuntimeError::Proposal(
+                    error,
+                ))
+            })
+    }
+
+    /// Apply learned relational correspondence to a changed authenticated
+    /// observation frontier using only persistent mechanisms.
+    ///
+    /// # Errors
+    ///
+    /// Rejects missing/non-persistent mechanisms, invalid observation lowering,
+    /// or missing/ambiguous structural correspondence.
+    pub fn apply_relational_construction_policy(
+        &self,
+        mechanism_ids: &[Hash32],
+        observation: &RelationalObservation,
+        lowering: &LoweredObservationFrontier,
+        policy: &RelationalConstructionPolicy,
+        limits: ObservationFrontierLimits,
+    ) -> Result<ConstructedInternalComposition, CognitionError> {
+        let mechanisms = mechanism_ids
+            .iter()
+            .map(|id| {
+                let module = self
+                    .internal_mechanisms
+                    .get(*id)
+                    .filter(|module| module.status() == ModuleStatus::Persistent)
+                    .ok_or(InternalCompositionRuntimeError::UnavailableMechanism(*id))?;
+                Ok(module.mechanism().clone())
+            })
+            .collect::<Result<Vec<_>, InternalCompositionRuntimeError>>()
+            .map_err(CognitionError::InternalComposition)?;
+        Consolidator
+            .apply_relational_construction_policy(
+                &mechanisms,
+                observation,
+                lowering,
+                policy,
+                limits,
+            )
             .map_err(|error| {
                 CognitionError::InternalComposition(InternalCompositionRuntimeError::Proposal(
                     error,

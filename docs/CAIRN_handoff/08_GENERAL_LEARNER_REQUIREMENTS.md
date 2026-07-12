@@ -880,3 +880,33 @@ of experience changing future construction cost. It does not lower generic raw
 observations into proof evidence, induce relational correspondence policies,
 learn an action-conditioned world law, establish open-ended curriculum growth,
 or satisfy broad G0-G6/general intelligence. ARC remains 36/400.
+
+## 35. Relational observation and unknown-world transfer checkpoint
+
+`RelationalObservation` now provides a canonical exact envelope for opaque
+typed elements and finite ordered-arity relations. The producer lowers this to
+a proof frontier with explicit provenance; the independent verifier separately
+reconstructs every node and commitment. No modality branch, expected proof, or
+learned operation participates in lowering.
+
+After one verified static construction, CAIRN induces typed two-round
+relational-neighbourhood fingerprints. A separate verifier reconstructs the
+selectors and binds their hash to that exact training certificate. The held-out
+case changes modality, element IDs and values, canonical order, and cardinality
+and adds an unrelated entity/effect pair. The prior ordinal policy produces the
+wrong graph; the relational policy emits one exact candidate and tampering with
+one fingerprint fails closed.
+
+The held-out values are not authored action effects. The unchanged cognition
+runtime first induces two deterministic action laws from four transitions,
+predicts both on unseen states, infers a goal, and constructs a one-step plan.
+Those learned laws are compiled into the generic relational observation and
+consume the same persistent proof mechanisms. Aggregate verifier-derived work
+is 72→35 candidate units, 16→1 examples, and 112→16 proof units.
+
+This is one bounded cross-domain coupling of online world learning, task-local
+correspondence learning, persistent mechanism reuse, and independent replay. It
+does not learn entities from raw sensors, discover a latent variable in this
+episode, induce arbitrary relational programs, sustain an open-ended generated
+curriculum, prove broad G0-G6, or meet general intelligence. ARC is unchanged at
+36/400.

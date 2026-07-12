@@ -48,6 +48,17 @@ bounded G6 feedback loop but not raw-observation lowering or unknown-world
 experience generation, so the general-learning gate remains incomplete and ARC
 remains 36/400.
 
+The next G6 checkpoint removes manual frontier materialization for exact
+structured evidence. Static and interactive cases use the same canonical
+relational observation and lowering contracts. The runtime learns two unknown
+action effects, predicts two unseen transitions, and plans one step; those laws
+become the changed held-out evidence. A relational policy learned on the static
+case survives changed modality, IDs, values, order, cardinality, and a
+distractor, while its ordinal ablation fails. Independent candidate, sample,
+and proof work is 72→35, 16→1, and 112→16. This advances G5/G6 coupling but raw
+perception, complex hidden worlds, sustained open-ended development, general
+intelligence, and the 80% ARC gate remain incomplete. ARC remains 36/400.
+
 ## 0. Dataset policy
 
 ### Development partitions

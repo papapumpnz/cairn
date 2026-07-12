@@ -31,6 +31,15 @@ verified construction, and emits one exact candidate for changed held-out
 geometry and values. The expected graph remains verifier-only. This advances
 experience-dependent construction but is not raw-observation theory induction.
 
+Latest checkpoint (2026-07-12): exact structured observations now cross a
+canonical relational envelope and independently replayed observation-to-proof
+lowering. A value-free two-round relational fingerprint policy is bound to its
+verified training construction. It transfers from a static vector-like case to
+two action effects learned in an unknown interactive world despite changed
+modality, IDs, values, order, cardinality, and a distractor. Ordinal transfer
+fails; relational transfer yields one exact candidate. This remains structured
+evidence learning, not raw sensor perception or broad general intelligence.
+
 ## 0. Executive decision
 
 CAIRN is a CPU-only, transformer-free self-compressing causal theory learner.
@@ -100,14 +109,14 @@ event boundary. The generator proposes what capability should be exercised; it
 does not yet synthesize the environment that exercises it.
 
 At the proof-mechanism layer, a separate materializer now consumes that request
-and produces changed evidence-only frontiers. The cognition runtime searches
-bounded typed combinations of persistent mechanisms on a training frontier. A
-policy induced from the independently verified construction retains typed
-evidence ordinals, not an answer, and constructs one candidate on a changed
-held-out frontier. An independent implementation alone receives expected proof,
-checks the frontier prefix, every expansion, the joint result, and measured
-learning reduction. Verified completion returns to the curriculum journal.
-Lowering raw observations into the proof frontier remains the next boundary.
+and emits canonical `RelationalObservation` values. The cognition runtime lowers
+opaque typed elements and finite relations without modality checks, searches
+bounded mechanism combinations on a training frontier, and induces structural
+correspondence. A verifier independently reconstructs observation lowering and
+policy induction, binds the policy to the exact training receipt, and alone
+receives held-out proof. The same policy then consumes action effects learned by
+the interactive world learner. Verified completion returns to the curriculum
+journal. Raw sensor-to-relational-evidence induction remains the next boundary.
 
 The architecture deliberately avoids two failed patterns:
 

@@ -23,6 +23,7 @@ cairn-sequence = { path = "../../adapters/cairn-sequence" }
 cairn-skill = { path = "../cairn-skill" }
 cairn-vector = { path = "../../adapters/cairn-vector" }
 cairn-verifier = { path = "../cairn-verifier" }
+cairn-world = { path = "../cairn-world" }
 
 [lints]
 workspace = true

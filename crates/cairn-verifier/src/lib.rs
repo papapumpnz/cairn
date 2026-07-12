@@ -2,11 +2,16 @@
 
 use cairn_consolidator::{
     CompiledInternalMechanism, ConstructedInternalComposition, EpisodeBindings,
-    GraphCompressionProposal, GraphPatternArgument, GraphPatternNode, InternalEpisodeBindings,
-    InternalGraphCompressionProposal, InternalGraphPatternNode, InternalPatternInput, ProofDatum,
-    ProofFrontier, ProofGraph, ProofNode, ProofValueType,
+    FrontierNodeSelector, GraphCompressionProposal, GraphPatternArgument, GraphPatternNode,
+    InternalEpisodeBindings, InternalGraphCompressionProposal, InternalGraphPatternNode,
+    InternalPatternInput, LoweredObservationFrontier, ObservationFrontierLimits,
+    ObservationFrontierProvenance, ProofDatum, ProofFrontier, ProofGraph, ProofNode,
+    ProofValueType, RelationalConstructionPolicy, RelationalValueSelector,
 };
-use cairn_core::{CanonicalEncode, CanonicalValue, CollectionProcedureProblem, Hash32};
+use cairn_core::{
+    CanonicalEncode, CanonicalValue, CollectionProcedureProblem, EvidenceElementId,
+    EvidenceValueType, Hash32, RelationalObservation,
+};
 use cairn_mechanism::{
     admit_persistent, AdmissionError, InventionEvidence, Mechanism, MechanismStatus,
 };
@@ -198,6 +203,9 @@ pub enum InternalCompressionVerifyError {
     FrontierMismatch,
     ConstructedProofMismatch,
     InvalidJointResult,
+    InvalidObservation,
+    ObservationFrontierMismatch,
+    RelationalPolicyMismatch,
     InsufficientReuseEvidence,
     NoLearningReduction,
     NoCompression,
@@ -290,6 +298,59 @@ pub struct InternalCompositionEvidence<'a> {
     pub binding: &'a InternalEpisodeBindings,
 }
 
+/// Complete current-process input for independent relational construction
+/// verification. Expected truth remains confined to this verifier request.
+#[derive(Clone, Copy)]
+pub struct RelationalConstructionEvidence<'a> {
+    pub observation: &'a RelationalObservation,
+    pub lowering: &'a LoweredObservationFrontier,
+    pub policy: &'a RelationalConstructionPolicy,
+    pub expected: &'a ProofGraph,
+    pub candidate: &'a ConstructedInternalComposition,
+    pub mechanisms: &'a [InternalCompositionEvidence<'a>],
+    pub policy_verification: &'a VerifiedRelationalConstructionPolicy,
+    pub limits: ObservationFrontierLimits,
+}
+
+/// Inputs proving that a structural correspondence policy was derived from a
+/// previously verified exact construction rather than supplied independently.
+#[derive(Clone, Copy)]
+pub struct RelationalPolicyInductionEvidence<'a> {
+    pub observation: &'a RelationalObservation,
+    pub lowering: &'a LoweredObservationFrontier,
+    pub policy: &'a RelationalConstructionPolicy,
+    pub candidate: &'a ConstructedInternalComposition,
+    pub verified_construction: &'a VerifiedInternalConstruction,
+    pub mechanisms: &'a [InternalCompositionEvidence<'a>],
+    pub limits: ObservationFrontierLimits,
+}
+
+/// Opaque verifier evidence binding a value-free relational policy to the
+/// exact training construction from which it was induced.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedRelationalConstructionPolicy {
+    policy: Hash32,
+    training: Hash32,
+    certificate: Hash32,
+}
+
+impl VerifiedRelationalConstructionPolicy {
+    #[must_use]
+    pub const fn policy(&self) -> Hash32 {
+        self.policy
+    }
+
+    #[must_use]
+    pub const fn training(&self) -> Hash32 {
+        self.training
+    }
+
+    #[must_use]
+    pub const fn certificate(&self) -> Hash32 {
+        self.certificate
+    }
+}
+
 /// Opaque verifier result proving that distinct learned mechanisms jointly
 /// contribute to one current proof and reduce relearning work.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -307,6 +368,32 @@ pub struct VerifiedInternalConstruction {
     frontier: Hash32,
     composition: VerifiedInternalComposition,
     certificate: Hash32,
+}
+
+/// Opaque evidence that a relational observation was independently lowered to
+/// the exact proof frontier and provenance claimed by a producer.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedObservationFrontier {
+    observation: Hash32,
+    frontier: Hash32,
+    certificate: Hash32,
+}
+
+impl VerifiedObservationFrontier {
+    #[must_use]
+    pub const fn observation(&self) -> Hash32 {
+        self.observation
+    }
+
+    #[must_use]
+    pub const fn frontier(&self) -> Hash32 {
+        self.frontier
+    }
+
+    #[must_use]
+    pub const fn certificate(&self) -> Hash32 {
+        self.certificate
+    }
 }
 
 impl VerifiedInternalConstruction {
@@ -413,6 +500,45 @@ impl VerifiedInternalPromotion {
 pub struct InternalMechanismVerifier;
 
 impl InternalMechanismVerifier {
+    /// Independently reconstruct one relational observation frontier. Producer
+    /// lowering code and learned construction are outside this reference path.
+    ///
+    /// # Errors
+    ///
+    /// Rejects invalid observation evidence, capacity excess, changed nodes or
+    /// provenance, or a mismatched canonical commitment.
+    pub fn verify_observation_frontier(
+        &self,
+        observation: &RelationalObservation,
+        candidate: &LoweredObservationFrontier,
+        limits: ObservationFrontierLimits,
+    ) -> Result<VerifiedObservationFrontier, InternalCompressionVerifyError> {
+        observation
+            .verify(limits.observation)
+            .map_err(|_| InternalCompressionVerifyError::InvalidObservation)?;
+        let (frontier, provenance) = verifier_lower_observation(observation, limits)?;
+        let frontier_hash = verifier_observation_frontier_hash(&frontier, &provenance)?;
+        if candidate.frontier != frontier
+            || candidate.provenance != provenance
+            || candidate.commitment != frontier_hash
+        {
+            return Err(InternalCompressionVerifyError::ObservationFrontierMismatch);
+        }
+        let certificate = CanonicalValue::Array(vec![
+            CanonicalValue::Text("cairn.verified-observation-frontier.v1".to_owned()),
+            CanonicalValue::Bytes(observation.observation.id.0.as_bytes().to_vec()),
+            CanonicalValue::Bytes(frontier_hash.as_bytes().to_vec()),
+        ])
+        .encode_canonical()
+        .map(|bytes| Hash32::digest(&bytes))
+        .map_err(|_| InternalCompressionVerifyError::Canonicalization)?;
+        Ok(VerifiedObservationFrontier {
+            observation: observation.observation.id.0,
+            frontier: frontier_hash,
+            certificate,
+        })
+    }
+
     /// Verify that compilation removed evidence identity without changing the
     /// typed executable schema, then replay all mining sources independently.
     ///
@@ -793,6 +919,353 @@ impl InternalMechanismVerifier {
         let certificate = CanonicalValue::Array(vec![
             CanonicalValue::Text("cairn.verified-internal-construction.v1".to_owned()),
             CanonicalValue::Bytes(frontier_hash.as_bytes().to_vec()),
+            CanonicalValue::Bytes(composition.certificate().as_bytes().to_vec()),
+        ])
+        .encode_canonical()
+        .map(|bytes| Hash32::digest(&bytes))
+        .map_err(|_| InternalCompressionVerifyError::Canonicalization)?;
+        Ok(VerifiedInternalConstruction {
+            frontier: frontier_hash,
+            composition,
+            certificate,
+        })
+    }
+
+    /// Independently reconstruct a value-free relational policy and bind it to
+    /// the opaque exact-construction receipt that established its training case.
+    ///
+    /// # Errors
+    ///
+    /// Rejects changed observation/frontier lineage, mechanism or invocation
+    /// disagreement, ambiguous correspondence, or any selector differing from
+    /// independent structural reconstruction.
+    pub fn verify_relational_policy_induction(
+        &self,
+        request: RelationalPolicyInductionEvidence<'_>,
+    ) -> Result<VerifiedRelationalConstructionPolicy, InternalCompressionVerifyError> {
+        let RelationalPolicyInductionEvidence {
+            observation,
+            lowering,
+            policy,
+            candidate,
+            verified_construction,
+            mechanisms,
+            limits,
+        } = request;
+        let lowering_receipt = self.verify_observation_frontier(observation, lowering, limits)?;
+        let frontier_hash = verifier_frontier_hash(&lowering.frontier)?;
+        if verified_construction.frontier() != frontier_hash
+            || verified_construction.composition().experience() != candidate.graph.episode
+            || candidate.graph.episode != lowering.frontier.episode
+            || candidate.graph.nodes.get(..lowering.frontier.nodes.len())
+                != Some(lowering.frontier.nodes.as_slice())
+        {
+            return Err(InternalCompressionVerifyError::RelationalPolicyMismatch);
+        }
+        let mut ordered_evidence = mechanisms.iter().collect::<Vec<_>>();
+        ordered_evidence.sort_unstable_by_key(|item| item.mechanism.semantic_hash());
+        let mut invocations = candidate.invocations.iter().collect::<Vec<_>>();
+        invocations.sort_unstable_by_key(|invocation| invocation.mechanism);
+        let mut verified_invocations = verified_construction
+            .composition()
+            .invocations()
+            .iter()
+            .collect::<Vec<_>>();
+        verified_invocations.sort_unstable_by_key(|invocation| invocation.mechanism());
+        if ordered_evidence.len() != invocations.len()
+            || invocations.len() != verified_invocations.len()
+            || invocations
+                .iter()
+                .zip(&ordered_evidence)
+                .zip(&verified_invocations)
+                .any(|((invocation, item), verified)| {
+                    invocation.mechanism != item.mechanism.semantic_hash()
+                        || &invocation.binding != item.binding
+                        || verified.mechanism() != invocation.mechanism
+                        || verified.selected_nodes() != invocation.binding.selected_nodes
+                })
+        {
+            return Err(InternalCompressionVerifyError::CompiledLineageMismatch);
+        }
+        let fingerprints = verifier_relational_fingerprints(observation)?;
+        let mut boundary_selectors = Vec::with_capacity(invocations.len());
+        let mut value_selectors = Vec::with_capacity(invocations.len());
+        for invocation in invocations {
+            let boundaries = invocation
+                .binding
+                .boundary_nodes
+                .iter()
+                .map(|node| {
+                    let selector = verifier_frontier_node_selector(&lowering.frontier, *node)?;
+                    verifier_select_frontier_node(&lowering.frontier, &selector)?;
+                    Ok(selector)
+                })
+                .collect::<Result<Vec<_>, InternalCompressionVerifyError>>()?;
+            let values = invocation
+                .binding
+                .values
+                .iter()
+                .map(|value| verifier_relational_value_selector(observation, &fingerprints, *value))
+                .collect::<Result<Vec<_>, _>>()?;
+            boundary_selectors.push(boundaries);
+            value_selectors.push(values);
+        }
+        let reconstructed = RelationalConstructionPolicy {
+            mechanisms: ordered_evidence
+                .iter()
+                .map(|item| item.mechanism.semantic_hash())
+                .collect(),
+            boundary_selectors,
+            value_selectors,
+        };
+        if &reconstructed != policy {
+            return Err(InternalCompressionVerifyError::RelationalPolicyMismatch);
+        }
+        let policy_hash = verifier_relational_policy_hash(policy)?;
+        let certificate = CanonicalValue::Array(vec![
+            CanonicalValue::Text("cairn.verified-relational-policy.v1".to_owned()),
+            CanonicalValue::Bytes(lowering_receipt.certificate().as_bytes().to_vec()),
+            CanonicalValue::Bytes(verified_construction.certificate().as_bytes().to_vec()),
+            CanonicalValue::Bytes(policy_hash.as_bytes().to_vec()),
+        ])
+        .encode_canonical()
+        .map(|bytes| Hash32::digest(&bytes))
+        .map_err(|_| InternalCompressionVerifyError::Canonicalization)?;
+        Ok(VerifiedRelationalConstructionPolicy {
+            policy: policy_hash,
+            training: verified_construction.certificate(),
+            certificate,
+        })
+    }
+
+    /// Independently replay a relational correspondence policy and measure its
+    /// direct one-candidate construction path rather than obsolete sliding-host
+    /// matching work.
+    ///
+    /// # Errors
+    ///
+    /// Rejects observation/lowering mismatch, a policy containing changed or
+    /// ambiguous selectors, non-unit construction work, incorrect held-out
+    /// proof, invalid mechanism lineage/invocation, or absent learning reduction.
+    #[allow(clippy::too_many_lines)] // One explicit independent trust-boundary replay.
+    pub fn verify_relational_constructed_composition(
+        &self,
+        request: RelationalConstructionEvidence<'_>,
+    ) -> Result<VerifiedInternalConstruction, InternalCompressionVerifyError> {
+        let RelationalConstructionEvidence {
+            observation,
+            lowering,
+            policy,
+            expected,
+            candidate,
+            mechanisms: evidence,
+            policy_verification,
+            limits,
+        } = request;
+        let verified_frontier = self.verify_observation_frontier(observation, lowering, limits)?;
+        verifier_validate_graph(expected)?;
+        verifier_validate_graph(&candidate.graph)?;
+        if expected != &candidate.graph
+            || candidate.graph.episode != lowering.frontier.episode
+            || expected.episode != lowering.frontier.episode
+            || candidate.graph.nodes.get(..lowering.frontier.nodes.len())
+                != Some(lowering.frontier.nodes.as_slice())
+        {
+            return Err(InternalCompressionVerifyError::ConstructedProofMismatch);
+        }
+        if candidate.candidates_considered != 1 || evidence.len() < 2 {
+            return Err(InternalCompressionVerifyError::RelationalPolicyMismatch);
+        }
+        let mut ordered_evidence = evidence.iter().collect::<Vec<_>>();
+        ordered_evidence.sort_unstable_by_key(|item| item.mechanism.semantic_hash());
+        let mechanism_ids = ordered_evidence
+            .iter()
+            .map(|item| item.mechanism.semantic_hash())
+            .collect::<Vec<_>>();
+        if policy.mechanisms != mechanism_ids
+            || policy.boundary_selectors.len() != ordered_evidence.len()
+            || policy.value_selectors.len() != ordered_evidence.len()
+            || mechanism_ids.windows(2).any(|pair| pair[0] == pair[1])
+        {
+            return Err(InternalCompressionVerifyError::RelationalPolicyMismatch);
+        }
+        let mut candidate_invocations = candidate.invocations.iter().collect::<Vec<_>>();
+        candidate_invocations.sort_unstable_by_key(|invocation| invocation.mechanism);
+        if candidate_invocations.len() != ordered_evidence.len()
+            || candidate_invocations
+                .iter()
+                .zip(&ordered_evidence)
+                .any(|(invocation, item)| {
+                    invocation.mechanism != item.mechanism.semantic_hash()
+                        || &invocation.binding != item.binding
+                })
+        {
+            return Err(InternalCompressionVerifyError::CompiledLineageMismatch);
+        }
+        let fingerprints = verifier_relational_fingerprints(observation)?;
+        let policy_hash = verifier_relational_policy_hash(policy)?;
+        if policy_verification.policy() != policy_hash {
+            return Err(InternalCompressionVerifyError::RelationalPolicyMismatch);
+        }
+        for (index, (invocation, item)) in candidate_invocations
+            .iter()
+            .zip(&ordered_evidence)
+            .enumerate()
+        {
+            if policy.boundary_selectors[index].len() != item.mechanism.boundary_types().len()
+                || policy.value_selectors[index].len() != item.mechanism.parameter_types().len()
+            {
+                return Err(InternalCompressionVerifyError::RelationalPolicyMismatch);
+            }
+            let boundaries = policy.boundary_selectors[index]
+                .iter()
+                .map(|selector| verifier_select_frontier_node(&lowering.frontier, selector))
+                .collect::<Result<Vec<_>, _>>()?;
+            let values = policy.value_selectors[index]
+                .iter()
+                .map(|selector| {
+                    verifier_select_relational_value(observation, &fingerprints, *selector)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            if invocation.binding.boundary_nodes != boundaries
+                || invocation.binding.values != values
+                || invocation.binding.episode != lowering.frontier.episode
+            {
+                return Err(InternalCompressionVerifyError::RelationalPolicyMismatch);
+            }
+        }
+
+        let ancestors = verifier_proof_ancestors(&candidate.graph)?;
+        let mut selected = BTreeSet::new();
+        let mut invocations = Vec::with_capacity(ordered_evidence.len());
+        let mut source_proposals = Vec::with_capacity(ordered_evidence.len());
+        let mut metrics = InternalReuseMetrics {
+            candidate_windows_without: 0,
+            candidate_windows_with: 1,
+            examples_without: 0,
+            examples_with: 1,
+            proof_units_without: 0,
+            proof_units_with: 0,
+        };
+        for item in &ordered_evidence {
+            let replayed = self.verify_compilation(item.proposal, item.mechanism, item.sources)?;
+            if &replayed != item.compilation
+                || item.sources.len() < 2
+                || item
+                    .sources
+                    .iter()
+                    .any(|source| source.episode == candidate.graph.episode)
+            {
+                return Err(InternalCompressionVerifyError::CompiledLineageMismatch);
+            }
+            let output = item
+                .binding
+                .selected_nodes
+                .get(
+                    usize::try_from(item.mechanism.output())
+                        .map_err(|_| InternalCompressionVerifyError::Capacity)?,
+                )
+                .ok_or(InternalCompressionVerifyError::ReplayMismatch)?;
+            if !ancestors.contains(output) {
+                return Err(InternalCompressionVerifyError::IrrelevantInvocation);
+            }
+            if item
+                .binding
+                .selected_nodes
+                .iter()
+                .any(|node| !selected.insert(*node))
+            {
+                return Err(InternalCompressionVerifyError::OverlappingInvocation);
+            }
+            invocations.push(self.verify_invocation(
+                item.mechanism,
+                &candidate.graph,
+                item.binding,
+            )?);
+            source_proposals.push(item.proposal.semantic_hash());
+            metrics.candidate_windows_without = metrics
+                .candidate_windows_without
+                .checked_add(verifier_fresh_window_work(
+                    item.sources,
+                    item.mechanism.pattern().len(),
+                )?)
+                .ok_or(InternalCompressionVerifyError::Capacity)?;
+            metrics.examples_without = metrics
+                .examples_without
+                .checked_add(
+                    u32::try_from(item.sources.len())
+                        .map_err(|_| InternalCompressionVerifyError::Capacity)?,
+                )
+                .ok_or(InternalCompressionVerifyError::Capacity)?;
+            metrics.proof_units_without = metrics
+                .proof_units_without
+                .checked_add(item.proposal.uncompressed_nodes())
+                .ok_or(InternalCompressionVerifyError::Capacity)?;
+            let replay_units = 1_u64
+                .checked_add(
+                    u64::try_from(item.mechanism.parameter_types().len())
+                        .map_err(|_| InternalCompressionVerifyError::Capacity)?,
+                )
+                .and_then(|value| {
+                    value.checked_add(u64::try_from(item.mechanism.boundary_types().len()).ok()?)
+                })
+                .ok_or(InternalCompressionVerifyError::Capacity)?;
+            metrics.proof_units_with = metrics
+                .proof_units_with
+                .checked_add(replay_units)
+                .ok_or(InternalCompressionVerifyError::Capacity)?;
+        }
+        if metrics.candidate_windows_with >= metrics.candidate_windows_without
+            || metrics.examples_with >= metrics.examples_without
+            || metrics.proof_units_with >= metrics.proof_units_without
+        {
+            return Err(InternalCompressionVerifyError::NoLearningReduction);
+        }
+        let joint = candidate
+            .graph
+            .nodes
+            .last()
+            .ok_or(InternalCompressionVerifyError::InvalidJointResult)?;
+        let expected_inputs = ordered_evidence
+            .iter()
+            .map(|item| {
+                item.binding
+                    .selected_nodes
+                    .get(
+                        usize::try_from(item.mechanism.output())
+                            .map_err(|_| InternalCompressionVerifyError::Capacity)?,
+                    )
+                    .copied()
+                    .ok_or(InternalCompressionVerifyError::InvalidJointResult)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        if joint.operation != "join-learned-results"
+            || joint.inputs != expected_inputs
+            || candidate.graph.output
+                != u32::try_from(candidate.graph.nodes.len() - 1)
+                    .map_err(|_| InternalCompressionVerifyError::Capacity)?
+        {
+            return Err(InternalCompressionVerifyError::InvalidJointResult);
+        }
+        let composition_certificate = verifier_internal_composition_certificate(
+            candidate.graph.episode,
+            &source_proposals,
+            &invocations,
+            metrics,
+        )?;
+        let composition = VerifiedInternalComposition {
+            experience: candidate.graph.episode,
+            invocations,
+            metrics,
+            certificate: composition_certificate,
+        };
+        let frontier_hash = verifier_frontier_hash(&lowering.frontier)?;
+        let certificate = CanonicalValue::Array(vec![
+            CanonicalValue::Text("cairn.verified-relational-construction.v1".to_owned()),
+            CanonicalValue::Bytes(verified_frontier.certificate().as_bytes().to_vec()),
+            CanonicalValue::Bytes(frontier_hash.as_bytes().to_vec()),
+            CanonicalValue::Bytes(policy_hash.as_bytes().to_vec()),
+            CanonicalValue::Bytes(policy_verification.certificate().as_bytes().to_vec()),
             CanonicalValue::Bytes(composition.certificate().as_bytes().to_vec()),
         ])
         .encode_canonical()
@@ -1403,6 +1876,433 @@ fn verifier_frontier_hash(
     .map_err(|_| InternalCompressionVerifyError::Canonicalization)
 }
 
+fn verifier_lower_observation(
+    observation: &RelationalObservation,
+    limits: ObservationFrontierLimits,
+) -> Result<(ProofFrontier, Vec<ObservationFrontierProvenance>), InternalCompressionVerifyError> {
+    let node_count = 1_usize
+        .checked_add(observation.elements.len())
+        .and_then(|count| count.checked_add(observation.relations.len()))
+        .ok_or(InternalCompressionVerifyError::Capacity)?;
+    if node_count
+        > usize::try_from(limits.maximum_frontier_nodes)
+            .map_err(|_| InternalCompressionVerifyError::Capacity)?
+    {
+        return Err(InternalCompressionVerifyError::Capacity);
+    }
+    let mut nodes = vec![ProofNode {
+        operation: "observe-relational-evidence".to_owned(),
+        output_type: ProofValueType::EntitySet,
+        inputs: Vec::new(),
+        arguments: vec![ProofDatum {
+            ty: ProofValueType::Atom,
+            value: observation.observation.id.0,
+        }],
+    }];
+    let mut provenance = vec![ObservationFrontierProvenance::Observation];
+    let mut element_nodes = BTreeMap::new();
+    for element in &observation.elements {
+        let node =
+            u32::try_from(nodes.len()).map_err(|_| InternalCompressionVerifyError::Capacity)?;
+        element_nodes.insert(element.id, node);
+        let value_type = verifier_evidence_type(element.value_type);
+        nodes.push(ProofNode {
+            operation: "observe-evidence-element".to_owned(),
+            output_type: value_type,
+            inputs: vec![0],
+            arguments: vec![ProofDatum {
+                ty: value_type,
+                value: element.value,
+            }],
+        });
+        provenance.push(ObservationFrontierProvenance::Element(element.id));
+    }
+    for relation in &observation.relations {
+        let inputs = relation
+            .participants
+            .iter()
+            .map(|participant| {
+                element_nodes
+                    .get(participant)
+                    .copied()
+                    .ok_or(InternalCompressionVerifyError::InvalidObservation)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        nodes.push(ProofNode {
+            operation: "observe-evidence-relation".to_owned(),
+            output_type: ProofValueType::Relation,
+            inputs,
+            arguments: vec![ProofDatum {
+                ty: ProofValueType::Relation,
+                value: relation.predicate,
+            }],
+        });
+        provenance.push(ObservationFrontierProvenance::Relation {
+            predicate: relation.predicate,
+            participants: relation.participants.clone(),
+        });
+    }
+    Ok((
+        ProofFrontier {
+            episode: observation.observation.id.0,
+            nodes,
+        },
+        provenance,
+    ))
+}
+
+fn verifier_observation_frontier_hash(
+    frontier: &ProofFrontier,
+    provenance: &[ObservationFrontierProvenance],
+) -> Result<Hash32, InternalCompressionVerifyError> {
+    if frontier.nodes.len() != provenance.len() {
+        return Err(InternalCompressionVerifyError::ObservationFrontierMismatch);
+    }
+    let nodes = frontier
+        .nodes
+        .iter()
+        .map(|node| {
+            CanonicalValue::Array(vec![
+                CanonicalValue::Text(node.operation.clone()),
+                CanonicalValue::Unsigned(verifier_proof_type_code(node.output_type)),
+                CanonicalValue::Array(
+                    node.inputs
+                        .iter()
+                        .map(|input| CanonicalValue::Unsigned(u64::from(*input)))
+                        .collect(),
+                ),
+                CanonicalValue::Array(
+                    node.arguments
+                        .iter()
+                        .map(|argument| {
+                            CanonicalValue::Array(vec![
+                                CanonicalValue::Unsigned(verifier_proof_type_code(argument.ty)),
+                                CanonicalValue::Bytes(argument.value.as_bytes().to_vec()),
+                            ])
+                        })
+                        .collect(),
+                ),
+            ])
+        })
+        .collect();
+    let provenance = provenance
+        .iter()
+        .map(|source| match source {
+            ObservationFrontierProvenance::Observation => {
+                CanonicalValue::Array(vec![CanonicalValue::Unsigned(0)])
+            }
+            ObservationFrontierProvenance::Element(id) => CanonicalValue::Array(vec![
+                CanonicalValue::Unsigned(1),
+                CanonicalValue::Bytes(id.0.as_bytes().to_vec()),
+            ]),
+            ObservationFrontierProvenance::Relation {
+                predicate,
+                participants,
+            } => CanonicalValue::Array(vec![
+                CanonicalValue::Unsigned(2),
+                CanonicalValue::Bytes(predicate.as_bytes().to_vec()),
+                CanonicalValue::Array(
+                    participants
+                        .iter()
+                        .map(|participant| CanonicalValue::Bytes(participant.0.as_bytes().to_vec()))
+                        .collect(),
+                ),
+            ]),
+        })
+        .collect();
+    CanonicalValue::Array(vec![
+        CanonicalValue::Text("cairn.observation-frontier.v1".to_owned()),
+        CanonicalValue::Bytes(frontier.episode.as_bytes().to_vec()),
+        CanonicalValue::Array(nodes),
+        CanonicalValue::Array(provenance),
+    ])
+    .encode_canonical()
+    .map(|bytes| Hash32::digest(&bytes))
+    .map_err(|_| InternalCompressionVerifyError::Canonicalization)
+}
+
+fn verifier_frontier_node_matches(
+    frontier: &ProofFrontier,
+    index: usize,
+    selector: &FrontierNodeSelector,
+) -> Result<bool, InternalCompressionVerifyError> {
+    let node = frontier
+        .nodes
+        .get(index)
+        .ok_or(InternalCompressionVerifyError::FrontierMismatch)?;
+    let input_types = node
+        .inputs
+        .iter()
+        .map(|input| {
+            frontier
+                .nodes
+                .get(
+                    usize::try_from(*input)
+                        .map_err(|_| InternalCompressionVerifyError::Capacity)?,
+                )
+                .map(|input| input.output_type)
+                .ok_or(InternalCompressionVerifyError::FrontierMismatch)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(node.operation == selector.operation
+        && node.output_type == selector.output_type
+        && input_types == selector.input_types
+        && node
+            .arguments
+            .iter()
+            .map(|argument| argument.ty)
+            .eq(selector.argument_types.iter().copied()))
+}
+
+fn verifier_frontier_node_selector(
+    frontier: &ProofFrontier,
+    node: u32,
+) -> Result<FrontierNodeSelector, InternalCompressionVerifyError> {
+    let node = frontier
+        .nodes
+        .get(usize::try_from(node).map_err(|_| InternalCompressionVerifyError::Capacity)?)
+        .ok_or(InternalCompressionVerifyError::FrontierMismatch)?;
+    let input_types = node
+        .inputs
+        .iter()
+        .map(|input| {
+            frontier
+                .nodes
+                .get(
+                    usize::try_from(*input)
+                        .map_err(|_| InternalCompressionVerifyError::Capacity)?,
+                )
+                .map(|input| input.output_type)
+                .ok_or(InternalCompressionVerifyError::FrontierMismatch)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(FrontierNodeSelector {
+        operation: node.operation.clone(),
+        output_type: node.output_type,
+        input_types,
+        argument_types: node.arguments.iter().map(|argument| argument.ty).collect(),
+    })
+}
+
+fn verifier_select_frontier_node(
+    frontier: &ProofFrontier,
+    selector: &FrontierNodeSelector,
+) -> Result<u32, InternalCompressionVerifyError> {
+    let mut matches = Vec::new();
+    for index in 0..frontier.nodes.len() {
+        if verifier_frontier_node_matches(frontier, index, selector)? {
+            matches
+                .push(u32::try_from(index).map_err(|_| InternalCompressionVerifyError::Capacity)?);
+        }
+    }
+    match matches.as_slice() {
+        [only] => Ok(*only),
+        _ => Err(InternalCompressionVerifyError::RelationalPolicyMismatch),
+    }
+}
+
+fn verifier_relational_fingerprints(
+    observation: &RelationalObservation,
+) -> Result<BTreeMap<EvidenceElementId, Hash32>, InternalCompressionVerifyError> {
+    let mut colors = observation
+        .elements
+        .iter()
+        .map(|element| {
+            CanonicalValue::Array(vec![
+                CanonicalValue::Text("cairn.relational-fingerprint.seed.v1".to_owned()),
+                CanonicalValue::Unsigned(verifier_proof_type_code(verifier_evidence_type(
+                    element.value_type,
+                ))),
+            ])
+            .encode_canonical()
+            .map(|bytes| (element.id, Hash32::digest(&bytes)))
+            .map_err(|_| InternalCompressionVerifyError::Canonicalization)
+        })
+        .collect::<Result<BTreeMap<_, _>, _>>()?;
+    for round in 0_u64..2 {
+        let mut next = BTreeMap::new();
+        for element in &observation.elements {
+            let mut incident = observation
+                .relations
+                .iter()
+                .filter(|relation| relation.participants.contains(&element.id))
+                .map(|relation| {
+                    let positions = relation
+                        .participants
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, participant)| **participant == element.id)
+                        .map(|(position, _)| {
+                            u64::try_from(position)
+                                .map(CanonicalValue::Unsigned)
+                                .map_err(|_| InternalCompressionVerifyError::Capacity)
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
+                    let participants = relation
+                        .participants
+                        .iter()
+                        .map(|participant| {
+                            colors
+                                .get(participant)
+                                .map(|color| CanonicalValue::Bytes(color.as_bytes().to_vec()))
+                                .ok_or(InternalCompressionVerifyError::InvalidObservation)
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
+                    CanonicalValue::Array(vec![
+                        CanonicalValue::Bytes(relation.predicate.as_bytes().to_vec()),
+                        CanonicalValue::Array(positions),
+                        CanonicalValue::Array(participants),
+                    ])
+                    .encode_canonical()
+                    .map_err(|_| InternalCompressionVerifyError::Canonicalization)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            incident.sort_unstable();
+            let encoded = CanonicalValue::Array(vec![
+                CanonicalValue::Text("cairn.relational-fingerprint.round.v1".to_owned()),
+                CanonicalValue::Unsigned(round),
+                CanonicalValue::Unsigned(verifier_proof_type_code(verifier_evidence_type(
+                    element.value_type,
+                ))),
+                CanonicalValue::Array(incident.into_iter().map(CanonicalValue::Bytes).collect()),
+            ])
+            .encode_canonical()
+            .map_err(|_| InternalCompressionVerifyError::Canonicalization)?;
+            next.insert(element.id, Hash32::digest(&encoded));
+        }
+        colors = next;
+    }
+    Ok(colors)
+}
+
+fn verifier_select_relational_value(
+    observation: &RelationalObservation,
+    fingerprints: &BTreeMap<EvidenceElementId, Hash32>,
+    selector: RelationalValueSelector,
+) -> Result<ProofDatum, InternalCompressionVerifyError> {
+    let matches = observation
+        .elements
+        .iter()
+        .filter(|element| verifier_evidence_type(element.value_type) == selector.value_type)
+        .filter(|element| fingerprints.get(&element.id) == Some(&selector.fingerprint))
+        .collect::<Vec<_>>();
+    match matches.as_slice() {
+        [element] => Ok(ProofDatum {
+            ty: selector.value_type,
+            value: element.value,
+        }),
+        _ => Err(InternalCompressionVerifyError::RelationalPolicyMismatch),
+    }
+}
+
+fn verifier_relational_value_selector(
+    observation: &RelationalObservation,
+    fingerprints: &BTreeMap<EvidenceElementId, Hash32>,
+    value: ProofDatum,
+) -> Result<RelationalValueSelector, InternalCompressionVerifyError> {
+    let matches = observation
+        .elements
+        .iter()
+        .filter(|element| {
+            verifier_evidence_type(element.value_type) == value.ty && element.value == value.value
+        })
+        .collect::<Vec<_>>();
+    let [element] = matches.as_slice() else {
+        return Err(InternalCompressionVerifyError::RelationalPolicyMismatch);
+    };
+    let fingerprint = *fingerprints
+        .get(&element.id)
+        .ok_or(InternalCompressionVerifyError::InvalidObservation)?;
+    if observation
+        .elements
+        .iter()
+        .filter(|candidate| verifier_evidence_type(candidate.value_type) == value.ty)
+        .filter(|candidate| fingerprints.get(&candidate.id) == Some(&fingerprint))
+        .count()
+        != 1
+    {
+        return Err(InternalCompressionVerifyError::RelationalPolicyMismatch);
+    }
+    Ok(RelationalValueSelector {
+        value_type: value.ty,
+        fingerprint,
+    })
+}
+
+fn verifier_relational_policy_hash(
+    policy: &RelationalConstructionPolicy,
+) -> Result<Hash32, InternalCompressionVerifyError> {
+    let boundaries = policy
+        .boundary_selectors
+        .iter()
+        .map(|selectors| {
+            CanonicalValue::Array(
+                selectors
+                    .iter()
+                    .map(|selector| {
+                        CanonicalValue::Array(vec![
+                            CanonicalValue::Text(selector.operation.clone()),
+                            CanonicalValue::Unsigned(verifier_proof_type_code(
+                                selector.output_type,
+                            )),
+                            CanonicalValue::Array(
+                                selector
+                                    .input_types
+                                    .iter()
+                                    .map(|ty| {
+                                        CanonicalValue::Unsigned(verifier_proof_type_code(*ty))
+                                    })
+                                    .collect(),
+                            ),
+                            CanonicalValue::Array(
+                                selector
+                                    .argument_types
+                                    .iter()
+                                    .map(|ty| {
+                                        CanonicalValue::Unsigned(verifier_proof_type_code(*ty))
+                                    })
+                                    .collect(),
+                            ),
+                        ])
+                    })
+                    .collect(),
+            )
+        })
+        .collect();
+    let values = policy
+        .value_selectors
+        .iter()
+        .map(|selectors| {
+            CanonicalValue::Array(
+                selectors
+                    .iter()
+                    .map(|selector| {
+                        CanonicalValue::Array(vec![
+                            CanonicalValue::Unsigned(verifier_proof_type_code(selector.value_type)),
+                            CanonicalValue::Bytes(selector.fingerprint.as_bytes().to_vec()),
+                        ])
+                    })
+                    .collect(),
+            )
+        })
+        .collect();
+    CanonicalValue::Array(vec![
+        CanonicalValue::Text("cairn.relational-construction-policy.v1".to_owned()),
+        CanonicalValue::Array(
+            policy
+                .mechanisms
+                .iter()
+                .map(|mechanism| CanonicalValue::Bytes(mechanism.as_bytes().to_vec()))
+                .collect(),
+        ),
+        CanonicalValue::Array(boundaries),
+        CanonicalValue::Array(values),
+    ])
+    .encode_canonical()
+    .map(|bytes| Hash32::digest(&bytes))
+    .map_err(|_| InternalCompressionVerifyError::Canonicalization)
+}
+
 fn verifier_proof_ancestors(
     graph: &ProofGraph,
 ) -> Result<BTreeSet<u32>, InternalCompressionVerifyError> {
@@ -1852,6 +2752,20 @@ const fn verifier_proof_type_code(value: ProofValueType) -> u64 {
         ProofValueType::Action => 6,
         ProofValueType::Effect => 7,
         ProofValueType::Mechanism => 8,
+    }
+}
+
+const fn verifier_evidence_type(value_type: EvidenceValueType) -> ProofValueType {
+    match value_type {
+        EvidenceValueType::Boolean => ProofValueType::Boolean,
+        EvidenceValueType::Integer => ProofValueType::Integer,
+        EvidenceValueType::Atom => ProofValueType::Atom,
+        EvidenceValueType::Entity => ProofValueType::Entity,
+        EvidenceValueType::EntitySet => ProofValueType::EntitySet,
+        EvidenceValueType::Relation => ProofValueType::Relation,
+        EvidenceValueType::Action => ProofValueType::Action,
+        EvidenceValueType::Effect => ProofValueType::Effect,
+        EvidenceValueType::Mechanism => ProofValueType::Mechanism,
     }
 }
 

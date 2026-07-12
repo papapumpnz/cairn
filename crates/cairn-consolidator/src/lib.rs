@@ -3,7 +3,8 @@
 use cairn_cas::{Cas, CasError, StoredArtifact};
 use cairn_core::{
     ArtifactEnvelope, ArtifactError, ArtifactId, ArtifactKind, BlobId, BudgetRecord,
-    CanonicalEncode, CanonicalError, CanonicalLimits, CanonicalValue, Hash32, ProducerRecord,
+    CanonicalEncode, CanonicalError, CanonicalLimits, CanonicalValue, EvidenceElementId,
+    EvidenceValueType, Hash32, ProducerRecord, RelationalObservation, RelationalObservationLimits,
     SchemaDescriptor, SchemaRef, SchemaRegistry, SemanticsVersion,
 };
 use std::collections::{BTreeMap, BTreeSet};
@@ -189,6 +190,41 @@ pub struct ProofGraph {
 pub struct ProofFrontier {
     pub episode: Hash32,
     pub nodes: Vec<ProofNode>,
+}
+
+/// Upper bound for deterministic observation-to-frontier lowering.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ObservationFrontierLimits {
+    pub observation: RelationalObservationLimits,
+    pub maximum_frontier_nodes: u32,
+}
+
+impl Default for ObservationFrontierLimits {
+    fn default() -> Self {
+        Self {
+            observation: RelationalObservationLimits::default(),
+            maximum_frontier_nodes: 1_000_000,
+        }
+    }
+}
+
+/// Exact source of one lowered proof-frontier node.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ObservationFrontierProvenance {
+    Observation,
+    Element(EvidenceElementId),
+    Relation {
+        predicate: Hash32,
+        participants: Vec<EvidenceElementId>,
+    },
+}
+
+/// Untrusted deterministic lowering of generic relational observation evidence.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LoweredObservationFrontier {
+    pub frontier: ProofFrontier,
+    pub provenance: Vec<ObservationFrontierProvenance>,
+    pub commitment: Hash32,
 }
 
 impl CanonicalEncode for ProofGraph {
@@ -615,6 +651,31 @@ pub struct InternalConstructionPolicy {
     pub value_ordinals: Vec<Vec<u32>>,
 }
 
+/// Value-independent structural selector for one proof-frontier node.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FrontierNodeSelector {
+    pub operation: String,
+    pub output_type: ProofValueType,
+    pub input_types: Vec<ProofValueType>,
+    pub argument_types: Vec<ProofValueType>,
+}
+
+/// One typed value selected by its bounded relational neighbourhood rather
+/// than source identity, literal value, or observation order.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct RelationalValueSelector {
+    pub value_type: ProofValueType,
+    pub fingerprint: Hash32,
+}
+
+/// Task-local construction correspondence learned from relational structure.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RelationalConstructionPolicy {
+    pub mechanisms: Vec<Hash32>,
+    pub boundary_selectors: Vec<Vec<FrontierNodeSelector>>,
+    pub value_selectors: Vec<Vec<RelationalValueSelector>>,
+}
+
 impl CompiledInternalMechanism {
     #[must_use]
     pub fn pattern(&self) -> &[InternalGraphPatternNode] {
@@ -741,12 +802,106 @@ pub enum ConsolidationError {
     NoInternalComposition,
     InvalidFrontier,
     NoConstructionCandidate,
+    InvalidObservation,
+    AmbiguousCorrespondence,
+    MissingCorrespondence,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Consolidator;
 
 impl Consolidator {
+    /// Lower one validated modality-neutral relational observation to typed
+    /// proof evidence with explicit per-node provenance. This path neither
+    /// retrieves learned mechanisms nor consumes expected output.
+    ///
+    /// # Errors
+    ///
+    /// Rejects invalid observation identity/evidence, node capacity excess, or
+    /// canonical commitment failure.
+    pub fn lower_relational_observation(
+        &self,
+        observation: &RelationalObservation,
+        limits: ObservationFrontierLimits,
+    ) -> Result<LoweredObservationFrontier, ConsolidationError> {
+        observation
+            .verify(limits.observation)
+            .map_err(|_| ConsolidationError::InvalidObservation)?;
+        let node_count = 1_usize
+            .checked_add(observation.elements.len())
+            .and_then(|count| count.checked_add(observation.relations.len()))
+            .ok_or(ConsolidationError::Capacity)?;
+        if node_count
+            > usize::try_from(limits.maximum_frontier_nodes)
+                .map_err(|_| ConsolidationError::Capacity)?
+        {
+            return Err(ConsolidationError::Capacity);
+        }
+        let mut nodes = Vec::with_capacity(node_count);
+        let mut provenance = Vec::with_capacity(node_count);
+        nodes.push(ProofNode {
+            operation: "observe-relational-evidence".to_owned(),
+            output_type: ProofValueType::EntitySet,
+            inputs: Vec::new(),
+            arguments: vec![ProofDatum {
+                ty: ProofValueType::Atom,
+                value: observation.observation.id.0,
+            }],
+        });
+        provenance.push(ObservationFrontierProvenance::Observation);
+        let mut element_nodes = BTreeMap::new();
+        for element in &observation.elements {
+            let node = u32::try_from(nodes.len()).map_err(|_| ConsolidationError::Capacity)?;
+            element_nodes.insert(element.id, node);
+            let value_type = proof_value_type(element.value_type);
+            nodes.push(ProofNode {
+                operation: "observe-evidence-element".to_owned(),
+                output_type: value_type,
+                inputs: vec![0],
+                arguments: vec![ProofDatum {
+                    ty: value_type,
+                    value: element.value,
+                }],
+            });
+            provenance.push(ObservationFrontierProvenance::Element(element.id));
+        }
+        for relation in &observation.relations {
+            let inputs = relation
+                .participants
+                .iter()
+                .map(|participant| {
+                    element_nodes
+                        .get(participant)
+                        .copied()
+                        .ok_or(ConsolidationError::InvalidObservation)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            nodes.push(ProofNode {
+                operation: "observe-evidence-relation".to_owned(),
+                output_type: ProofValueType::Relation,
+                inputs,
+                arguments: vec![ProofDatum {
+                    ty: ProofValueType::Relation,
+                    value: relation.predicate,
+                }],
+            });
+            provenance.push(ObservationFrontierProvenance::Relation {
+                predicate: relation.predicate,
+                participants: relation.participants.clone(),
+            });
+        }
+        let frontier = ProofFrontier {
+            episode: observation.observation.id.0,
+            nodes,
+        };
+        let commitment = observation_frontier_commitment(&frontier, &provenance)?;
+        Ok(LoweredObservationFrontier {
+            frontier,
+            provenance,
+            commitment,
+        })
+    }
+
     /// Anti-unify the complete ancestral subgraph of each selected output.
     /// Unrelated nodes outside that subgraph are ignored. Operations, types,
     /// and dependency topology remain fixed; varying typed arguments become
@@ -1324,6 +1479,136 @@ impl Consolidator {
         construct_internal_candidate(&ordered, frontier, templates, 1)
     }
 
+    /// Infer task-local correspondence from one caller-verified construction.
+    /// Values are represented only by typed two-round relational fingerprints;
+    /// literal values, element identities, modality, and order are discarded.
+    ///
+    /// # Errors
+    ///
+    /// Rejects observation/frontier disagreement, invocation mismatch, values
+    /// absent from evidence, or any ambiguous structural selector.
+    pub fn induce_relational_construction_policy(
+        &self,
+        mechanisms: &[CompiledInternalMechanism],
+        observation: &RelationalObservation,
+        lowering: &LoweredObservationFrontier,
+        construction: &ConstructedInternalComposition,
+        limits: ObservationFrontierLimits,
+    ) -> Result<RelationalConstructionPolicy, ConsolidationError> {
+        let replayed = self.lower_relational_observation(observation, limits)?;
+        if replayed != *lowering
+            || construction.graph.episode != lowering.frontier.episode
+            || construction
+                .graph
+                .nodes
+                .get(..lowering.frontier.nodes.len())
+                != Some(lowering.frontier.nodes.as_slice())
+        {
+            return Err(ConsolidationError::ReplayMismatch);
+        }
+        let mut ordered = mechanisms.iter().collect::<Vec<_>>();
+        ordered.sort_unstable_by_key(|mechanism| mechanism.semantic_hash());
+        let mut invocations = construction.invocations.iter().collect::<Vec<_>>();
+        invocations.sort_unstable_by_key(|invocation| invocation.mechanism);
+        if ordered.len() != invocations.len()
+            || ordered
+                .iter()
+                .zip(&invocations)
+                .any(|(mechanism, invocation)| {
+                    mechanism.semantic_hash() != invocation.mechanism
+                        || invocation.binding.episode != lowering.frontier.episode
+                })
+        {
+            return Err(ConsolidationError::ReplayMismatch);
+        }
+        let fingerprints = relational_fingerprints(observation)?;
+        let mut boundary_selectors = Vec::with_capacity(ordered.len());
+        let mut value_selectors = Vec::with_capacity(ordered.len());
+        for invocation in invocations {
+            let boundaries = invocation
+                .binding
+                .boundary_nodes
+                .iter()
+                .map(|node| {
+                    let selector = frontier_node_selector(&lowering.frontier, *node)?;
+                    require_unique_frontier_selector(&lowering.frontier, &selector)?;
+                    Ok(selector)
+                })
+                .collect::<Result<Vec<_>, ConsolidationError>>()?;
+            let values = invocation
+                .binding
+                .values
+                .iter()
+                .map(|value| relational_value_selector(observation, &fingerprints, *value))
+                .collect::<Result<Vec<_>, _>>()?;
+            boundary_selectors.push(boundaries);
+            value_selectors.push(values);
+        }
+        Ok(RelationalConstructionPolicy {
+            mechanisms: ordered
+                .iter()
+                .map(|mechanism| mechanism.semantic_hash())
+                .collect(),
+            boundary_selectors,
+            value_selectors,
+        })
+    }
+
+    /// Apply relational correspondence to changed observation evidence and
+    /// construct exactly one untrusted candidate without expected-proof input.
+    ///
+    /// # Errors
+    ///
+    /// Rejects mechanism identity changes, observation/frontier disagreement,
+    /// or missing/ambiguous structural matches.
+    pub fn apply_relational_construction_policy(
+        &self,
+        mechanisms: &[CompiledInternalMechanism],
+        observation: &RelationalObservation,
+        lowering: &LoweredObservationFrontier,
+        policy: &RelationalConstructionPolicy,
+        limits: ObservationFrontierLimits,
+    ) -> Result<ConstructedInternalComposition, ConsolidationError> {
+        let replayed = self.lower_relational_observation(observation, limits)?;
+        if replayed != *lowering {
+            return Err(ConsolidationError::ReplayMismatch);
+        }
+        let mut ordered = mechanisms.iter().collect::<Vec<_>>();
+        ordered.sort_unstable_by_key(|mechanism| mechanism.semantic_hash());
+        if policy.mechanisms
+            != ordered
+                .iter()
+                .map(|mechanism| mechanism.semantic_hash())
+                .collect::<Vec<_>>()
+            || policy.boundary_selectors.len() != ordered.len()
+            || policy.value_selectors.len() != ordered.len()
+        {
+            return Err(ConsolidationError::ReplayMismatch);
+        }
+        let fingerprints = relational_fingerprints(observation)?;
+        let templates = ordered
+            .iter()
+            .enumerate()
+            .map(|(index, _)| {
+                let boundary_nodes = policy.boundary_selectors[index]
+                    .iter()
+                    .map(|selector| select_unique_frontier_node(&lowering.frontier, selector))
+                    .collect::<Result<Vec<_>, _>>()?;
+                let values = policy.value_selectors[index]
+                    .iter()
+                    .map(|selector| {
+                        select_unique_relational_value(observation, &fingerprints, *selector)
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(FrontierBinding {
+                    boundary_nodes,
+                    values,
+                })
+            })
+            .collect::<Result<Vec<_>, ConsolidationError>>()?;
+        construct_internal_candidate(&ordered, &lowering.frontier, templates, 1)
+    }
+
     /// Anti-unify equally shaped proof traces, replacing varying operations by
     /// typed holes while retaining shared structure.
     ///
@@ -1579,6 +1864,215 @@ fn value_candidate_dimensions(
                 .collect()
         })
         .collect()
+}
+
+fn frontier_node_selector(
+    frontier: &ProofFrontier,
+    node: u32,
+) -> Result<FrontierNodeSelector, ConsolidationError> {
+    let node = frontier
+        .nodes
+        .get(usize::try_from(node).map_err(|_| ConsolidationError::Capacity)?)
+        .ok_or(ConsolidationError::InvalidFrontier)?;
+    let input_types = node
+        .inputs
+        .iter()
+        .map(|input| {
+            frontier
+                .nodes
+                .get(usize::try_from(*input).map_err(|_| ConsolidationError::Capacity)?)
+                .map(|input| input.output_type)
+                .ok_or(ConsolidationError::InvalidFrontier)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(FrontierNodeSelector {
+        operation: node.operation.clone(),
+        output_type: node.output_type,
+        input_types,
+        argument_types: node.arguments.iter().map(|value| value.ty).collect(),
+    })
+}
+
+fn frontier_node_matches(
+    frontier: &ProofFrontier,
+    index: usize,
+    selector: &FrontierNodeSelector,
+) -> Result<bool, ConsolidationError> {
+    let node = frontier
+        .nodes
+        .get(index)
+        .ok_or(ConsolidationError::InvalidFrontier)?;
+    let input_types = node
+        .inputs
+        .iter()
+        .map(|input| {
+            frontier
+                .nodes
+                .get(usize::try_from(*input).map_err(|_| ConsolidationError::Capacity)?)
+                .map(|input| input.output_type)
+                .ok_or(ConsolidationError::InvalidFrontier)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(node.operation == selector.operation
+        && node.output_type == selector.output_type
+        && input_types == selector.input_types
+        && node
+            .arguments
+            .iter()
+            .map(|value| value.ty)
+            .eq(selector.argument_types.iter().copied()))
+}
+
+fn select_unique_frontier_node(
+    frontier: &ProofFrontier,
+    selector: &FrontierNodeSelector,
+) -> Result<u32, ConsolidationError> {
+    let mut matches = Vec::new();
+    for index in 0..frontier.nodes.len() {
+        if frontier_node_matches(frontier, index, selector)? {
+            matches.push(u32::try_from(index).map_err(|_| ConsolidationError::Capacity)?);
+        }
+    }
+    match matches.as_slice() {
+        [only] => Ok(*only),
+        [] => Err(ConsolidationError::MissingCorrespondence),
+        _ => Err(ConsolidationError::AmbiguousCorrespondence),
+    }
+}
+
+fn require_unique_frontier_selector(
+    frontier: &ProofFrontier,
+    selector: &FrontierNodeSelector,
+) -> Result<(), ConsolidationError> {
+    select_unique_frontier_node(frontier, selector).map(|_| ())
+}
+
+fn relational_fingerprints(
+    observation: &RelationalObservation,
+) -> Result<BTreeMap<EvidenceElementId, Hash32>, ConsolidationError> {
+    let mut colors = observation
+        .elements
+        .iter()
+        .map(|element| {
+            CanonicalValue::Array(vec![
+                CanonicalValue::Text("cairn.relational-fingerprint.seed.v1".to_owned()),
+                CanonicalValue::Unsigned(proof_type_code(proof_value_type(element.value_type))),
+            ])
+            .encode_canonical()
+            .map(|bytes| (element.id, Hash32::digest(&bytes)))
+            .map_err(|_| ConsolidationError::Canonicalization)
+        })
+        .collect::<Result<BTreeMap<_, _>, _>>()?;
+    for round in 0_u64..2 {
+        let mut next = BTreeMap::new();
+        for element in &observation.elements {
+            let mut incident = observation
+                .relations
+                .iter()
+                .filter(|relation| relation.participants.contains(&element.id))
+                .map(|relation| {
+                    let positions = relation
+                        .participants
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, participant)| **participant == element.id)
+                        .map(|(position, _)| {
+                            u64::try_from(position)
+                                .map(CanonicalValue::Unsigned)
+                                .map_err(|_| ConsolidationError::Capacity)
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
+                    let participants = relation
+                        .participants
+                        .iter()
+                        .map(|participant| {
+                            colors
+                                .get(participant)
+                                .map(|color| CanonicalValue::Bytes(color.as_bytes().to_vec()))
+                                .ok_or(ConsolidationError::InvalidObservation)
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
+                    CanonicalValue::Array(vec![
+                        CanonicalValue::Bytes(relation.predicate.as_bytes().to_vec()),
+                        CanonicalValue::Array(positions),
+                        CanonicalValue::Array(participants),
+                    ])
+                    .encode_canonical()
+                    .map_err(|_| ConsolidationError::Canonicalization)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            incident.sort_unstable();
+            let encoded = CanonicalValue::Array(vec![
+                CanonicalValue::Text("cairn.relational-fingerprint.round.v1".to_owned()),
+                CanonicalValue::Unsigned(round),
+                CanonicalValue::Unsigned(proof_type_code(proof_value_type(element.value_type))),
+                CanonicalValue::Array(incident.into_iter().map(CanonicalValue::Bytes).collect()),
+            ])
+            .encode_canonical()
+            .map_err(|_| ConsolidationError::Canonicalization)?;
+            next.insert(element.id, Hash32::digest(&encoded));
+        }
+        colors = next;
+    }
+    Ok(colors)
+}
+
+fn relational_value_selector(
+    observation: &RelationalObservation,
+    fingerprints: &BTreeMap<EvidenceElementId, Hash32>,
+    value: ProofDatum,
+) -> Result<RelationalValueSelector, ConsolidationError> {
+    let matches = observation
+        .elements
+        .iter()
+        .filter(|element| {
+            proof_value_type(element.value_type) == value.ty && element.value == value.value
+        })
+        .collect::<Vec<_>>();
+    let [element] = matches.as_slice() else {
+        return if matches.is_empty() {
+            Err(ConsolidationError::MissingCorrespondence)
+        } else {
+            Err(ConsolidationError::AmbiguousCorrespondence)
+        };
+    };
+    let fingerprint = *fingerprints
+        .get(&element.id)
+        .ok_or(ConsolidationError::InvalidObservation)?;
+    let same_structure = observation
+        .elements
+        .iter()
+        .filter(|candidate| proof_value_type(candidate.value_type) == value.ty)
+        .filter(|candidate| fingerprints.get(&candidate.id) == Some(&fingerprint))
+        .count();
+    if same_structure != 1 {
+        return Err(ConsolidationError::AmbiguousCorrespondence);
+    }
+    Ok(RelationalValueSelector {
+        value_type: value.ty,
+        fingerprint,
+    })
+}
+
+fn select_unique_relational_value(
+    observation: &RelationalObservation,
+    fingerprints: &BTreeMap<EvidenceElementId, Hash32>,
+    selector: RelationalValueSelector,
+) -> Result<ProofDatum, ConsolidationError> {
+    let matches = observation
+        .elements
+        .iter()
+        .filter(|element| proof_value_type(element.value_type) == selector.value_type)
+        .filter(|element| fingerprints.get(&element.id) == Some(&selector.fingerprint))
+        .collect::<Vec<_>>();
+    match matches.as_slice() {
+        [element] => Ok(ProofDatum {
+            ty: selector.value_type,
+            value: element.value,
+        }),
+        [] => Err(ConsolidationError::MissingCorrespondence),
+        _ => Err(ConsolidationError::AmbiguousCorrespondence),
+    }
 }
 
 fn binding_ordinals<T: Eq>(
@@ -2663,6 +3157,90 @@ fn internal_input_value(input: InternalPatternInput) -> CanonicalValue {
             CanonicalValue::Unsigned(u64::from(index)),
         ]),
     }
+}
+
+const fn proof_value_type(value_type: EvidenceValueType) -> ProofValueType {
+    match value_type {
+        EvidenceValueType::Boolean => ProofValueType::Boolean,
+        EvidenceValueType::Integer => ProofValueType::Integer,
+        EvidenceValueType::Atom => ProofValueType::Atom,
+        EvidenceValueType::Entity => ProofValueType::Entity,
+        EvidenceValueType::EntitySet => ProofValueType::EntitySet,
+        EvidenceValueType::Relation => ProofValueType::Relation,
+        EvidenceValueType::Action => ProofValueType::Action,
+        EvidenceValueType::Effect => ProofValueType::Effect,
+        EvidenceValueType::Mechanism => ProofValueType::Mechanism,
+    }
+}
+
+fn observation_frontier_commitment(
+    frontier: &ProofFrontier,
+    provenance: &[ObservationFrontierProvenance],
+) -> Result<Hash32, ConsolidationError> {
+    if frontier.nodes.len() != provenance.len() {
+        return Err(ConsolidationError::InvalidFrontier);
+    }
+    let nodes = frontier
+        .nodes
+        .iter()
+        .map(|node| {
+            CanonicalValue::Array(vec![
+                CanonicalValue::Text(node.operation.clone()),
+                CanonicalValue::Unsigned(proof_type_code(node.output_type)),
+                CanonicalValue::Array(
+                    node.inputs
+                        .iter()
+                        .map(|input| CanonicalValue::Unsigned(u64::from(*input)))
+                        .collect(),
+                ),
+                CanonicalValue::Array(
+                    node.arguments
+                        .iter()
+                        .map(|argument| {
+                            CanonicalValue::Array(vec![
+                                CanonicalValue::Unsigned(proof_type_code(argument.ty)),
+                                CanonicalValue::Bytes(argument.value.as_bytes().to_vec()),
+                            ])
+                        })
+                        .collect(),
+                ),
+            ])
+        })
+        .collect();
+    let provenance = provenance
+        .iter()
+        .map(|source| match source {
+            ObservationFrontierProvenance::Observation => {
+                CanonicalValue::Array(vec![CanonicalValue::Unsigned(0)])
+            }
+            ObservationFrontierProvenance::Element(id) => CanonicalValue::Array(vec![
+                CanonicalValue::Unsigned(1),
+                CanonicalValue::Bytes(id.0.as_bytes().to_vec()),
+            ]),
+            ObservationFrontierProvenance::Relation {
+                predicate,
+                participants,
+            } => CanonicalValue::Array(vec![
+                CanonicalValue::Unsigned(2),
+                CanonicalValue::Bytes(predicate.as_bytes().to_vec()),
+                CanonicalValue::Array(
+                    participants
+                        .iter()
+                        .map(|participant| CanonicalValue::Bytes(participant.0.as_bytes().to_vec()))
+                        .collect(),
+                ),
+            ]),
+        })
+        .collect();
+    CanonicalValue::Array(vec![
+        CanonicalValue::Text("cairn.observation-frontier.v1".to_owned()),
+        CanonicalValue::Bytes(frontier.episode.as_bytes().to_vec()),
+        CanonicalValue::Array(nodes),
+        CanonicalValue::Array(provenance),
+    ])
+    .encode_canonical()
+    .map(|bytes| Hash32::digest(&bytes))
+    .map_err(|_| ConsolidationError::Canonicalization)
 }
 
 const fn proof_type_code(value: ProofValueType) -> u64 {

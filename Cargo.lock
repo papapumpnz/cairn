@@ -65,6 +65,7 @@ dependencies = [
  "cairn-skill",
  "cairn-vector",
  "cairn-verifier",
+ "cairn-world",
 ]
 
 [[package]]

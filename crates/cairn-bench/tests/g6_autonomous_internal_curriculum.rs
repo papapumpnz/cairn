@@ -1,13 +1,15 @@
 use cairn_cas::{Cas, CasLimits};
 use cairn_consolidator::{
     CompiledInternalMechanism, Consolidator, ConstructedInternalComposition,
-    InternalConstructionLimits, InternalGraphCompressionProposal, InternalMiningLimits, ProofDatum,
-    ProofFrontier, ProofGraph, ProofGraphArchive, ProofGraphArtifactMetadata, ProofNode,
-    ProofValueType,
+    InternalConstructionLimits, InternalGraphCompressionProposal, InternalMiningLimits,
+    LoweredObservationFrontier, ObservationFrontierLimits, ProofDatum, ProofFrontier, ProofGraph,
+    ProofGraphArchive, ProofGraphArtifactMetadata, ProofNode, ProofValueType,
 };
 use cairn_core::{
-    ArtifactEnvelope, ArtifactKind, BlobId, BudgetRecord, CanonicalValue, Hash32, ProducerRecord,
-    SchemaRef, SemanticsVersion,
+    ArtifactEnvelope, ArtifactKind, BlobId, BudgetRecord, CanonicalValue, EvidenceElement,
+    EvidenceElementId, EvidenceRelation, EvidenceValueType, Hash32, ModalityId,
+    ObservationCertainty, ProducerRecord, RelationalObservation, RelationalObservationLimits,
+    SchemaRef, SemanticsVersion, SourceReference,
 };
 use cairn_curriculum::{
     AutonomousCurriculum, CurriculumCheckpointArchive, CurriculumCheckpointMetadata,
@@ -24,7 +26,11 @@ use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
 use cairn_runtime::{CognitionError, CognitionRuntime, InternalCompositionRuntimeError};
 use cairn_verifier::{
     InternalCompositionEvidence, InternalCompressionVerifyError, InternalMechanismVerifier,
-    VerifiedInternalConstruction, VerifiedInternalMechanism,
+    RelationalConstructionEvidence, RelationalPolicyInductionEvidence,
+    VerifiedInternalConstruction, VerifiedInternalMechanism, VerifiedRelationalConstructionPolicy,
+};
+use cairn_world::{
+    ActionId, GoalObservation, PlanLimits, StateSpace, TransitionObservation, WorldState,
 };
 use std::collections::BTreeSet;
 use std::path::PathBuf;
@@ -60,8 +66,24 @@ struct LearnedFamily {
 
 #[derive(Debug)]
 struct MaterializedConstructionExercise {
-    frontier: ProofFrontier,
+    observation: RelationalObservation,
+    lowering: LoweredObservationFrontier,
     expected: ProofGraph,
+}
+
+#[derive(Debug)]
+struct MaterializedCurriculum {
+    exercises: [MaterializedConstructionExercise; 2],
+    learned_world_rules: usize,
+    world_prediction_cases: usize,
+    world_plan_length: usize,
+}
+
+struct LearnedWorldExercise {
+    values: [(String, String); 2],
+    rules: usize,
+    prediction_cases: usize,
+    plan_length: usize,
 }
 
 fn verify_materialized_candidate(
@@ -70,6 +92,49 @@ fn verify_materialized_candidate(
     learned: &[LearnedFamily],
     required: [Hash32; 2],
 ) -> Result<VerifiedInternalConstruction, InternalCompressionVerifyError> {
+    InternalMechanismVerifier.verify_observation_frontier(
+        &exercise.observation,
+        &exercise.lowering,
+        observation_frontier_limits(),
+    )?;
+    let evidence = materialized_evidence(candidate, learned, required)?;
+    InternalMechanismVerifier.verify_constructed_composition(
+        &exercise.lowering.frontier,
+        &exercise.expected,
+        candidate,
+        &evidence,
+        64,
+    )
+}
+
+fn verify_relational_materialized_candidate(
+    exercise: &MaterializedConstructionExercise,
+    candidate: &ConstructedInternalComposition,
+    learned: &[LearnedFamily],
+    required: [Hash32; 2],
+    policy: &cairn_consolidator::RelationalConstructionPolicy,
+    policy_verification: &VerifiedRelationalConstructionPolicy,
+) -> Result<VerifiedInternalConstruction, InternalCompressionVerifyError> {
+    let evidence = materialized_evidence(candidate, learned, required)?;
+    InternalMechanismVerifier.verify_relational_constructed_composition(
+        RelationalConstructionEvidence {
+            observation: &exercise.observation,
+            lowering: &exercise.lowering,
+            policy,
+            expected: &exercise.expected,
+            candidate,
+            mechanisms: &evidence,
+            policy_verification,
+            limits: observation_frontier_limits(),
+        },
+    )
+}
+
+fn materialized_evidence<'a>(
+    candidate: &'a ConstructedInternalComposition,
+    learned: &'a [LearnedFamily],
+    required: [Hash32; 2],
+) -> Result<[InternalCompositionEvidence<'a>; 2], InternalCompressionVerifyError> {
     let first = learned
         .iter()
         .find(|family| family.mechanism.semantic_hash() == required[0])
@@ -90,7 +155,7 @@ fn verify_materialized_candidate(
         .find(|invocation| invocation.mechanism == required[1])
         .map(|invocation| &invocation.binding)
         .ok_or(InternalCompressionVerifyError::CompiledLineageMismatch)?;
-    let evidence = [
+    Ok([
         InternalCompositionEvidence {
             proposal: &first.proposal,
             mechanism: &first.mechanism,
@@ -105,14 +170,7 @@ fn verify_materialized_candidate(
             sources: &second.sources,
             binding: second_binding,
         },
-    ];
-    InternalMechanismVerifier.verify_constructed_composition(
-        &exercise.frontier,
-        &exercise.expected,
-        candidate,
-        &evidence,
-        64,
-    )
+    ])
 }
 
 #[test]
@@ -372,16 +430,21 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
         learned[0].mechanism.semantic_hash(),
         learned[1].mechanism.semantic_hash(),
     ];
-    let exercises = materialize_composition_exercises(
+    let materialized = materialize_composition_exercises(
         &generated.exercise_request(),
         &families[0],
         &families[1],
         required,
+        &runtime,
     );
+    let exercises = &materialized.exercises;
+    assert_eq!(materialized.learned_world_rules, 2);
+    assert_eq!(materialized.world_prediction_cases, 2);
+    assert_eq!(materialized.world_plan_length, 1);
     assert!(matches!(
         CognitionRuntime::new().construct_internal_compositions(
             &required,
-            &exercises[0].frontier,
+            &exercises[0].lowering.frontier,
             InternalConstructionLimits::default(),
         ),
         Err(CognitionError::InternalComposition(
@@ -391,7 +454,7 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
     let training_candidates = runtime
         .construct_internal_compositions(
             &required,
-            &exercises[0].frontier,
+            &exercises[0].lowering.frontier,
             InternalConstructionLimits {
                 maximum_bindings_per_mechanism: 8,
                 maximum_candidates: 32,
@@ -407,18 +470,75 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
         })
         .expect("verified training construction");
     let policy = Consolidator
+        .induce_relational_construction_policy(
+            &[learned[0].mechanism.clone(), learned[1].mechanism.clone()],
+            &exercises[0].observation,
+            &exercises[0].lowering,
+            training_candidate,
+            observation_frontier_limits(),
+        )
+        .expect("relational correspondence policy from verified construction");
+    let training_evidence = materialized_evidence(training_candidate, &learned, required)
+        .expect("training mechanism evidence");
+    let policy_verification = InternalMechanismVerifier
+        .verify_relational_policy_induction(RelationalPolicyInductionEvidence {
+            observation: &exercises[0].observation,
+            lowering: &exercises[0].lowering,
+            policy: &policy,
+            candidate: training_candidate,
+            verified_construction: &training_verified,
+            mechanisms: &training_evidence,
+            limits: observation_frontier_limits(),
+        })
+        .expect("independently bind policy to verified training construction");
+    let ordinal_policy = Consolidator
         .induce_internal_construction_policy(
             &[learned[0].mechanism.clone(), learned[1].mechanism.clone()],
-            &exercises[0].frontier,
+            &exercises[0].lowering.frontier,
             training_candidate,
         )
-        .expect("typed correspondence policy from verified construction");
+        .expect("ordinal ablation policy");
+    if let Ok(ordinal_candidate) = runtime.apply_internal_construction_policy(
+        &required,
+        &exercises[1].lowering.frontier,
+        &ordinal_policy,
+    ) {
+        assert_ne!(
+            ordinal_candidate.graph, exercises[1].expected,
+            "changed ordering/distractor must defeat ordinal correspondence"
+        );
+    }
     let held_out_candidate = runtime
-        .apply_internal_construction_policy(&required, &exercises[1].frontier, &policy)
-        .expect("one held-out construction without expected-proof input");
-    let held_out_verified =
-        verify_materialized_candidate(&exercises[1], &held_out_candidate, &learned, required)
-            .expect("independently verified held-out prediction");
+        .apply_relational_construction_policy(
+            &required,
+            &exercises[1].observation,
+            &exercises[1].lowering,
+            &policy,
+            observation_frontier_limits(),
+        )
+        .expect("one cross-domain held-out construction without expected-proof input");
+    let held_out_verified = verify_relational_materialized_candidate(
+        &exercises[1],
+        &held_out_candidate,
+        &learned,
+        required,
+        &policy,
+        &policy_verification,
+    )
+    .expect("independently verified held-out relational prediction");
+    let mut tampered_policy = policy.clone();
+    tampered_policy.value_selectors[0][0].fingerprint = Hash32::digest(b"tampered-policy");
+    assert_eq!(
+        verify_relational_materialized_candidate(
+            &exercises[1],
+            &held_out_candidate,
+            &learned,
+            required,
+            &tampered_policy,
+            &policy_verification,
+        ),
+        Err(InternalCompressionVerifyError::RelationalPolicyMismatch)
+    );
     let verified_constructions = [training_verified, held_out_verified];
     assert!(verified_constructions.iter().all(|verified| verified
         .composition()
@@ -448,6 +568,16 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
         .iter()
         .map(cairn_verifier::VerifiedInternalConstruction::certificate)
         .collect::<Vec<_>>();
+    certificate_bytes.extend(exercises.iter().map(|exercise| {
+        InternalMechanismVerifier
+            .verify_observation_frontier(
+                &exercise.observation,
+                &exercise.lowering,
+                observation_frontier_limits(),
+            )
+            .expect("independently verified observation lowering")
+            .certificate()
+    }));
     certificate_bytes.sort_unstable();
     let composition_evidence = Hash32::digest(
         &certificate_bytes
@@ -515,7 +645,7 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
     assert!(points.iter().all(|point| point.proof_units_with == 4));
     assert_eq!(store.len(), 4);
     eprintln!(
-        "G6_AUTONOMOUS_INTERNAL selected=family-a,family-b,family-c,family-d generated=composition constructed_from_frontier=1 held_out_without_expected=1 completed=1 generated_core={} generated_objective={} composition_evidence={} mechanisms=1->2->3->4 mechanism_hashes={},{},{},{} construction_generated={} construction_exact_rank_sum={} composition_invocations=2x2 composition_candidates={}->{} composition_examples=16->1 composition_proof={}->{} curriculum_checkpoints={},{},{},{} restarts=2 curriculum_restores=4 deprecated=target-d retained=6/6 negative_transfer=0/10",
+        "G6_AUTONOMOUS_INTERNAL selected=family-a,family-b,family-c,family-d generated=composition observation_lowering=2 relational_transfer=vector-to-unknown-world ordinal_ablation=fail held_out_without_expected=1 world_rules=2 world_predictions=2 world_plan=1 completed=1 generated_core={} generated_objective={} composition_evidence={} mechanisms=1->2->3->4 mechanism_hashes={},{},{},{} construction_generated={} construction_exact_rank_sum={} composition_invocations=2x2 composition_candidates={}->{} composition_examples=16->1 composition_proof={}->{} curriculum_checkpoints={},{},{},{} restarts=2 curriculum_restores=4 deprecated=target-d retained=6/6 negative_transfer=0/10",
         generated.failure_core,
         generated.objective.id.0,
         composition_evidence,
@@ -765,44 +895,13 @@ fn negative_host(episode: u8) -> ProofGraph {
     host_graph(&spec, episode, 2, 1, "noise", "none")
 }
 
-fn construction_frontier(episode: u8, prefix_noise: usize) -> ProofFrontier {
-    let mut nodes = vec![ProofNode {
-        operation: "exercise-observation".to_owned(),
-        output_type: ProofValueType::EntitySet,
-        inputs: vec![],
-        arguments: vec![datum(ProofValueType::Atom, "changed-composition-world")],
-    }];
-    for index in 0..prefix_noise {
-        nodes.push(ProofNode {
-            operation: format!("exercise-prefix-{episode}-{index}"),
-            output_type: ProofValueType::Integer,
-            inputs: vec![],
-            arguments: vec![datum(ProofValueType::Integer, &index.to_string())],
-        });
-    }
-    nodes.push(ProofNode {
-        operation: "exercise-typed-values".to_owned(),
-        output_type: ProofValueType::Atom,
-        inputs: vec![],
-        arguments: vec![
-            datum(ProofValueType::Entity, &format!("novel-first-{episode}")),
-            datum(ProofValueType::Effect, &format!("violet-{episode}")),
-            datum(ProofValueType::Entity, &format!("novel-second-{episode}")),
-            datum(ProofValueType::Effect, &format!("orange-{episode}")),
-        ],
-    });
-    ProofFrontier {
-        episode: Hash32::digest(&[episode]),
-        nodes,
-    }
-}
-
 fn materialize_composition_exercises(
     request: &cairn_curriculum::DevelopmentalExerciseRequest,
     first: &FamilySpec,
     second: &FamilySpec,
     required: [Hash32; 2],
-) -> [MaterializedConstructionExercise; 2] {
+    runtime: &CognitionRuntime,
+) -> MaterializedCurriculum {
     assert_eq!(request.need, DevelopmentalNeed::MechanismComposition);
     assert_eq!(request.minimum_independent_variations, 2);
     assert_eq!(
@@ -812,17 +911,256 @@ fn materialize_composition_exercises(
             MechanismTarget(second.target.to_owned()),
         ])
     );
-    [1_usize, 3]
-        .into_iter()
-        .zip([91_u8, 92])
-        .map(|(prefix_noise, episode)| {
-            let frontier = construction_frontier(episode, prefix_noise);
-            let expected = expected_composition(&frontier, first, second, required, episode);
-            MaterializedConstructionExercise { frontier, expected }
+    let training_values = [
+        (
+            "static-vector-entity-a".to_owned(),
+            "static-vector-effect-a".to_owned(),
+        ),
+        (
+            "static-vector-entity-b".to_owned(),
+            "static-vector-effect-b".to_owned(),
+        ),
+    ];
+    let training_observation = relational_exercise_observation(
+        91,
+        "urn:cairn:vector-relational:v1",
+        &training_values,
+        false,
+        false,
+    );
+    let training_lowering = runtime
+        .lower_relational_observation(&training_observation, observation_frontier_limits())
+        .expect("runtime training observation lowering");
+    let training_expected = expected_composition(
+        &training_lowering.frontier,
+        first,
+        second,
+        required,
+        &training_values,
+    );
+
+    let world = learn_unknown_world_exercise(runtime);
+    let held_out_observation = relational_exercise_observation(
+        92,
+        "urn:cairn:interactive-world-relational:v1",
+        &world.values,
+        true,
+        true,
+    );
+    let held_out_lowering = runtime
+        .lower_relational_observation(&held_out_observation, observation_frontier_limits())
+        .expect("runtime held-out observation lowering");
+    let held_out_expected = expected_composition(
+        &held_out_lowering.frontier,
+        first,
+        second,
+        required,
+        &world.values,
+    );
+    MaterializedCurriculum {
+        exercises: [
+            MaterializedConstructionExercise {
+                observation: training_observation,
+                lowering: training_lowering,
+                expected: training_expected,
+            },
+            MaterializedConstructionExercise {
+                observation: held_out_observation,
+                lowering: held_out_lowering,
+                expected: held_out_expected,
+            },
+        ],
+        learned_world_rules: world.rules,
+        world_prediction_cases: world.prediction_cases,
+        world_plan_length: world.plan_length,
+    }
+}
+
+fn learn_unknown_world_exercise(runtime: &CognitionRuntime) -> LearnedWorldExercise {
+    let space = StateSpace::new(vec![-5, -5], vec![5, 5]).expect("world bounds");
+    let actions = [ActionId(7), ActionId(11)];
+    let transitions = [
+        TransitionObservation {
+            before: WorldState(vec![0, 0]),
+            action: actions[0],
+            after: WorldState(vec![1, 0]),
+        },
+        TransitionObservation {
+            before: WorldState(vec![-2, 3]),
+            action: actions[0],
+            after: WorldState(vec![-1, 3]),
+        },
+        TransitionObservation {
+            before: WorldState(vec![0, 0]),
+            action: actions[1],
+            after: WorldState(vec![0, 1]),
+        },
+        TransitionObservation {
+            before: WorldState(vec![2, -2]),
+            action: actions[1],
+            after: WorldState(vec![2, -1]),
+        },
+    ];
+    let world = runtime
+        .learn_and_plan_world(
+            &space,
+            &actions,
+            &transitions,
+            &[
+                GoalObservation {
+                    state: WorldState(vec![1, 0]),
+                    achieved: true,
+                },
+                GoalObservation {
+                    state: WorldState(vec![0, 0]),
+                    achieved: false,
+                },
+            ],
+            &WorldState(vec![0, 0]),
+            PlanLimits {
+                maximum_visited_states: 32,
+                maximum_plan_length: 4,
+            },
+        )
+        .expect("learn unknown action laws and plan");
+    let values = world
+        .transition_theory
+        .rules()
+        .map(|rule| {
+            (
+                format!("learned-world-action-{}", rule.action.0),
+                format!(
+                    "learned-world-effect-{}-{}",
+                    rule.action.0,
+                    rule.delta
+                        .iter()
+                        .map(i64::to_string)
+                        .collect::<Vec<_>>()
+                        .join(":"),
+                ),
+            )
         })
         .collect::<Vec<_>>()
         .try_into()
-        .expect("two materialized variations")
+        .expect("two independently learned action laws");
+    let predictions = [
+        (WorldState(vec![3, 2]), actions[0], WorldState(vec![4, 2])),
+        (WorldState(vec![3, 2]), actions[1], WorldState(vec![3, 3])),
+    ];
+    assert!(predictions.iter().all(|(before, action, expected)| {
+        world.transition_theory.predict(before, *action).as_ref() == Ok(expected)
+    }));
+    LearnedWorldExercise {
+        values,
+        rules: world.transition_theory.rules().count(),
+        prediction_cases: predictions.len(),
+        plan_length: world.plan.actions.len(),
+    }
+}
+
+fn relational_exercise_observation(
+    episode: u8,
+    modality: &str,
+    values: &[(String, String); 2],
+    reverse_input: bool,
+    include_distractor: bool,
+) -> RelationalObservation {
+    let mut elements = Vec::new();
+    let mut relations = Vec::new();
+    for (index, ((entity, effect), marker_type)) in values
+        .iter()
+        .zip([EvidenceValueType::Boolean, EvidenceValueType::Integer])
+        .enumerate()
+    {
+        append_relational_role(
+            &mut elements,
+            &mut relations,
+            episode,
+            index,
+            entity,
+            effect,
+            marker_type,
+        );
+    }
+    if include_distractor {
+        append_relational_role(
+            &mut elements,
+            &mut relations,
+            episode,
+            2,
+            "unrelated-world-entity",
+            "unrelated-world-effect",
+            EvidenceValueType::Action,
+        );
+    }
+    if reverse_input {
+        elements.reverse();
+        relations.reverse();
+    }
+    RelationalObservation::new(
+        ModalityId(modality.to_owned()),
+        Some(u64::from(episode)),
+        SourceReference {
+            locator: format!("generated:g6-relational/{episode}"),
+            content_hash: Hash32::digest(&[episode, u8::from(include_distractor)]),
+        },
+        ObservationCertainty::Exact,
+        elements,
+        relations,
+        RelationalObservationLimits::default(),
+    )
+    .expect("generic relational exercise observation")
+}
+
+fn append_relational_role(
+    elements: &mut Vec<EvidenceElement>,
+    relations: &mut Vec<EvidenceRelation>,
+    episode: u8,
+    index: usize,
+    entity: &str,
+    effect: &str,
+    marker_type: EvidenceValueType,
+) {
+    let entity_element = EvidenceElement {
+        id: EvidenceElementId(Hash32::digest(
+            format!("entity-node-{episode}-{index}").as_bytes(),
+        )),
+        value_type: EvidenceValueType::Entity,
+        value: Hash32::digest(entity.as_bytes()),
+    };
+    let effect_element = EvidenceElement {
+        id: EvidenceElementId(Hash32::digest(
+            format!("effect-node-{episode}-{index}").as_bytes(),
+        )),
+        value_type: EvidenceValueType::Effect,
+        value: Hash32::digest(effect.as_bytes()),
+    };
+    let marker = EvidenceElement {
+        id: EvidenceElementId(Hash32::digest(
+            format!("marker-node-{episode}-{index}").as_bytes(),
+        )),
+        value_type: marker_type,
+        value: Hash32::digest(format!("opaque-marker-{episode}-{index}").as_bytes()),
+    };
+    let predicate = Hash32::digest(b"opaque-causal-link");
+    relations.extend([
+        EvidenceRelation {
+            predicate,
+            participants: vec![entity_element.id, effect_element.id],
+        },
+        EvidenceRelation {
+            predicate,
+            participants: vec![entity_element.id, marker.id],
+        },
+    ]);
+    elements.extend([entity_element, effect_element, marker]);
+}
+
+fn observation_frontier_limits() -> ObservationFrontierLimits {
+    ObservationFrontierLimits {
+        observation: RelationalObservationLimits::default(),
+        maximum_frontier_nodes: 64,
+    }
 }
 
 fn expected_composition(
@@ -830,25 +1168,21 @@ fn expected_composition(
     first: &FamilySpec,
     second: &FamilySpec,
     required: [Hash32; 2],
-    episode: u8,
+    values: &[(String, String); 2],
 ) -> ProofGraph {
     let mut nodes = frontier.nodes.clone();
-    let first_role = format!("novel-first-{episode}");
-    let first_effect = format!("violet-{episode}");
-    let second_role = format!("novel-second-{episode}");
-    let second_effect = format!("orange-{episode}");
     let mut families = [
         (
             required[0],
             first,
-            first_role.as_str(),
-            first_effect.as_str(),
+            values[0].0.as_str(),
+            values[0].1.as_str(),
         ),
         (
             required[1],
             second,
-            second_role.as_str(),
-            second_effect.as_str(),
+            values[1].0.as_str(),
+            values[1].1.as_str(),
         ),
     ];
     families.sort_unstable_by_key(|family| family.0);

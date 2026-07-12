@@ -1,12 +1,60 @@
 use cairn_consolidator::{
-    Consolidator, InternalConstructionLimits, InternalMiningLimits, ProofDatum, ProofFrontier,
-    ProofGraph, ProofNode, ProofValueType,
+    Consolidator, InternalConstructionLimits, InternalMiningLimits, ObservationFrontierLimits,
+    ProofDatum, ProofFrontier, ProofGraph, ProofNode, ProofValueType,
 };
-use cairn_core::Hash32;
+use cairn_core::{
+    CanonicalValue, EvidenceElement, EvidenceElementId, EvidenceRelation, EvidenceValueType,
+    Hash32, ModalityId, ObservationCertainty, RelationalObservation, RelationalObservationLimits,
+    SourceReference,
+};
 use cairn_verifier::{
     InternalCompositionEvidence, InternalCompressionVerifier, InternalCompressionVerifyError,
     InternalMechanismVerifier, InternalPromotionConsolidator,
 };
+
+#[test]
+fn independently_replays_relational_observation_lowering() {
+    let observation = verifier_relational_observation();
+    let limits = ObservationFrontierLimits {
+        observation: RelationalObservationLimits::default(),
+        maximum_frontier_nodes: 16,
+    };
+    let lowered = Consolidator
+        .lower_relational_observation(&observation, limits)
+        .expect("producer lowering");
+    let verified = InternalMechanismVerifier
+        .verify_observation_frontier(&observation, &lowered, limits)
+        .expect("independent lowering replay");
+    assert_eq!(verified.observation(), observation.observation.id.0);
+    assert_eq!(verified.frontier(), lowered.commitment);
+
+    let mut changed_node = lowered.clone();
+    changed_node.frontier.nodes[1].operation = "changed-producer-node".to_owned();
+    assert_eq!(
+        InternalMechanismVerifier.verify_observation_frontier(&observation, &changed_node, limits),
+        Err(InternalCompressionVerifyError::ObservationFrontierMismatch)
+    );
+    let mut changed_provenance = lowered.clone();
+    changed_provenance.provenance.swap(1, 2);
+    assert_eq!(
+        InternalMechanismVerifier.verify_observation_frontier(
+            &observation,
+            &changed_provenance,
+            limits
+        ),
+        Err(InternalCompressionVerifyError::ObservationFrontierMismatch)
+    );
+    let mut changed_observation = observation;
+    changed_observation.observation.payload = CanonicalValue::Null;
+    assert_eq!(
+        InternalMechanismVerifier.verify_observation_frontier(
+            &changed_observation,
+            &lowered,
+            limits
+        ),
+        Err(InternalCompressionVerifyError::InvalidObservation)
+    );
+}
 
 #[test]
 fn independently_reconstructs_internal_boundaries_costs_and_identity() {
@@ -618,6 +666,35 @@ fn expected_construction(
         output: u32::try_from(nodes.len() - 1).expect("small"),
         nodes,
     }
+}
+
+fn verifier_relational_observation() -> RelationalObservation {
+    let actor = EvidenceElement {
+        id: EvidenceElementId(Hash32::digest(b"actor-id")),
+        value_type: EvidenceValueType::Entity,
+        value: Hash32::digest(b"actor-value"),
+    };
+    let effect = EvidenceElement {
+        id: EvidenceElementId(Hash32::digest(b"effect-id")),
+        value_type: EvidenceValueType::Effect,
+        value: Hash32::digest(b"effect-value"),
+    };
+    RelationalObservation::new(
+        ModalityId("urn:cairn:test:verifier-relations:v1".to_owned()),
+        Some(1),
+        SourceReference {
+            locator: "generated:verifier-relations".to_owned(),
+            content_hash: Hash32::digest(b"verifier-relations"),
+        },
+        ObservationCertainty::Exact,
+        vec![effect, actor],
+        vec![EvidenceRelation {
+            predicate: Hash32::digest(b"opaque-relation"),
+            participants: vec![actor.id, effect.id],
+        }],
+        RelationalObservationLimits::default(),
+    )
+    .expect("relational observation")
 }
 
 const fn limits() -> InternalMiningLimits {

@@ -387,6 +387,17 @@ work falls from 72 to 40 candidate windows, 16 to one example, and 112 to 16
 proof units; 16 training candidates plus one held-out candidate are generated.
 This is genuine bounded experience-dependent construction, but lowering raw
 generic observations into the proof frontier remains open.
+That next boundary now passes for exact structured evidence. A canonical
+`RelationalObservation` carries opaque typed elements and finite relations with
+source provenance. Producer and verifier lower it independently to identical
+proof frontiers. A two-round structural fingerprint policy learned on a static
+vector-like observation transfers to an interactive-world observation after
+the unchanged runtime learns two previously unknown action laws. IDs, values,
+modality, canonical order, and cardinality change; an unrelated entity/effect
+pair is added; the ordinal-policy ablation fails while relational construction
+emits one exact held-out candidate. Verified candidate work is 72→35, examples
+16→1, and proof work 112→16. This is cross-domain structured causal transfer,
+not raw sensor perception, rich hidden-state discovery, or general intelligence.
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding,
 arbitrary non-contiguous internal-subgraph mining and RKL lowering,

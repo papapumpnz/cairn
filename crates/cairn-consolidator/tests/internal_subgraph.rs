@@ -3,7 +3,11 @@ use cairn_consolidator::{
     InternalMiningLimits, InternalPatternInput, ProofDatum, ProofFrontier, ProofGraph, ProofNode,
     ProofValueType,
 };
-use cairn_core::{CanonicalEncode, Hash32};
+use cairn_core::{
+    CanonicalEncode, EvidenceElement, EvidenceElementId, EvidenceRelation, EvidenceValueType,
+    Hash32, ModalityId, ObservationCertainty, RelationalObservation, RelationalObservationLimits,
+    SourceReference,
+};
 
 #[test]
 fn mines_and_rebinds_an_internal_mechanism_across_different_hosts() {
@@ -380,6 +384,109 @@ fn constructs_composition_candidates_from_evidence_without_a_completed_host() {
     );
 }
 
+#[test]
+fn lowers_relational_observation_and_transfers_by_structure_not_order() {
+    let (first, second, _) = construction_fixture();
+    let training_observation = relational_observation(
+        90,
+        ["first-role", "first-effect", "second-role", "second-effect"],
+        false,
+    );
+    let limits = cairn_consolidator::ObservationFrontierLimits {
+        observation: RelationalObservationLimits::default(),
+        maximum_frontier_nodes: 64,
+    };
+    let training_lowering = Consolidator
+        .lower_relational_observation(&training_observation, limits)
+        .expect("training lowering");
+    assert_eq!(training_lowering.frontier.nodes.len(), 13);
+    assert_eq!(
+        training_lowering.provenance.len(),
+        training_lowering.frontier.nodes.len()
+    );
+    let candidates = Consolidator
+        .construct_compiled_internal_compositions(
+            &[first.clone(), second.clone()],
+            &training_lowering.frontier,
+            InternalConstructionLimits {
+                maximum_bindings_per_mechanism: 64,
+                maximum_candidates: 2_000,
+            },
+        )
+        .expect("training construction candidates");
+    let desired = [
+        datum(ProofValueType::Atom, "first-role"),
+        datum(ProofValueType::Atom, "first-effect"),
+        datum(ProofValueType::Atom, "second-role"),
+        datum(ProofValueType::Atom, "second-effect"),
+    ];
+    let training = candidates
+        .iter()
+        .find(|candidate| {
+            candidate.invocations.iter().all(|invocation| {
+                if invocation.mechanism == first.semantic_hash() {
+                    invocation.binding.values == desired[..2]
+                } else {
+                    invocation.binding.values == desired[2..]
+                }
+            })
+        })
+        .expect("training truth");
+    let policy = Consolidator
+        .induce_relational_construction_policy(
+            &[first.clone(), second.clone()],
+            &training_observation,
+            &training_lowering,
+            training,
+            limits,
+        )
+        .expect("relational policy");
+
+    let held_out_observation =
+        relational_observation(91, ["new-a", "new-b", "new-c", "new-d"], true);
+    let held_out_lowering = Consolidator
+        .lower_relational_observation(&held_out_observation, limits)
+        .expect("held-out lowering");
+    let transferred = Consolidator
+        .apply_relational_construction_policy(
+            &[first.clone(), second.clone()],
+            &held_out_observation,
+            &held_out_lowering,
+            &policy,
+            limits,
+        )
+        .expect("relational transfer");
+    let changed = [
+        datum(ProofValueType::Atom, "new-a"),
+        datum(ProofValueType::Atom, "new-b"),
+        datum(ProofValueType::Atom, "new-c"),
+        datum(ProofValueType::Atom, "new-d"),
+    ];
+    assert_eq!(transferred.candidates_considered, 1);
+    assert!(transferred.invocations.iter().all(|invocation| {
+        if invocation.mechanism == first.semantic_hash() {
+            invocation.binding.values == changed[..2]
+        } else {
+            invocation.binding.values == changed[2..]
+        }
+    }));
+
+    let ambiguous = relational_observation_with_duplicate_structure(92);
+    let ambiguous_lowering = Consolidator
+        .lower_relational_observation(&ambiguous, limits)
+        .expect("ambiguous lowering remains valid evidence");
+    assert_eq!(
+        Consolidator.apply_relational_construction_policy(
+            &[first, second],
+            &ambiguous,
+            &ambiguous_lowering,
+            &policy,
+            limits,
+        ),
+        Err(ConsolidationError::AmbiguousCorrespondence)
+    );
+}
+
 fn construction_fixture() -> (
     cairn_consolidator::CompiledInternalMechanism,
     cairn_consolidator::CompiledInternalMechanism,
@@ -408,6 +515,93 @@ fn construction_fixture() -> (
         plan_mechanism(&second_sources, limits),
         construction_frontier(80),
     )
+}
+
+fn relational_observation(
+    episode: u8,
+    values: [&str; 4],
+    reverse_input: bool,
+) -> RelationalObservation {
+    let marker_types = [
+        EvidenceValueType::Boolean,
+        EvidenceValueType::Integer,
+        EvidenceValueType::Action,
+        EvidenceValueType::Mechanism,
+    ];
+    let mut elements = Vec::new();
+    let mut relations = Vec::new();
+    for (index, (value, marker_type)) in values.into_iter().zip(marker_types).enumerate() {
+        let item = EvidenceElement {
+            id: EvidenceElementId(Hash32::digest(format!("item-{episode}-{index}").as_bytes())),
+            value_type: EvidenceValueType::Atom,
+            value: Hash32::digest(value.as_bytes()),
+        };
+        let marker = EvidenceElement {
+            id: EvidenceElementId(Hash32::digest(
+                format!("marker-{episode}-{index}").as_bytes(),
+            )),
+            value_type: marker_type,
+            value: Hash32::digest(format!("marker-value-{episode}-{index}").as_bytes()),
+        };
+        relations.push(EvidenceRelation {
+            predicate: Hash32::digest(b"opaque-structural-link"),
+            participants: vec![item.id, marker.id],
+        });
+        elements.extend([item, marker]);
+    }
+    if reverse_input {
+        elements.reverse();
+        relations.reverse();
+    }
+    RelationalObservation::new(
+        ModalityId(format!("urn:cairn:test:domain-{episode}:v1")),
+        Some(u64::from(episode)),
+        SourceReference {
+            locator: format!("generated:relational/{episode}"),
+            content_hash: Hash32::digest(&[episode]),
+        },
+        ObservationCertainty::Exact,
+        elements,
+        relations,
+        RelationalObservationLimits::default(),
+    )
+    .expect("relational observation")
+}
+
+fn relational_observation_with_duplicate_structure(episode: u8) -> RelationalObservation {
+    let mut observation =
+        relational_observation(episode, ["new-a", "new-b", "new-c", "new-d"], true);
+    let item = EvidenceElement {
+        id: EvidenceElementId(Hash32::digest(b"duplicate-item")),
+        value_type: EvidenceValueType::Atom,
+        value: Hash32::digest(b"distractor"),
+    };
+    let marker = EvidenceElement {
+        id: EvidenceElementId(Hash32::digest(b"duplicate-marker")),
+        value_type: EvidenceValueType::Boolean,
+        value: Hash32::digest(b"distractor-marker"),
+    };
+    let mut elements = observation.elements;
+    let mut relations = observation.relations;
+    elements.extend([item, marker]);
+    relations.push(EvidenceRelation {
+        predicate: Hash32::digest(b"opaque-structural-link"),
+        participants: vec![item.id, marker.id],
+    });
+    observation = RelationalObservation::new(
+        ModalityId(format!("urn:cairn:test:ambiguous-{episode}:v1")),
+        Some(u64::from(episode)),
+        SourceReference {
+            locator: format!("generated:ambiguous/{episode}"),
+            content_hash: Hash32::digest(&[episode, 1]),
+        },
+        ObservationCertainty::Exact,
+        elements,
+        relations,
+        RelationalObservationLimits::default(),
+    )
+    .expect("ambiguous observation");
+    observation
 }
 
 fn plan_mechanism(

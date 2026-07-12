@@ -111,6 +111,23 @@ pub struct Observation {
     pub certainty: ObservationCertainty,
 }
 
+pub struct RelationalObservation {
+    pub observation: Observation,
+    pub elements: Vec<EvidenceElement>,
+    pub relations: Vec<EvidenceRelation>,
+}
+
+pub struct EvidenceElement {
+    pub id: EvidenceElementId,
+    pub value_type: EvidenceValueType,
+    pub value: Hash32,
+}
+
+pub struct EvidenceRelation {
+    pub predicate: Hash32,
+    pub participants: Vec<EvidenceElementId>,
+}
+
 pub struct Demonstration {
     pub context: Vec<ObservationId>,
     pub intervention: Option<Intervention>,
@@ -131,6 +148,13 @@ pub struct LearningProblem {
 normalized evidence and source references rather than branching on a frontend.
 Frontends may attach exact or uncertain observations, but uncertainty must remain
 explicit through derivation and verification.
+
+ADR-0019 adds `cairn.relational-observation.v1`. Element/relation input order is
+non-semantic and canonicalized; IDs, typed values, predicates, ordered
+participants, source, time, modality, and certainty are identity-bound.
+Duplicate elements/relations, empty relations, unknown participants, capacity
+excess, or payload tampering fail closed. Predicates and values are opaque;
+their names are not interpreted by cognition.
 
 An ARC adapter may define `Grid`, `GridPair`, and `ArcTask` in `cairn-arc12`.
 Those types are not core contracts. Its normalization rules are:
@@ -905,3 +929,22 @@ reconstructs current invocations through the independent composition verifier,
 checks the fixed n-ary joint result, and returns
 `VerifiedInternalConstruction`. Producer construction and expected truth never
 share an interface.
+
+ADR-0019 adds `LoweredObservationFrontier` with exact node provenance and a
+canonical commitment. `lower_relational_observation` emits one root, one typed
+node per element, and one ordered-input relation node. The independent verifier
+reconstructs this through `verify_observation_frontier`; producer lowering code
+is not imported into the replay path.
+
+`RelationalConstructionPolicy` replaces value ordinals with typed two-round
+relation-neighbourhood fingerprints. Fingerprints cover types, opaque
+predicates, argument positions, and neighbouring fingerprints; they exclude
+values, IDs, modality, source, task identity, order, and expected proof.
+Missing or non-unique matches fail closed.
+
+`verify_relational_policy_induction` independently reconstructs the complete
+policy and binds it to a prior `VerifiedInternalConstruction`. Held-out
+`verify_relational_constructed_composition` requires that opaque receipt,
+replays the policy and learned mechanisms, and derives direct construction work
+rather than unrelated sliding-window matching cost. The runtime accepts only
+persistent mechanisms and never receives expected proof.
