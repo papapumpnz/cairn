@@ -92,6 +92,12 @@ case requires and synthesizes a two-action diagnostic. Interactive-to-sequence
 and interactive-to-vector transfer produces two exact predictions versus zero
 with blank memory. These freeze the general core for the next ARC ablation.
 
+After that freeze, the quarantined ARC first-40 is 18/40 exact, 22
+resource-limited, zero incorrect. The full 400-task training run is 36/400 exact
+(9.00%), 364 resource-limited, and zero incorrect in 930.62 seconds. This is
+unchanged from the prior structural checkpoint. It passes no-regression and
+leakage boundaries but adds no ARC capability; the 80% gate remains failed.
+
 ## 0. Dataset policy
 
 ### Development partitions

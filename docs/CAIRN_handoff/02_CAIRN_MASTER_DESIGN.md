@@ -72,6 +72,14 @@ version space synthesizes the shortest two-action diagnostic when every
 one-action observation is identical. The same learned interactive mechanism
 then predicts sequence and vector transitions through adapter-only lowering.
 
+Quarantined evaluation checkpoint (2026-07-13): after committing the general
+core, the frozen structural ARC first-40 remains 18 exact/zero incorrect and the
+complete ARC-1 training corpus remains 36/400 exact, zero incorrect, 364
+resource-limited. The flat result is informative: finite action/state mechanism
+memory does not yet supply the relational entity correspondences, constructors,
+and render bindings needed by most unsolved static tasks. No core change is
+derived from this evaluation.
+
 ## 0. Executive decision
 
 CAIRN is a CPU-only, transformer-free self-compressing causal theory learner.

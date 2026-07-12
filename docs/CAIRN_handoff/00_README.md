@@ -71,6 +71,11 @@ planner invents a necessary two-action diagnostic, and one interactive schema
 rebinds through sequence and vector adapters. These remain controlled finite
 experiments, not a general-intelligence claim.
 
+The quarantined ARC rerun after freezing that core remains 18/40 and 36/400
+exact with zero incorrect. This is an honest flat result: the new world
+mechanisms transfer to sequence/vector observations but do not yet address
+ARC's dominant relational correspondence and rendering gaps.
+
 The bounded developmental controller now persists only a canonical,
 content-free event journal. After process loss, a fresh controller must
 reproduce every choice and evidence transition before learned prerequisites,

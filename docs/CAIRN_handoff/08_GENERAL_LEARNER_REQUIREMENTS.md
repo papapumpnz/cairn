@@ -989,3 +989,18 @@ multi-step experiment synthesis, curriculum-directed support expansion, and
 cross-domain use. It still assumes exact finite symbolic observations and
 candidate causal theories, does not learn raw entities, and is not general
 intelligence. The general core is frozen before the next ARC measurement.
+
+## 39. ARC measurement after developmental world scaling
+
+The core was committed at `64437f7` before evaluation access. The frozen ARC-1
+training first-40 remains 18 exact, 22 resource-limited, and zero incorrect.
+The complete 400-task structural-transfer run remains 36 exact (9.00%), 364
+resource-limited, and zero incorrect after 930.62 seconds. Raw per-case evidence
+is preserved with SHA-256
+`108ac9b96d6de3801ec1bf478362fc862c238b82f8a5cae170ac8207e6a1d54e`.
+
+This is a no-regression result, not an improvement. The new persistent world
+schemas are useful in interactive, sequence, and vector transition settings but
+are not currently applicable to the relational correspondence and rendering
+structures dominating ARC failures. No ARC observation changes the general
+core. General intelligence and 80% ARC remain unmet.
