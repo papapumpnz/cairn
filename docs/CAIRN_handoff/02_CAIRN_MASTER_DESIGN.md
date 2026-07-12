@@ -2312,3 +2312,28 @@ retained as verified general set/renderer capability, but its bounded
 cardinality-role grammar is not to be expanded for ARC coverage. The next
 research path must learn richer correspondence from non-ARC evidence and pass a
 causal memory ablation before benchmark integration.
+
+## 27. Collection correspondence and construction provenance
+
+`EntityGeometryScene` represents bounded N-dimensional geometric entities with
+opaque identities, categorical attributes, coordinate sets, extents, and an
+explicit background. `EntityCorrespondenceMechanism` contains only a bijection
+from output axes to source axes, reversed-axis flags, and an explicit preserved
+or tight frame. Source identities, values, examples, modality, and task names do
+not enter mechanism identity.
+
+The exhaustive reference learner accepts only one mechanism that replays every
+example. Execution returns an `EntityConstruction`: a canonical entity render
+and a provenance record mapping every output coordinate to its source entity and
+coordinate. Cross-entity collisions fail closed. The independent verifier
+reimplements the mapping, bounds, output reconstruction, and lineage accounting.
+
+Promotion requires two disjoint verifier cohorts and records observed
+dimensions, extents, entity counts, point-cardinality vectors, and values.
+Runtime memory emits proposals only. The frozen source experiment learns tight
+reflection and preserved axis permutation while identities, values, extents,
+positions, entity ordering, and cardinality vary. On held-out reflection
+families, fresh learning evaluates 16 candidates from two examples; persistent
+reuse attempts two mechanisms and needs zero new examples. The unchanged
+mechanism transfers from vector entities to a categorical finite field, while a
+transpose negative is rejected by independent replay.

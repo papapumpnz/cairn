@@ -4,8 +4,9 @@ use cairn_core::{CollectionDemonstration, CollectionProcedureProblem};
 use cairn_invent::{BindingExample, InventionLimits, InventionProblem};
 use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
 use cairn_theory::{
-    LayerLearningExample, LayerLearningLimits, LayerMechanism, LayerMechanismError,
-    LayerMechanismLearner,
+    EntityCorrespondenceError, EntityCorrespondenceExample, EntityCorrespondenceLearner,
+    EntityCorrespondenceLimits, LayerLearningExample, LayerLearningLimits, LayerMechanism,
+    LayerMechanismError, LayerMechanismLearner, LearnedEntityCorrespondence,
 };
 use cairn_world::{ActionId, LatentEpisode, TransitionObservation, WorldState};
 
@@ -36,6 +37,20 @@ pub struct VectorPointTransition {
 pub struct VectorAdapter;
 
 impl VectorAdapter {
+    /// Learn a collection-level coordinate correspondence with exact
+    /// entity/point construction provenance.
+    ///
+    /// # Errors
+    ///
+    /// Returns validation, ambiguity, capacity, or no-mechanism failures.
+    pub fn learn_entity_correspondence(
+        &self,
+        examples: &[EntityCorrespondenceExample],
+        limits: EntityCorrespondenceLimits,
+    ) -> Result<LearnedEntityCorrespondence, EntityCorrespondenceError> {
+        EntityCorrespondenceLearner.learn(examples, limits)
+    }
+
     /// Learn a modality-neutral coordinate-layer construction and renderer from
     /// exact vector-scene examples. The adapter supplies no expression label.
     ///

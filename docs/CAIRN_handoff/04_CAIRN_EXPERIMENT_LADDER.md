@@ -726,3 +726,21 @@ blank memory both produce 17/40. Preserve the disabled failing causal-ablation
 test and evidence hashes in the experiment report. Per ADR-0024, stop
 ARC-directed growth of this grammar and require the next correspondence learner
 to beat blank memory under an otherwise identical frozen evaluation.
+
+## G5-CORRESPONDENCE: entity mapping with construction provenance
+
+Freeze two independently authored vector cohorts before ARC. Vary source IDs,
+values, extents, positions, ordering, entity counts, point cardinalities, axis
+orientation, and frame. Require one learned mechanism to reconstruct all output
+entities and carry complete source entity/point provenance.
+
+Acceptance requires exact tight-reflection and preserved-axis-permutation
+families; two-cohort promotion; explicit support; changed-family held-outs;
+strict candidate and example reduction under persistent reuse; exact
+vector-to-field transfer; zero verifier-accepted wrong-family proposals; and
+failure on ambiguity, collision, changed truth, duplicate evidence, and caps.
+
+Only after a committed freeze, run blank versus correspondence-only ARC first
+40. Strict exact accuracy improvement with zero incorrect is mandatory. If it
+passes, run combined first 40 and full 400. If it fails, preserve evidence and
+stop before the complete run; applicability does not satisfy the gate.

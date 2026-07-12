@@ -16,16 +16,20 @@ use cairn_core::{
 use cairn_invent::{InventionError, InventionProblem};
 use cairn_knowledge::KnowledgeBase;
 use cairn_memory::{
-    InternalMechanismStore, LatentMechanismStore, LayerMechanismStore, MechanismStore,
-    MemoryAssistedInventor, MemorySolveOutcome, ModuleStatus, ProceduralMechanismModule,
-    ProceduralMechanismStore,
+    EntityCorrespondenceStore, InternalMechanismStore, LatentMechanismStore, LayerMechanismStore,
+    MechanismStore, MemoryAssistedInventor, MemorySolveOutcome, ModuleStatus,
+    ProceduralMechanismModule, ProceduralMechanismStore,
 };
 use cairn_rkl::{
     ReferenceTheoryExecutor, RuntimeEnvironment, TheoryExecLimits, TheoryExecutionRequest, Type,
     TypeEnvironment, Value,
 };
 use cairn_skill::{Condition, Skill, SkillPlan, SkillPlanError, SkillPlanner};
-use cairn_theory::{LayerMechanismError, LayerMechanismLearner, LayerRender, LayerScene};
+use cairn_theory::{
+    EntityConstruction, EntityCorrespondenceError, EntityCorrespondenceLearner,
+    EntityCorrespondenceLimits, EntityGeometryScene, LayerMechanismError, LayerMechanismLearner,
+    LayerRender, LayerScene,
+};
 use cairn_world::{
     ActionId, ActiveLatentInductionReport, ActiveLatentLimits, ActiveLatentWorldLearner,
     BeliefState, ExactPlanner, GoalObservation, GoalTheory, LatentEpisode, LatentError,
@@ -42,6 +46,7 @@ pub struct CognitionRuntime {
     internal_mechanisms: InternalMechanismStore,
     latent_mechanisms: LatentMechanismStore,
     layer_mechanisms: LayerMechanismStore,
+    entity_correspondences: EntityCorrespondenceStore,
     knowledge: KnowledgeBase,
 }
 
@@ -195,6 +200,7 @@ pub enum CognitionError {
     InternalComposition(InternalCompositionRuntimeError),
     LatentMemory(LatentMemoryRuntimeError),
     LayerMemory(LayerMemoryRuntimeError),
+    EntityCorrespondenceMemory(EntityCorrespondenceMemoryRuntimeError),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -234,6 +240,24 @@ pub struct LayerMemoryOutcome {
     pub persistent_mechanisms_attempted: u64,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EntityCorrespondenceMemoryRuntimeError {
+    NoVerifiedProposal,
+    Capacity,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EntityCorrespondenceMemoryProposal {
+    pub mechanism: Hash32,
+    pub construction: EntityConstruction,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EntityCorrespondenceMemoryOutcome {
+    pub proposals: Vec<EntityCorrespondenceMemoryProposal>,
+    pub persistent_mechanisms_attempted: u64,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum InternalCompositionRuntimeError {
     UnavailableMechanism(Hash32),
@@ -249,6 +273,7 @@ impl CognitionRuntime {
             internal_mechanisms: InternalMechanismStore::new(),
             latent_mechanisms: LatentMechanismStore::new(),
             layer_mechanisms: LayerMechanismStore::new(),
+            entity_correspondences: EntityCorrespondenceStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -261,6 +286,7 @@ impl CognitionRuntime {
             internal_mechanisms: InternalMechanismStore::new(),
             latent_mechanisms: LatentMechanismStore::new(),
             layer_mechanisms: LayerMechanismStore::new(),
+            entity_correspondences: EntityCorrespondenceStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -276,6 +302,7 @@ impl CognitionRuntime {
             internal_mechanisms: InternalMechanismStore::new(),
             latent_mechanisms: LatentMechanismStore::new(),
             layer_mechanisms: LayerMechanismStore::new(),
+            entity_correspondences: EntityCorrespondenceStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -290,6 +317,7 @@ impl CognitionRuntime {
             internal_mechanisms: InternalMechanismStore::new(),
             latent_mechanisms,
             layer_mechanisms: LayerMechanismStore::new(),
+            entity_correspondences: EntityCorrespondenceStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -304,6 +332,23 @@ impl CognitionRuntime {
             internal_mechanisms: InternalMechanismStore::new(),
             latent_mechanisms: LatentMechanismStore::new(),
             layer_mechanisms,
+            entity_correspondences: EntityCorrespondenceStore::new(),
+            knowledge: KnowledgeBase::new(),
+        }
+    }
+
+    /// Construct a runtime with proof-gated collection correspondence memory.
+    #[must_use]
+    pub const fn with_entity_correspondence_memory(
+        entity_correspondences: EntityCorrespondenceStore,
+    ) -> Self {
+        Self {
+            memory: MechanismStore::new(),
+            procedures: ProceduralMechanismStore::new(),
+            internal_mechanisms: InternalMechanismStore::new(),
+            latent_mechanisms: LatentMechanismStore::new(),
+            layer_mechanisms: LayerMechanismStore::new(),
+            entity_correspondences,
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -351,6 +396,15 @@ impl CognitionRuntime {
 
     pub const fn layer_mechanism_memory_mut(&mut self) -> &mut LayerMechanismStore {
         &mut self.layer_mechanisms
+    }
+
+    #[must_use]
+    pub const fn entity_correspondence_memory(&self) -> &EntityCorrespondenceStore {
+        &self.entity_correspondences
+    }
+
+    pub const fn entity_correspondence_memory_mut(&mut self) -> &mut EntityCorrespondenceStore {
+        &mut self.entity_correspondences
     }
 
     #[must_use]
@@ -744,6 +798,60 @@ impl CognitionRuntime {
             ));
         }
         Ok(LayerMemoryOutcome {
+            proposals,
+            persistent_mechanisms_attempted,
+        })
+    }
+
+    /// Rebind every persistent entity correspondence to a current scene and
+    /// return untrusted constructions with complete producer provenance.
+    ///
+    /// # Errors
+    ///
+    /// Returns explicit absence or capacity failure. Acceptance remains the
+    /// responsibility of the independent verifier.
+    pub fn propose_entity_constructions_from_memory(
+        &self,
+        scene: &EntityGeometryScene,
+        limits: EntityCorrespondenceLimits,
+    ) -> Result<EntityCorrespondenceMemoryOutcome, CognitionError> {
+        if limits.maximum_candidates == 0 || limits.maximum_points == 0 {
+            return Err(CognitionError::EntityCorrespondenceMemory(
+                EntityCorrespondenceMemoryRuntimeError::Capacity,
+            ));
+        }
+        let mut persistent_mechanisms_attempted = 0_u64;
+        let mut proposals = Vec::new();
+        for mechanism in self.entity_correspondences.persistent_mechanisms() {
+            persistent_mechanisms_attempted = persistent_mechanisms_attempted.saturating_add(1);
+            match EntityCorrespondenceLearner.execute(mechanism, scene, limits) {
+                Ok(construction) => proposals.push(EntityCorrespondenceMemoryProposal {
+                    mechanism: mechanism.semantic_hash().map_err(|_| {
+                        CognitionError::EntityCorrespondenceMemory(
+                            EntityCorrespondenceMemoryRuntimeError::Capacity,
+                        )
+                    })?,
+                    construction,
+                }),
+                Err(
+                    EntityCorrespondenceError::InvalidScene
+                    | EntityCorrespondenceError::InvalidRender
+                    | EntityCorrespondenceError::DimensionCapacity
+                    | EntityCorrespondenceError::ConstructionConflict,
+                ) => {}
+                Err(_) => {
+                    return Err(CognitionError::EntityCorrespondenceMemory(
+                        EntityCorrespondenceMemoryRuntimeError::Capacity,
+                    ));
+                }
+            }
+        }
+        if proposals.is_empty() {
+            return Err(CognitionError::EntityCorrespondenceMemory(
+                EntityCorrespondenceMemoryRuntimeError::NoVerifiedProposal,
+            ));
+        }
+        Ok(EntityCorrespondenceMemoryOutcome {
             proposals,
             persistent_mechanisms_attempted,
         })

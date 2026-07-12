@@ -1,7 +1,9 @@
 //! Independent promotion boundary combining replay provenance and learning gates.
 
+mod correspondence;
 mod layer;
 
+pub use correspondence::*;
 pub use layer::*;
 
 use cairn_consolidator::{

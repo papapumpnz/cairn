@@ -1033,3 +1033,23 @@ causal ablation, blank and layer-only memory both score 17 exact, zero
 incorrect, and 23 limited. Therefore this mechanism has no demonstrated ARC
 accuracy contribution even though its vector-to-field transfer is valid. The
 path is stopped under ADR-0024. General intelligence and 80% ARC remain unmet.
+
+## 42. Entity-correspondence checkpoint (pre-ARC freeze)
+
+The general core now learns a collection-level coordinate correspondence and
+retains exact construction provenance. From non-ARC vector examples it learns
+tight reflection and preserved axis permutation across changed source IDs,
+values, positions, extents, order, entity counts, and point cardinalities.
+
+Two disjoint cohorts/four experiences promote the reflection mechanism. On two
+held-out families, fresh induction evaluates 16 candidates and requires two
+examples; memory reuse makes two mechanism attempts and requires zero new
+examples. Exactness is unchanged. The same mechanism transfers into a
+categorical finite-field frontend. A wrong transpose family yields zero accepted
+predictions after independent verification. Ambiguity, collision, changed
+truth, duplicate evidence, and candidate caps fail closed.
+
+This is narrow evidence for mechanism invention, persistent reuse, compute and
+sample reduction, cross-domain transfer, and proof lineage. It is not arbitrary
+affine learning, relation-path induction, raw perception, general intelligence,
+or an ARC score claim. ARC remains unopened at this checkpoint.

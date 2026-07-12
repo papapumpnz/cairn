@@ -87,6 +87,15 @@ negative: combined accuracy remains 36/400, and layer-only memory ties blank
 memory at 17/40. The cardinality/set path is stopped for ARC-directed expansion;
 general correspondence and rendering learning remain open.
 
+The subsequent frozen checkpoint addresses that gap at collection level. It
+learns a signed-axis correspondence and explicit frame from non-ARC vector
+scenes, reconstructs each output entity, and records the exact source entity and
+point behind every emitted point. Two verified cohorts promote the mechanism;
+held-out reuse reduces 16 fresh candidates/two examples to two memory attempts
+and zero examples, transfers unchanged to categorical fields, and accepts zero
+wrong-family predictions. Its ARC effect remains unknown until the committed
+gate is opened.
+
 The bounded developmental controller now persists only a canonical,
 content-free event journal. After process loss, a fresh controller must
 reproduce every choice and evidence transition before learned prerequisites,

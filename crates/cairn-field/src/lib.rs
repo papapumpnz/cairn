@@ -17,9 +17,10 @@ use cairn_reg::{
 };
 use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
 use cairn_theory::{
-    ContrastExample, ContrastPredicateInventor, CoordinateLayer, LayerMechanism,
-    LayerMechanismLearner, LayerRender, LayerScene, LearnedEntitySelector,
-    RelationalEntitySelectorInventor,
+    ContrastExample, ContrastPredicateInventor, CoordinateLayer, EntityCorrespondenceLearner,
+    EntityCorrespondenceLimits, EntityCorrespondenceMechanism, EntityGeometryRender,
+    EntityGeometryScene, GeometricEntity, LayerMechanism, LayerMechanismLearner, LayerRender,
+    LayerScene, LearnedEntitySelector, RelationalEntitySelectorInventor,
 };
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
@@ -822,6 +823,7 @@ pub enum LearnedStructuralFieldBinding {
     PartitionExtraction(LearnedPartitionExtractionBinding),
     EntityFrameExtraction(LearnedEntityFrameExtractionBinding),
     LayerMechanism(LayerMechanism),
+    EntityCorrespondence(EntityCorrespondenceMechanism),
 }
 
 impl LearnedStructuralFieldBinding {
@@ -840,6 +842,11 @@ impl LearnedStructuralFieldBinding {
                 EntityFrameExtractionAdapter.predict(binding, input)
             }
             Self::LayerMechanism(mechanism) => LayerFieldAdapter.predict(mechanism, input, 65_536),
+            Self::EntityCorrespondence(mechanism) => EntityCorrespondenceFieldAdapter.predict(
+                mechanism,
+                input,
+                EntityCorrespondenceLimits::default(),
+            ),
         }
     }
 }
@@ -923,6 +930,96 @@ impl LayerFieldAdapter {
             .execute(mechanism, &scene, maximum_points)
             .map_err(|_| FieldError::Prediction)?;
         self.realize(&render)
+    }
+}
+
+/// Categorical-field frontend for generic collection correspondence. Each
+/// non-background category becomes one entity; cognition sees no field type.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct EntityCorrespondenceFieldAdapter;
+
+impl EntityCorrespondenceFieldAdapter {
+    /// Lower disjoint categorical entities into exact geometry.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed/empty fields and coordinate conversion failure.
+    pub fn lower(&self, input: &FiniteField) -> Result<EntityGeometryScene, FieldError> {
+        input.validate()?;
+        let background = modal_value(input);
+        let mut entities = BTreeMap::<i64, BTreeSet<Vec<i64>>>::new();
+        for (index, value) in input.values.iter().copied().enumerate() {
+            if value != background {
+                entities
+                    .entry(value)
+                    .or_default()
+                    .insert(index_coordinates(index, &input.shape)?);
+            }
+        }
+        if entities.is_empty() {
+            return Err(FieldError::NoEntity);
+        }
+        Ok(EntityGeometryScene {
+            extents: input.shape.clone(),
+            background,
+            entities: entities
+                .into_iter()
+                .map(|(value, points)| GeometricEntity {
+                    identity: Hash32::digest(
+                        &[b"categorical-entity:".as_slice(), &value.to_be_bytes()].concat(),
+                    ),
+                    value,
+                    points,
+                })
+                .collect(),
+        })
+    }
+
+    /// Realize an entity render while rejecting overlapping categorical claims.
+    ///
+    /// # Errors
+    ///
+    /// Rejects invalid extents, coordinates, conflicts, and resource overflow.
+    pub fn realize(&self, render: &EntityGeometryRender) -> Result<FiniteField, FieldError> {
+        let cardinality = render.extents.iter().try_fold(1_usize, |total, extent| {
+            total.checked_mul(usize::try_from(*extent).ok()?)
+        });
+        let mut values = vec![render.background; cardinality.ok_or(FieldError::Capacity)?];
+        for entity in &render.entities {
+            for point in &entity.points {
+                let index = coordinates_index(point, &render.extents)?;
+                let target = values.get_mut(index).ok_or(FieldError::OutOfBounds)?;
+                if *target != render.background && *target != entity.value {
+                    return Err(FieldError::ResidualConflict);
+                }
+                *target = entity.value;
+            }
+        }
+        let field = FiniteField {
+            shape: render.extents.clone(),
+            values,
+        };
+        field.validate()?;
+        Ok(field)
+    }
+
+    /// Apply one learned correspondence to a current field as an adapter-level
+    /// proposal.
+    ///
+    /// # Errors
+    ///
+    /// Rejects lowering, mechanism applicability, and realization failure.
+    pub fn predict(
+        &self,
+        mechanism: &EntityCorrespondenceMechanism,
+        input: &FiniteField,
+        limits: EntityCorrespondenceLimits,
+    ) -> Result<FiniteField, FieldError> {
+        let scene = self.lower(input)?;
+        let construction = EntityCorrespondenceLearner
+            .execute(mechanism, &scene, limits)
+            .map_err(|_| FieldError::Prediction)?;
+        self.realize(&construction.render)
     }
 }
 

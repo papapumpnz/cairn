@@ -1,0 +1,180 @@
+use crate::ModuleStatus;
+use cairn_core::Hash32;
+use cairn_theory::EntityCorrespondenceMechanism;
+use cairn_verifier::VerifiedEntityCorrespondence;
+use std::collections::{BTreeMap, BTreeSet};
+
+const REQUIRED_COHORTS: usize = 2;
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct EntityCorrespondenceSupportGeometry {
+    pub observed_dimensions: BTreeSet<usize>,
+    pub observed_extents: BTreeSet<Vec<u32>>,
+    pub observed_entity_counts: BTreeSet<usize>,
+    pub observed_point_cardinalities: BTreeSet<Vec<usize>>,
+    pub observed_values: BTreeSet<i64>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EntityCorrespondenceModule {
+    id: Hash32,
+    mechanism: EntityCorrespondenceMechanism,
+    cohorts: BTreeMap<Hash32, VerifiedEntityCorrespondence>,
+    experiences: BTreeSet<Hash32>,
+    support: EntityCorrespondenceSupportGeometry,
+    status: ModuleStatus,
+}
+
+impl EntityCorrespondenceModule {
+    #[must_use]
+    pub const fn id(&self) -> Hash32 {
+        self.id
+    }
+    #[must_use]
+    pub const fn mechanism(&self) -> &EntityCorrespondenceMechanism {
+        &self.mechanism
+    }
+    #[must_use]
+    pub const fn support(&self) -> &EntityCorrespondenceSupportGeometry {
+        &self.support
+    }
+    #[must_use]
+    pub const fn status(&self) -> ModuleStatus {
+        self.status
+    }
+    #[must_use]
+    pub fn verified_cohorts(&self) -> usize {
+        self.cohorts.len()
+    }
+    #[must_use]
+    pub fn verified_experiences(&self) -> usize {
+        self.experiences.len()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EntityCorrespondencePromotion {
+    Provisional { verified_cohorts: usize },
+    Persistent { verified_cohorts: usize },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EntityCorrespondenceStoreError {
+    Canonicalization,
+    MechanismMismatch,
+    EmptyReplay,
+    DuplicateCohort,
+    OverlappingExperience,
+}
+
+/// Proof-gated, proposal-only memory for entity correspondence mechanisms.
+#[derive(Clone, Debug, Default)]
+pub struct EntityCorrespondenceStore {
+    modules: BTreeMap<Hash32, EntityCorrespondenceModule>,
+}
+
+impl EntityCorrespondenceStore {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            modules: BTreeMap::new(),
+        }
+    }
+
+    /// Record one independent verifier cohort and promote after two disjoint
+    /// cohorts.
+    ///
+    /// # Errors
+    ///
+    /// Rejects identity mismatch, empty replay, duplication, and overlap.
+    pub fn record_verified_cohort(
+        &mut self,
+        mechanism: &EntityCorrespondenceMechanism,
+        receipt: VerifiedEntityCorrespondence,
+    ) -> Result<EntityCorrespondencePromotion, EntityCorrespondenceStoreError> {
+        let id = mechanism
+            .semantic_hash()
+            .map_err(|_| EntityCorrespondenceStoreError::Canonicalization)?;
+        if receipt.mechanism() != id
+            || receipt.replayed_entities() == 0
+            || receipt.replayed_points() == 0
+        {
+            return Err(EntityCorrespondenceStoreError::EmptyReplay);
+        }
+        let cohort = cohort_hash(receipt.experiences());
+        let module = self
+            .modules
+            .entry(id)
+            .or_insert_with(|| EntityCorrespondenceModule {
+                id,
+                mechanism: mechanism.clone(),
+                cohorts: BTreeMap::new(),
+                experiences: BTreeSet::new(),
+                support: EntityCorrespondenceSupportGeometry::default(),
+                status: ModuleStatus::Provisional,
+            });
+        if module.mechanism != *mechanism {
+            return Err(EntityCorrespondenceStoreError::MechanismMismatch);
+        }
+        if module.cohorts.contains_key(&cohort) {
+            return Err(EntityCorrespondenceStoreError::DuplicateCohort);
+        }
+        if !module.experiences.is_disjoint(receipt.experiences()) {
+            return Err(EntityCorrespondenceStoreError::OverlappingExperience);
+        }
+        module
+            .support
+            .observed_dimensions
+            .extend(receipt.observed_dimensions());
+        module
+            .support
+            .observed_extents
+            .extend(receipt.observed_extents().iter().cloned());
+        module
+            .support
+            .observed_entity_counts
+            .extend(receipt.observed_entity_counts());
+        module
+            .support
+            .observed_point_cardinalities
+            .extend(receipt.observed_point_cardinalities().iter().cloned());
+        module
+            .support
+            .observed_values
+            .extend(receipt.observed_values());
+        module.experiences.extend(receipt.experiences());
+        module.cohorts.insert(cohort, receipt);
+        let count = module.cohorts.len();
+        if count >= REQUIRED_COHORTS {
+            module.status = ModuleStatus::Persistent;
+            Ok(EntityCorrespondencePromotion::Persistent {
+                verified_cohorts: count,
+            })
+        } else {
+            Ok(EntityCorrespondencePromotion::Provisional {
+                verified_cohorts: count,
+            })
+        }
+    }
+
+    pub fn persistent_mechanisms(&self) -> impl Iterator<Item = &EntityCorrespondenceMechanism> {
+        self.modules
+            .values()
+            .filter(|module| module.status == ModuleStatus::Persistent)
+            .map(|module| &module.mechanism)
+    }
+
+    #[must_use]
+    pub fn module(&self, id: Hash32) -> Option<&EntityCorrespondenceModule> {
+        self.modules.get(&id)
+    }
+}
+
+fn cohort_hash(experiences: &BTreeSet<Hash32>) -> Hash32 {
+    Hash32::digest(
+        &experiences
+            .iter()
+            .flat_map(|experience| experience.as_bytes().iter().copied())
+            .collect::<Vec<_>>(),
+    )
+}

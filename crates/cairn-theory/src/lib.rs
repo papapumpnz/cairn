@@ -1,7 +1,9 @@
 //! Environment-neutral induction of theory components from binding evidence.
 
+mod correspondence;
 mod layer;
 
+pub use correspondence::*;
 pub use layer::*;
 
 use cairn_invent::{

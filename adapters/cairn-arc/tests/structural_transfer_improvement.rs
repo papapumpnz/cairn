@@ -9,7 +9,9 @@ use cairn_memory::LayerMechanismStore;
 use cairn_rkl::ExecLimits;
 use cairn_runtime::CognitionRuntime;
 use cairn_theory::{
-    CoordinateLayer, LayerLearningExample, LayerLearningLimits, LayerRender, LayerScene,
+    CoordinateLayer, EntityCorrespondenceExample, EntityCorrespondenceLimits, EntityGeometryRender,
+    EntityGeometryScene, GeometricEntity, LayerLearningExample, LayerLearningLimits, LayerRender,
+    LayerScene, RenderedEntity,
 };
 use cairn_vector::VectorAdapter;
 use cairn_verifier::LayerMechanismVerifier;
@@ -251,6 +253,42 @@ fn posthoc_arc40_layer_memory_causal_ablation() {
     assert_eq!(layer.incorrect_tasks, 0);
 }
 
+#[test]
+#[ignore = "frozen correspondence-only versus blank first-40 causal gate"]
+fn frozen_arc40_entity_correspondence_causal_ablation() {
+    let corpus =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../datasets/arc-agi-1-v1.0.2/training");
+    let runtime = CognitionRuntime::new();
+    let blank = run_training_batch_with_runtime_and_structural_bindings(
+        &corpus,
+        40,
+        limits(),
+        ExecLimits::default(),
+        &runtime,
+        &[],
+    )
+    .expect("blank ARC-40 correspondence ablation");
+    let correspondence = run_training_batch_with_runtime_and_structural_bindings(
+        &corpus,
+        40,
+        limits(),
+        ExecLimits::default(),
+        &runtime,
+        &[LearnedStructuralFieldBinding::EntityCorrespondence(
+            non_arc_entity_correspondence(),
+        )],
+    )
+    .expect("correspondence-only ARC-40 ablation");
+    fs::write(
+        "/tmp/cairn_arc40_entity_correspondence_ablation_20260713.json",
+        serde_json::to_string_pretty(&(blank.clone(), correspondence.clone()))
+            .expect("report JSON"),
+    )
+    .expect("write report");
+    assert!(correspondence.exact_tasks > blank.exact_tasks);
+    assert_eq!(correspondence.incorrect_tasks, 0);
+}
+
 use cairn_field::FieldError;
 
 fn non_arc_binding() -> cairn_field::LearnedPartitionBroadcastBinding {
@@ -299,7 +337,145 @@ fn structural_bindings() -> Vec<LearnedStructuralFieldBinding> {
         LearnedStructuralFieldBinding::PartitionExtraction(non_arc_extraction_binding()),
         LearnedStructuralFieldBinding::EntityFrameExtraction(non_arc_entity_frame_binding()),
         LearnedStructuralFieldBinding::LayerMechanism(non_arc_layer_mechanism()),
+        LearnedStructuralFieldBinding::EntityCorrespondence(non_arc_entity_correspondence()),
     ]
+}
+
+fn non_arc_entity_correspondence() -> cairn_theory::EntityCorrespondenceMechanism {
+    let first = [
+        graphics_correspondence_example(12, 15, 2, 3, 2),
+        graphics_correspondence_example(16, 13, 4, 20, 3),
+    ];
+    let second = [
+        graphics_correspondence_example(18, 20, 5, 40, 3),
+        graphics_correspondence_example(21, 17, 7, 60, 4),
+    ];
+    let learned = VectorAdapter
+        .learn_entity_correspondence(&first, EntityCorrespondenceLimits::default())
+        .expect("non-ARC correspondence curriculum");
+    assert_eq!(
+        VectorAdapter
+            .learn_entity_correspondence(&second, EntityCorrespondenceLimits::default())
+            .expect("independent correspondence curriculum")
+            .mechanism,
+        learned.mechanism
+    );
+    let mut store = cairn_memory::EntityCorrespondenceStore::new();
+    for examples in [&first[..], &second[..]] {
+        let receipt = cairn_verifier::EntityCorrespondenceVerifier
+            .verify(&learned.mechanism, examples, 65_536)
+            .expect("independent correspondence verification");
+        store
+            .record_verified_cohort(&learned.mechanism, receipt)
+            .expect("correspondence promotion evidence");
+    }
+    let persistent = store
+        .persistent_mechanisms()
+        .next()
+        .expect("persistent correspondence")
+        .clone();
+    persistent
+}
+
+fn graphics_correspondence_example(
+    rows: u32,
+    columns: u32,
+    shift: i64,
+    value: i64,
+    count: usize,
+) -> EntityCorrespondenceExample {
+    let mut entities = vec![
+        graphics_entity(
+            value,
+            &[(shift, shift), (shift + 1, shift), (shift + 1, shift + 1)],
+            &format!("hook:{rows}"),
+        ),
+        graphics_entity(
+            value + 1,
+            &[(shift + 3, shift + 4), (shift + 3, shift + 5)],
+            &format!("bar:{columns}"),
+        ),
+    ];
+    for index in 2..count {
+        let offset = i64::try_from(index).expect("small");
+        entities.push(graphics_entity(
+            value + offset,
+            &[(shift + 4 + offset, shift + offset)],
+            &format!("extra:{rows}:{index}"),
+        ));
+    }
+    let source = EntityGeometryScene {
+        extents: vec![rows, columns],
+        background: 0,
+        entities,
+    };
+    let minimum_row = source
+        .entities
+        .iter()
+        .flat_map(|entity| &entity.points)
+        .map(|point| point[0])
+        .min()
+        .expect("row");
+    let maximum_row = source
+        .entities
+        .iter()
+        .flat_map(|entity| &entity.points)
+        .map(|point| point[0])
+        .max()
+        .expect("row");
+    let minimum_column = source
+        .entities
+        .iter()
+        .flat_map(|entity| &entity.points)
+        .map(|point| point[1])
+        .min()
+        .expect("column");
+    let maximum_column = source
+        .entities
+        .iter()
+        .flat_map(|entity| &entity.points)
+        .map(|point| point[1])
+        .max()
+        .expect("column");
+    let mut expected_entities = source
+        .entities
+        .iter()
+        .map(|entity| RenderedEntity {
+            value: entity.value,
+            points: entity
+                .points
+                .iter()
+                .map(|point| vec![point[0] - minimum_row, maximum_column - point[1]])
+                .collect(),
+        })
+        .collect::<Vec<_>>();
+    expected_entities.sort_by(|left, right| {
+        left.value
+            .cmp(&right.value)
+            .then_with(|| left.points.cmp(&right.points))
+    });
+    EntityCorrespondenceExample {
+        source,
+        expected: EntityGeometryRender {
+            extents: vec![
+                u32::try_from(maximum_row - minimum_row + 1).expect("extent"),
+                u32::try_from(maximum_column - minimum_column + 1).expect("extent"),
+            ],
+            background: 0,
+            entities: expected_entities,
+        },
+    }
+}
+
+fn graphics_entity(value: i64, geometry: &[(i64, i64)], name: &str) -> GeometricEntity {
+    GeometricEntity {
+        identity: cairn_core::Hash32::digest(name.as_bytes()),
+        value,
+        points: geometry
+            .iter()
+            .map(|(row, column)| vec![*row, *column])
+            .collect(),
+    }
 }
 
 fn non_arc_layer_mechanism() -> cairn_theory::LayerMechanism {

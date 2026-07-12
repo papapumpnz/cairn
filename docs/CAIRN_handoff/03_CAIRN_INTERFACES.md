@@ -1042,3 +1042,28 @@ finite-field adapter lowers non-background categorical values to disjoint
 coordinate layers and realizes an exact categorical output. It cannot represent
 overlapping source layers, so overlap-dependent mechanisms remain outside that
 adapter's support rather than being approximated.
+
+## 29. Entity correspondence and provenance contracts
+
+`cairn-theory` exposes `GeometricEntity`, `EntityGeometryScene`,
+`RenderedEntity`, `EntityGeometryRender`, `CorrespondenceFrame`,
+`EntityCorrespondenceMechanism`, `EntityConstruction`, and
+`EntityCorrespondenceLearner`. Canonical identity uses
+`cairn.entity-correspondence.v1`. The initial exact language is an N-dimensional
+axis bijection, per-output-axis reversal, and preserved/tight frame.
+
+`EntityConstructionProvenance` names the opaque source entity and contains one
+`PointConstructionProvenance` for every source/output coordinate pair.
+Construction conflicts, malformed permutations, ambiguous mechanisms, and
+resource exhaustion are typed failures.
+
+`EntityCorrespondenceVerifier` independently returns a
+`VerifiedEntityCorrespondence` receipt containing experience identities,
+replayed entities/points, and empirical support. `EntityCorrespondenceStore`
+requires two disjoint cohorts before persistence. `CognitionRuntime` exposes
+proposal-only `propose_entity_constructions_from_memory`.
+
+`VectorAdapter::learn_entity_correspondence` supplies no operation label.
+`EntityCorrespondenceFieldAdapter` lowers non-background categories as disjoint
+entities and exactly realizes verified renders; categorical overlap fails rather
+than being approximated.
