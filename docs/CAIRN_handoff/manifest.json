@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "bundle": "CAIRN_ARCHITECTURE_HANDOFF",
   "architecture": "CAIRN — Causal Analogical Induction over Relational Networks",
-  "generated_utc": "2026-07-12T06:06:43Z",
+  "generated_utc": "2026-07-12T06:08:48Z",
   "hash_algorithm": "SHA-256",
   "manifest_excludes": [
     "manifest.json",

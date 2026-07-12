@@ -55,6 +55,13 @@ a8d9b6ed78b077561c009877df357e79ae0b521ecea6375a41a29532a3cbc918
 a0c3bb5a8f164ee25b4c9658ff7879d090fa527006a919fed1c0122dc402c00e
 ```
 
+Curriculum checkpoint identities:
+
+```text
+fd3442f9be14a37a2750e42a05c2ca864715e271dfb4887304a45c954341d149
+30a9186b5cf8ae37386753453ff21057fdaf06fb86860372f5aea385f1fc92a6
+```
+
 The composition objective is not selected until both prerequisite mechanism
 roles are active. This experiment validates curriculum choice, not composition
 execution; the separate G3/G6 composition suites validate execution and report

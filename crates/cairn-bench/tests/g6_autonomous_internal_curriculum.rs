@@ -55,6 +55,7 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
     let mut points = Vec::<SustainedLearningPoint>::new();
     let mut completed_restarts = 0_u32;
     let mut curriculum_restores = 0_u32;
+    let mut curriculum_checkpoints = Vec::new();
     let mut selected = Vec::new();
 
     for stage in 0..families.len() {
@@ -231,6 +232,7 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
                     },
                 )
                 .expect("persist curriculum checkpoint");
+            curriculum_checkpoints.push(checkpoint.artifact_id);
             drop(cas);
             cas = Cas::open(&fixture.path, CasLimits::default()).expect("restart CAS");
             cas.recover().expect("recover CAS");
@@ -261,6 +263,7 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
     assert_eq!(selected, ["family-a", "family-b", "family-c", "family-d"]);
     assert_eq!(completed_restarts, 2);
     assert_eq!(curriculum_restores, 2);
+    assert_eq!(curriculum_checkpoints.len(), 2);
     assert_eq!(
         curriculum
             .mechanisms()
@@ -279,11 +282,13 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
     assert!(points.iter().all(|point| point.proof_units_with == 4));
     assert_eq!(store.len(), 4);
     eprintln!(
-        "G6_AUTONOMOUS_INTERNAL selected=family-a,family-b,family-c,family-d next=compose-first-two mechanisms=1->2->3->4 mechanism_hashes={},{},{},{} candidate_windows=18->9_each examples=4->1_each proof_units=28->4_each restarts=2 curriculum_restores=2 deprecated=target-d retained=6/6 negative_transfer=0/10",
+        "G6_AUTONOMOUS_INTERNAL selected=family-a,family-b,family-c,family-d next=compose-first-two mechanisms=1->2->3->4 mechanism_hashes={},{},{},{} curriculum_checkpoints={},{} candidate_windows=18->9_each examples=4->1_each proof_units=28->4_each restarts=2 curriculum_restores=2 deprecated=target-d retained=6/6 negative_transfer=0/10",
         persisted[0].mechanism,
         persisted[1].mechanism,
         persisted[2].mechanism,
         persisted[3].mechanism,
+        curriculum_checkpoints[0],
+        curriculum_checkpoints[1],
     );
 }
 
