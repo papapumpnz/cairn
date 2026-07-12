@@ -61,9 +61,11 @@ also compiles contiguous typed proof fragments into canonical executable
 schemas whose identities exclude evidence episodes and costs. Independent
 runtime receipts measure fresh-window, example, and proof work; the second
 qualifying experience automatically asks a separate consolidator for the only
-certificate that may promote the schema. Arbitrary graph-edit anti-unification,
-RKL lowering for operations with explicit semantics, and durable compiled-module
-storage remain open.
+certificate that may promote the schema. Canonical proof sources and internal
+reuse commitments now survive CAS restart; authority returns only after
+remining, recompilation, independent replay, and a newly issued certificate.
+Arbitrary graph-edit anti-unification, RKL lowering for operations with explicit
+semantics, and optimized compiled-module snapshots remain open.
 
 The architecture deliberately avoids two failed patterns:
 

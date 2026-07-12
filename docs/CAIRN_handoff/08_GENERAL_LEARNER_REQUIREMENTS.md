@@ -748,5 +748,22 @@ cohorts can contribute to one certificate.
 
 This advances the explanatory-compression and actual-reuse portions of G0-G2.
 The distribution is still small, mining is contiguous, the schema is not an RKL
-world theory, and accepted compiled modules are not yet restart durable. It does
-not satisfy broad G0-G6, general intelligence, or the ARC objective.
+world theory. Section 29 records the subsequent restart result. This checkpoint
+does not satisfy broad G0-G6, general intelligence, or the ARC objective.
+
+## 29. Restartable internal continual-learning checkpoint
+
+Four source and two changed-host proof artifacts plus two canonical reuse
+commitments now reconstruct the compiled internal-learning lifecycle after CAS
+restart. Proposal and mechanism identities are identical before and after
+restart. Both persisted claims are untrusted and independently regenerated from
+reloaded proof evidence. One replayed receipt leaves a fresh store provisional;
+the second produces a new consolidator certificate and persistent status.
+
+Candidate windows remain 18 versus nine/five, examples four versus one, and
+proof units 28 versus four. Missing or changed lineage, host, proof content,
+metrics, scope, schema, semantics, and payloads fail closed. This strengthens G1
+by making measured reuse survive process loss without serialized authority. It
+does not establish sustained long-curriculum improvement, arbitrary mechanism
+invention, RKL world execution, or the remaining G0-G6/general-intelligence
+requirements.

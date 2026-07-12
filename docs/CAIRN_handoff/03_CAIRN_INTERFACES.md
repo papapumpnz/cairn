@@ -636,7 +636,17 @@ experiences. Only the returned `VerifiedInternalPromotion` may change the
 module from provisional to persistent. `register_compilation` permits another
 independently verified proposal to support the same semantic mechanism, but a
 receipt from that lineage fails until registration. This status is not yet a
-durable CAS artifact.
+directly serialized authority.
+
+Memory semantics 1.7.0 adds
+`cairn.memory.internal-reuse-evidence` version 1. Its canonical payload commits
+to mechanism, proposal, and experience identities plus verified-case and
+fixed-work measurements. `InternalReuseArtifactArchive::load` returns an
+untrusted value. `replay` requires reconstructed proof sources, proposal,
+compiled mechanism, compilation verification, current host, and binding; it
+rederives every identity and metric before returning a new opaque receipt. A
+fresh `InternalMechanismStore` and ordinary consolidation must reproduce
+promotion. Serialized tokens and module status never regain authority.
 
 ## 19. Planner interfaces
 

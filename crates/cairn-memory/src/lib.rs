@@ -5,7 +5,10 @@
 //! it can influence a prediction.
 
 use cairn_cas::{Cas, CasError, StoredArtifact};
-use cairn_consolidator::{CompiledInternalMechanism, GraphCompressionProposal};
+use cairn_consolidator::{
+    CompiledInternalMechanism, GraphCompressionProposal, InternalEpisodeBindings,
+    InternalGraphCompressionProposal, ProofGraph,
+};
 use cairn_core::{
     ArtifactEnvelope, ArtifactError, ArtifactId, ArtifactKind, BlobId, BudgetRecord,
     CanonicalEncode, CanonicalLimits, CanonicalValue, Hash32, ProducerRecord, SchemaDescriptor,
@@ -18,16 +21,19 @@ use cairn_mechanism::SupportGeometry as MechanismSupportGeometry;
 use cairn_rkl::CheckedTheory;
 use cairn_rkl::{BoundChecker, Definition, Expr, Type, TypeChecker, VarName};
 use cairn_verifier::{
-    CounterfactualReuseMetrics, InternalCompressionVerifyError, InternalPromotionConsolidator,
-    PromotionVerifier, VerifiedCompression, VerifiedInternalMechanism, VerifiedInternalPromotion,
-    VerifiedInternalReuse, VerifiedProceduralPromotion, VerifiedProceduralReuse, VerifiedPromotion,
+    CounterfactualReuseMetrics, InternalCompressionVerifyError, InternalMechanismVerifier,
+    InternalPromotionConsolidator, InternalReuseMetrics, PromotionVerifier, VerifiedCompression,
+    VerifiedInternalMechanism, VerifiedInternalPromotion, VerifiedInternalReuse,
+    VerifiedProceduralPromotion, VerifiedProceduralReuse, VerifiedPromotion,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
-pub const MEMORY_SEMANTICS_VERSION: &str = "1.6.0";
+pub const MEMORY_SEMANTICS_VERSION: &str = "1.7.0";
 pub const REUSE_EVIDENCE_SCHEMA: &str = "cairn.memory.reuse-evidence";
 pub const REUSE_EVIDENCE_SCHEMA_VERSION: u32 = 1;
+pub const INTERNAL_REUSE_EVIDENCE_SCHEMA: &str = "cairn.memory.internal-reuse-evidence";
+pub const INTERNAL_REUSE_EVIDENCE_SCHEMA_VERSION: u32 = 1;
 const MAXIMUM_REBOUND_PROPOSALS: usize = 1_024;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -552,6 +558,278 @@ impl CanonicalEncode for ReuseEvidenceArtifact {
     }
 }
 
+/// Canonical commitment to one verifier-issued internal mechanism reuse.
+/// Loaded values are untrusted until [`InternalReuseArtifactArchive::replay`]
+/// reconstructs the mechanism, source cohort, current host, and fixed-work
+/// metrics.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct InternalReuseEvidenceArtifact {
+    mechanism: Hash32,
+    source_proposal: Hash32,
+    experience: Hash32,
+    verified_cases: u64,
+    metrics: InternalReuseMetrics,
+}
+
+impl InternalReuseEvidenceArtifact {
+    fn from_receipt(receipt: &VerifiedInternalReuse) -> Self {
+        Self {
+            mechanism: receipt.mechanism(),
+            source_proposal: receipt.source_proposal(),
+            experience: receipt.experience(),
+            verified_cases: receipt.verified_cases(),
+            metrics: receipt.metrics(),
+        }
+    }
+
+    #[must_use]
+    pub const fn mechanism(self) -> Hash32 {
+        self.mechanism
+    }
+
+    #[must_use]
+    pub const fn source_proposal(self) -> Hash32 {
+        self.source_proposal
+    }
+
+    #[must_use]
+    pub const fn experience(self) -> Hash32 {
+        self.experience
+    }
+
+    #[must_use]
+    pub const fn verified_cases(self) -> u64 {
+        self.verified_cases
+    }
+
+    #[must_use]
+    pub const fn metrics(self) -> InternalReuseMetrics {
+        self.metrics
+    }
+
+    fn from_value(value: CanonicalValue) -> Result<Self, InternalReuseArchiveError> {
+        let CanonicalValue::Array(values) = value else {
+            return Err(InternalReuseArchiveError::InvalidPayload(
+                "payload is not an array",
+            ));
+        };
+        let [marker, mechanism, proposal, experience, verified_cases, candidates_without, candidates_with, examples_without, examples_with, proof_without, proof_with] =
+            values.as_slice()
+        else {
+            return Err(InternalReuseArchiveError::InvalidPayload(
+                "payload field count is not eleven",
+            ));
+        };
+        if marker != &CanonicalValue::Text("cairn.memory.internal-reuse-evidence.v1".to_owned()) {
+            return Err(InternalReuseArchiveError::InvalidPayload(
+                "payload marker mismatch",
+            ));
+        }
+        Ok(Self {
+            mechanism: internal_artifact_hash(mechanism)?,
+            source_proposal: internal_artifact_hash(proposal)?,
+            experience: internal_artifact_hash(experience)?,
+            verified_cases: internal_artifact_u64(verified_cases)?,
+            metrics: InternalReuseMetrics {
+                candidate_windows_without: internal_artifact_u64(candidates_without)?,
+                candidate_windows_with: internal_artifact_u64(candidates_with)?,
+                examples_without: internal_artifact_u32(examples_without)?,
+                examples_with: internal_artifact_u32(examples_with)?,
+                proof_units_without: internal_artifact_u64(proof_without)?,
+                proof_units_with: internal_artifact_u64(proof_with)?,
+            },
+        })
+    }
+}
+
+impl CanonicalEncode for InternalReuseEvidenceArtifact {
+    fn encode_canonical(&self) -> Result<Vec<u8>, cairn_core::CanonicalError> {
+        CanonicalValue::Array(vec![
+            CanonicalValue::Text("cairn.memory.internal-reuse-evidence.v1".to_owned()),
+            CanonicalValue::Bytes(self.mechanism.as_bytes().to_vec()),
+            CanonicalValue::Bytes(self.source_proposal.as_bytes().to_vec()),
+            CanonicalValue::Bytes(self.experience.as_bytes().to_vec()),
+            CanonicalValue::Unsigned(self.verified_cases),
+            CanonicalValue::Unsigned(self.metrics.candidate_windows_without),
+            CanonicalValue::Unsigned(self.metrics.candidate_windows_with),
+            CanonicalValue::Unsigned(u64::from(self.metrics.examples_without)),
+            CanonicalValue::Unsigned(u64::from(self.metrics.examples_with)),
+            CanonicalValue::Unsigned(self.metrics.proof_units_without),
+            CanonicalValue::Unsigned(self.metrics.proof_units_with),
+        ])
+        .encode_canonical()
+    }
+}
+
+/// Complete evidence required to regain authority for one loaded internal
+/// reuse claim. All references are current-process, independently reconstructed
+/// values rather than deserialized verifier state.
+#[derive(Clone, Copy)]
+pub struct InternalReuseReplay<'a> {
+    pub proposal: &'a InternalGraphCompressionProposal,
+    pub mechanism: &'a CompiledInternalMechanism,
+    pub compilation: &'a VerifiedInternalMechanism,
+    pub sources: &'a [ProofGraph],
+    pub held_out: &'a ProofGraph,
+    pub binding: &'a InternalEpisodeBindings,
+    pub maximum_match_windows: usize,
+}
+
+/// File-backed archive for untrusted internal reuse commitments.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct InternalReuseArtifactArchive;
+
+impl InternalReuseArtifactArchive {
+    /// Persist one opaque verifier receipt with explicit parent lineage.
+    ///
+    /// # Errors
+    ///
+    /// Rejects missing lineage and artifact, canonicalization, storage, or
+    /// resource failures.
+    pub fn persist(
+        &self,
+        cas: &Cas,
+        receipt: &VerifiedInternalReuse,
+        metadata: ReuseArtifactMetadata,
+    ) -> Result<StoredArtifact, InternalReuseArchiveError> {
+        if metadata.parent_ids.is_empty() {
+            return Err(InternalReuseArchiveError::MissingParent);
+        }
+        let envelope = ArtifactEnvelope::new(
+            internal_reuse_schema()?,
+            internal_reuse_kind()?,
+            internal_reuse_semantics(),
+            metadata.parent_ids,
+            Some(receipt.experience()),
+            metadata.producer,
+            metadata.budget,
+            metadata.created_at_logical,
+            InternalReuseEvidenceArtifact::from_receipt(receipt),
+        )?;
+        cas.put_envelope(&envelope)
+            .map_err(InternalReuseArchiveError::Storage)
+    }
+
+    /// Load and structurally validate an untrusted internal reuse commitment.
+    ///
+    /// # Errors
+    ///
+    /// Rejects corrupt storage, unsupported schema/semantics, missing lineage,
+    /// malformed bounds, and experience-scope disagreement.
+    pub fn load(
+        &self,
+        cas: &Cas,
+        blob_id: BlobId,
+    ) -> Result<InternalReuseEvidenceArtifact, InternalReuseArchiveError> {
+        let mut registry = SchemaRegistry::new();
+        registry.register(SchemaDescriptor {
+            name: INTERNAL_REUSE_EVIDENCE_SCHEMA.to_owned(),
+            current_version: INTERNAL_REUSE_EVIDENCE_SCHEMA_VERSION,
+            additive_read_versions: BTreeSet::new(),
+            maximum_payload_bytes: 2_048,
+        })?;
+        let envelope = cas.get_envelope(
+            blob_id,
+            &registry,
+            &BTreeSet::from([internal_reuse_semantics()]),
+            CanonicalLimits {
+                max_input_bytes: 16_384,
+                max_depth: 16,
+                max_collection_items: 64,
+                max_scalar_bytes: 4_096,
+            },
+        )?;
+        if envelope.artifact_kind != internal_reuse_kind()? || envelope.parent_ids.is_empty() {
+            return Err(InternalReuseArchiveError::InvalidEnvelope);
+        }
+        let artifact = InternalReuseEvidenceArtifact::from_value(envelope.payload)?;
+        if envelope.task_scope != Some(artifact.experience) {
+            return Err(InternalReuseArchiveError::InvalidEnvelope);
+        }
+        Ok(artifact)
+    }
+
+    /// Reconstruct an opaque verifier receipt from current proof evidence and
+    /// require every freshly derived identity and metric to equal the loaded
+    /// commitment.
+    ///
+    /// # Errors
+    ///
+    /// Rejects changed mechanism/proposal/experience, failed exact replay, or
+    /// any changed candidate, sample, proof, or verified-case measurement.
+    pub fn replay(
+        &self,
+        artifact: InternalReuseEvidenceArtifact,
+        evidence: InternalReuseReplay<'_>,
+    ) -> Result<VerifiedInternalReuse, InternalReuseArchiveError> {
+        if artifact.mechanism != evidence.mechanism.semantic_hash()
+            || artifact.source_proposal != evidence.proposal.semantic_hash()
+            || artifact.experience != evidence.held_out.episode
+        {
+            return Err(InternalReuseArchiveError::IdentityMismatch);
+        }
+        let receipt = InternalMechanismVerifier
+            .verify_reuse(
+                evidence.proposal,
+                evidence.mechanism,
+                evidence.compilation,
+                evidence.sources,
+                evidence.held_out,
+                evidence.binding,
+                evidence.maximum_match_windows,
+            )
+            .map_err(InternalReuseArchiveError::VerificationFailure)?;
+        if receipt.mechanism() != artifact.mechanism
+            || receipt.source_proposal() != artifact.source_proposal
+            || receipt.experience() != artifact.experience
+            || receipt.verified_cases() != artifact.verified_cases
+            || receipt.metrics() != artifact.metrics
+        {
+            return Err(InternalReuseArchiveError::ReplayMismatch);
+        }
+        Ok(receipt)
+    }
+}
+
+#[derive(Debug)]
+pub enum InternalReuseArchiveError {
+    MissingParent,
+    InvalidEnvelope,
+    InvalidPayload(&'static str),
+    IdentityMismatch,
+    ReplayMismatch,
+    VerificationFailure(InternalCompressionVerifyError),
+    Artifact(ArtifactError),
+    Storage(CasError),
+}
+
+impl fmt::Display for InternalReuseArchiveError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidPayload(message) => {
+                write!(formatter, "invalid internal reuse artifact: {message}")
+            }
+            Self::Artifact(error) => error.fmt(formatter),
+            Self::Storage(error) => error.fmt(formatter),
+            other => write!(formatter, "{other:?}"),
+        }
+    }
+}
+
+impl std::error::Error for InternalReuseArchiveError {}
+
+impl From<ArtifactError> for InternalReuseArchiveError {
+    fn from(value: ArtifactError) -> Self {
+        Self::Artifact(value)
+    }
+}
+
+impl From<CasError> for InternalReuseArchiveError {
+    fn from(value: CasError) -> Self {
+        Self::Storage(value)
+    }
+}
+
 /// Non-semantic producer and resource observations attached to a persisted
 /// reuse receipt. Parent IDs must identify the evidence needed for replay.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -730,6 +1008,48 @@ fn reuse_kind() -> Result<ArtifactKind, ArtifactError> {
 
 const fn reuse_semantics() -> SemanticsVersion {
     SemanticsVersion::new(1, 0, 0)
+}
+
+fn internal_reuse_schema() -> Result<SchemaRef, ArtifactError> {
+    SchemaRef::new(
+        INTERNAL_REUSE_EVIDENCE_SCHEMA,
+        INTERNAL_REUSE_EVIDENCE_SCHEMA_VERSION,
+    )
+}
+
+fn internal_reuse_kind() -> Result<ArtifactKind, ArtifactError> {
+    ArtifactKind::new("memory.internal-reuse-evidence")
+}
+
+const fn internal_reuse_semantics() -> SemanticsVersion {
+    SemanticsVersion::new(1, 0, 0)
+}
+
+fn internal_artifact_hash(value: &CanonicalValue) -> Result<Hash32, InternalReuseArchiveError> {
+    let CanonicalValue::Bytes(bytes) = value else {
+        return Err(InternalReuseArchiveError::InvalidPayload(
+            "hash is not bytes",
+        ));
+    };
+    let fixed: [u8; 32] = bytes
+        .as_slice()
+        .try_into()
+        .map_err(|_| InternalReuseArchiveError::InvalidPayload("hash is not 32 bytes"))?;
+    Ok(Hash32::from_bytes(fixed))
+}
+
+fn internal_artifact_u64(value: &CanonicalValue) -> Result<u64, InternalReuseArchiveError> {
+    let CanonicalValue::Unsigned(value) = value else {
+        return Err(InternalReuseArchiveError::InvalidPayload(
+            "metric is not unsigned",
+        ));
+    };
+    Ok(*value)
+}
+
+fn internal_artifact_u32(value: &CanonicalValue) -> Result<u32, InternalReuseArchiveError> {
+    u32::try_from(internal_artifact_u64(value)?)
+        .map_err(|_| InternalReuseArchiveError::InvalidPayload("metric exceeds u32"))
 }
 
 fn artifact_hash(value: &CanonicalValue) -> Result<Hash32, ReuseArchiveError> {

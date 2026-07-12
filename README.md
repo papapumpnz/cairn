@@ -352,6 +352,12 @@ causes the separate consolidator to issue a promotion certificate. The result
 is an executable typed proof schema, not yet an RKL world theory or durable
 module. See
 [COMPILED_INTERNAL_MECHANISM_REUSE.md](docs/experiments/COMPILED_INTERNAL_MECHANISM_REUSE.md).
+That learning lifecycle now survives process loss without trusting serialized
+status or verifier tokens. Canonical proof graphs and two reuse commitments are
+reloaded, the proposal and mechanism are reconstructed identically, both uses
+are independently remeasured, and the second receipt gives a fresh store a new
+promotion certificate. See
+[PERSISTED_INTERNAL_MECHANISM_LEARNING.md](docs/experiments/PERSISTED_INTERNAL_MECHANISM_LEARNING.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding,
 arbitrary non-contiguous internal-subgraph mining and RKL lowering,
