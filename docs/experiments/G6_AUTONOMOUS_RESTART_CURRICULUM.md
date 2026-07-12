@@ -44,6 +44,15 @@ aggregate retained prior tasks: 6/6
 unrelated negative transfer: 0/10
 ```
 
+Mechanism identities:
+
+```text
+a8438381973c8205112a6017ff7fd747009154990fe1e461ff67ec9a3321d781
+a8d9b6ed78b077561c009877df357e79ae0b521ecea6375a41a29532a3cbc918
+487f762058cb06e0373243cbfff4a3d30d1ad0c09a0aaadda235468805e05528
+a0c3bb5a8f164ee25b4c9658ff7879d090fa527006a919fed1c0122dc402c00e
+```
+
 The composition objective is not selected until both prerequisite mechanism
 roles are active. This experiment validates curriculum choice, not composition
 execution; the separate G3/G6 composition suites validate execution and report
