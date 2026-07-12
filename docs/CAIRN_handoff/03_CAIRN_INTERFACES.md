@@ -862,3 +862,24 @@ as an ordered `ObjectiveAdded` event. The checkpoint's objective list is the
 initial set; generated additions replay at their original boundary so a future
 objective cannot alter a past choice. The generator does not create task
 payloads and cannot report a successful learning outcome.
+
+## 25. Generated exercise and internal composition contracts
+
+`DevelopmentalExerciseRequest` is the only curriculum-to-materializer message.
+It contains objective/need/failure identities, prerequisite mechanism roles,
+and the minimum independent variations; no task payload or expected answer is
+present.
+
+`InternalCompositionPlan` is an untrusted runtime proposal containing distinct
+compiled-mechanism identities and occurrence-local bindings. The reference
+proposer exhaustively searches bounded combinations, disallows overlap, and
+requires every invocation output to occur in the selected result's ancestry.
+`CognitionRuntime::plan_internal_composition` exposes this path only for
+persistent internal modules.
+
+`InternalCompositionEvidence` carries current-process source proposals,
+compilations, sources, mechanisms, and bindings to the independent verifier.
+`VerifiedInternalComposition` is returned only after separate reconstruction,
+joint-contribution checking, and strict aggregate candidate/sample/proof
+reduction. Its certificate is evidence, not an answer or a reusable verifier
+token after restart.

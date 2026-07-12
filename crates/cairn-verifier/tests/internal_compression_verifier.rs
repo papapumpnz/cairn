@@ -3,8 +3,8 @@ use cairn_consolidator::{
 };
 use cairn_core::Hash32;
 use cairn_verifier::{
-    InternalCompressionVerifier, InternalCompressionVerifyError, InternalMechanismVerifier,
-    InternalPromotionConsolidator,
+    InternalCompositionEvidence, InternalCompressionVerifier, InternalCompressionVerifyError,
+    InternalMechanismVerifier, InternalPromotionConsolidator,
 };
 
 #[test]
@@ -205,6 +205,128 @@ fn verifier_derives_reuse_work_and_consolidator_issues_certificate() {
     );
 }
 
+#[test]
+#[allow(clippy::too_many_lines)] // Keep all planted composition corruptions beside the positive evidence.
+fn independently_verifies_joint_contribution_and_composition_reduction() {
+    let first_sources = family_sources(60, "first");
+    let second_sources = family_sources(70, "second");
+    let first_proposal = Consolidator
+        .mine_internal_proof_subgraphs(&first_sources, limits())
+        .expect("first proposal");
+    let second_proposal = Consolidator
+        .mine_internal_proof_subgraphs(&second_sources, limits())
+        .expect("second proposal");
+    let first = Consolidator
+        .compile_internal_proof_mechanism(&first_proposal)
+        .expect("first mechanism");
+    let second = Consolidator
+        .compile_internal_proof_mechanism(&second_proposal)
+        .expect("second mechanism");
+    let first_compilation = InternalMechanismVerifier
+        .verify_compilation(&first_proposal, &first, &first_sources)
+        .expect("first compilation");
+    let second_compilation = InternalMechanismVerifier
+        .verify_compilation(&second_proposal, &second, &second_sources)
+        .expect("second compilation");
+    let host = composition_host(90);
+    let plan = Consolidator
+        .compose_compiled_internal_mechanisms(&[first.clone(), second.clone()], &host, 64, 64)
+        .expect("producer composition");
+    let first_binding = &plan
+        .invocations
+        .iter()
+        .find(|invocation| invocation.mechanism == first.semantic_hash())
+        .expect("first invocation")
+        .binding;
+    let second_binding = &plan
+        .invocations
+        .iter()
+        .find(|invocation| invocation.mechanism == second.semantic_hash())
+        .expect("second invocation")
+        .binding;
+    let verified = InternalMechanismVerifier
+        .verify_composition(
+            &host,
+            &[
+                InternalCompositionEvidence {
+                    proposal: &second_proposal,
+                    mechanism: &second,
+                    compilation: &second_compilation,
+                    sources: &second_sources,
+                    binding: second_binding,
+                },
+                InternalCompositionEvidence {
+                    proposal: &first_proposal,
+                    mechanism: &first,
+                    compilation: &first_compilation,
+                    sources: &first_sources,
+                    binding: first_binding,
+                },
+            ],
+            64,
+        )
+        .expect("independent composition verification");
+    assert_eq!(verified.experience(), host.episode);
+    assert_eq!(verified.invocations().len(), 2);
+    assert_eq!(verified.metrics().candidate_windows_without, 36);
+    assert_eq!(verified.metrics().candidate_windows_with, 14);
+    assert_eq!(verified.metrics().examples_without, 8);
+    assert_eq!(verified.metrics().examples_with, 1);
+    assert_eq!(verified.metrics().proof_units_without, 56);
+    assert_eq!(verified.metrics().proof_units_with, 8);
+
+    let mut irrelevant_host = host.clone();
+    irrelevant_host.output = 4;
+    assert_eq!(
+        InternalMechanismVerifier.verify_composition(
+            &irrelevant_host,
+            &[
+                InternalCompositionEvidence {
+                    proposal: &first_proposal,
+                    mechanism: &first,
+                    compilation: &first_compilation,
+                    sources: &first_sources,
+                    binding: first_binding,
+                },
+                InternalCompositionEvidence {
+                    proposal: &second_proposal,
+                    mechanism: &second,
+                    compilation: &second_compilation,
+                    sources: &second_sources,
+                    binding: second_binding,
+                },
+            ],
+            64,
+        ),
+        Err(InternalCompressionVerifyError::IrrelevantInvocation)
+    );
+    let mut overlapping = second_binding.clone();
+    overlapping.selected_nodes = first_binding.selected_nodes.clone();
+    assert_eq!(
+        InternalMechanismVerifier.verify_composition(
+            &host,
+            &[
+                InternalCompositionEvidence {
+                    proposal: &first_proposal,
+                    mechanism: &first,
+                    compilation: &first_compilation,
+                    sources: &first_sources,
+                    binding: first_binding,
+                },
+                InternalCompositionEvidence {
+                    proposal: &second_proposal,
+                    mechanism: &second,
+                    compilation: &second_compilation,
+                    sources: &second_sources,
+                    binding: &overlapping,
+                },
+            ],
+            64,
+        ),
+        Err(InternalCompressionVerifyError::OverlappingInvocation)
+    );
+}
+
 fn sources() -> [ProofGraph; 4] {
     [
         host_graph(1, 1, 1, "triangle", "red"),
@@ -212,6 +334,82 @@ fn sources() -> [ProofGraph; 4] {
         host_graph(3, 3, 1, "segment", "green"),
         host_graph(4, 1, 3, "polygon", "yellow"),
     ]
+}
+
+fn family_sources(base: u8, family: &str) -> [ProofGraph; 4] {
+    [
+        family_host(base, family, 1, 1, "triangle", "red"),
+        family_host(base + 1, family, 2, 2, "circle", "blue"),
+        family_host(base + 2, family, 3, 1, "segment", "green"),
+        family_host(base + 3, family, 1, 3, "polygon", "yellow"),
+    ]
+}
+
+fn family_host(
+    episode: u8,
+    family: &str,
+    prefix: usize,
+    suffix: usize,
+    role: &str,
+    effect: &str,
+) -> ProofGraph {
+    let mut graph = host_graph(episode, prefix, suffix, role, effect);
+    for (index, operation) in ["select", "filter", "map", "render"]
+        .into_iter()
+        .enumerate()
+    {
+        graph.nodes[prefix + index].operation = format!("{family}-{operation}");
+    }
+    graph
+}
+
+fn composition_host(episode: u8) -> ProofGraph {
+    let mut nodes = vec![ProofNode {
+        operation: "host-observation".to_owned(),
+        output_type: ProofValueType::EntitySet,
+        inputs: vec![],
+        arguments: vec![datum(ProofValueType::Atom, "composition-world")],
+    }];
+    for (family, role, effect) in [("first", "spiral", "violet"), ("second", "wave", "orange")] {
+        let start = nodes.len();
+        nodes.extend([
+            ProofNode {
+                operation: format!("{family}-select"),
+                output_type: ProofValueType::EntitySet,
+                inputs: vec![0],
+                arguments: vec![datum(ProofValueType::Atom, role)],
+            },
+            ProofNode {
+                operation: format!("{family}-filter"),
+                output_type: ProofValueType::EntitySet,
+                inputs: vec![u32::try_from(start).expect("small")],
+                arguments: vec![datum(ProofValueType::Relation, "inside")],
+            },
+            ProofNode {
+                operation: format!("{family}-map"),
+                output_type: ProofValueType::Effect,
+                inputs: vec![u32::try_from(start + 1).expect("small")],
+                arguments: vec![datum(ProofValueType::Atom, effect)],
+            },
+            ProofNode {
+                operation: format!("{family}-render"),
+                output_type: ProofValueType::Effect,
+                inputs: vec![u32::try_from(start + 2).expect("small")],
+                arguments: vec![],
+            },
+        ]);
+    }
+    nodes.push(ProofNode {
+        operation: "combine-effects".to_owned(),
+        output_type: ProofValueType::Effect,
+        inputs: vec![4, 8],
+        arguments: vec![],
+    });
+    ProofGraph {
+        episode: Hash32::digest(&[episode]),
+        nodes,
+        output: 9,
+    }
 }
 
 const fn limits() -> InternalMiningLimits {

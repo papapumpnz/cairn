@@ -200,6 +200,146 @@ fn near_matches_types_and_resource_caps_fail_closed() {
     );
 }
 
+#[test]
+fn composes_distinct_learned_mechanisms_only_when_both_contribute() {
+    let limits = InternalMiningLimits {
+        minimum_nodes: 4,
+        maximum_nodes: 4,
+        minimum_independent_episodes: 4,
+        maximum_windows_per_episode: 64,
+    };
+    let first_sources = [
+        renamed_host(31, "a", "triangle", "red"),
+        renamed_host(32, "a", "circle", "blue"),
+        renamed_host(33, "a", "segment", "green"),
+        renamed_host(34, "a", "polygon", "yellow"),
+    ];
+    let second_sources = [
+        renamed_host(41, "b", "arc", "cyan"),
+        renamed_host(42, "b", "box", "magenta"),
+        renamed_host(43, "b", "line", "amber"),
+        renamed_host(44, "b", "point", "white"),
+    ];
+    let first = Consolidator
+        .mine_internal_proof_subgraphs(&first_sources, limits)
+        .and_then(|proposal| Consolidator.compile_internal_proof_mechanism(&proposal))
+        .expect("first mechanism");
+    let second = Consolidator
+        .mine_internal_proof_subgraphs(&second_sources, limits)
+        .and_then(|proposal| Consolidator.compile_internal_proof_mechanism(&proposal))
+        .expect("second mechanism");
+    let host = parallel_composition_host(50, true);
+    assert_eq!(
+        Consolidator
+            .match_compiled_internal_mechanism(&first, &host, 64)
+            .expect("first match")
+            .len(),
+        1
+    );
+    assert_eq!(
+        Consolidator
+            .match_compiled_internal_mechanism(&second, &host, 64)
+            .expect("second match")
+            .len(),
+        1
+    );
+    let plan = Consolidator
+        .compose_compiled_internal_mechanisms(&[first.clone(), second.clone()], &host, 64, 64)
+        .expect("composition plan");
+    assert_eq!(plan.episode, host.episode);
+    assert_eq!(plan.invocations.len(), 2);
+    assert!(plan.invocations[0]
+        .binding
+        .selected_nodes
+        .iter()
+        .all(|node| !plan.invocations[1].binding.selected_nodes.contains(node)));
+
+    assert_eq!(
+        Consolidator.compose_compiled_internal_mechanisms(
+            &[first.clone(), first.clone()],
+            &host,
+            64,
+            64
+        ),
+        Err(ConsolidationError::DuplicateMechanism)
+    );
+    assert_eq!(
+        Consolidator.compose_compiled_internal_mechanisms(
+            &[second.clone(), first.clone()],
+            &parallel_composition_host(51, false),
+            64,
+            64,
+        ),
+        Err(ConsolidationError::NoInternalComposition)
+    );
+    assert_eq!(
+        Consolidator.compose_compiled_internal_mechanisms(&[second, first], &host, 64, 1),
+        Err(ConsolidationError::Capacity)
+    );
+}
+
+fn renamed_host(episode: u8, family: &str, role: &str, effect: &str) -> ProofGraph {
+    let prefix = usize::from(episode % 3) + 1;
+    let suffix = usize::from(episode % 2) + 1;
+    let mut graph = host_graph(episode, prefix, suffix, role, effect);
+    for (index, operation) in ["select", "filter", "map", "render"]
+        .into_iter()
+        .enumerate()
+    {
+        graph.nodes[index + prefix].operation = format!("{family}-{operation}");
+    }
+    graph
+}
+
+fn parallel_composition_host(episode: u8, both_contribute: bool) -> ProofGraph {
+    let mut nodes = vec![ProofNode {
+        operation: "host-observation".to_owned(),
+        output_type: ProofValueType::EntitySet,
+        inputs: vec![],
+        arguments: vec![datum(ProofValueType::Atom, "composed-world")],
+    }];
+    for (family, role, effect) in [("a", "spiral", "violet"), ("b", "wave", "orange")] {
+        let start = nodes.len();
+        nodes.extend([
+            ProofNode {
+                operation: format!("{family}-select"),
+                output_type: ProofValueType::EntitySet,
+                inputs: vec![0],
+                arguments: vec![datum(ProofValueType::Atom, role)],
+            },
+            ProofNode {
+                operation: format!("{family}-filter"),
+                output_type: ProofValueType::EntitySet,
+                inputs: vec![u32::try_from(start).expect("small")],
+                arguments: vec![datum(ProofValueType::Relation, "inside")],
+            },
+            ProofNode {
+                operation: format!("{family}-map"),
+                output_type: ProofValueType::Effect,
+                inputs: vec![u32::try_from(start + 1).expect("small")],
+                arguments: vec![datum(ProofValueType::Atom, effect)],
+            },
+            ProofNode {
+                operation: format!("{family}-render"),
+                output_type: ProofValueType::Effect,
+                inputs: vec![u32::try_from(start + 2).expect("small")],
+                arguments: vec![],
+            },
+        ]);
+    }
+    nodes.push(ProofNode {
+        operation: "combine-effects".to_owned(),
+        output_type: ProofValueType::Effect,
+        inputs: if both_contribute { vec![4, 8] } else { vec![4] },
+        arguments: vec![],
+    });
+    ProofGraph {
+        episode: Hash32::digest(&[episode]),
+        output: 9,
+        nodes,
+    }
+}
+
 fn host_graph(
     episode: u8,
     prefix_nodes: usize,

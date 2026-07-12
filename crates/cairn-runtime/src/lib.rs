@@ -1,11 +1,12 @@
 //! Online version-space maintenance; permanent promotion belongs elsewhere.
 
+use cairn_consolidator::{ConsolidationError, Consolidator, InternalCompositionPlan, ProofGraph};
 use cairn_core::{CollectionProcedureProblem, Hash32, LearningProblem, ObservationId, TaskId};
 use cairn_invent::{InventionError, InventionProblem};
 use cairn_knowledge::KnowledgeBase;
 use cairn_memory::{
     InternalMechanismStore, MechanismStore, MemoryAssistedInventor, MemorySolveOutcome,
-    ProceduralMechanismModule, ProceduralMechanismStore,
+    ModuleStatus, ProceduralMechanismModule, ProceduralMechanismStore,
 };
 use cairn_rkl::{
     ReferenceTheoryExecutor, RuntimeEnvironment, TheoryExecLimits, TheoryExecutionRequest, Type,
@@ -166,6 +167,13 @@ pub enum ProceduralSolveError {
 pub enum CognitionError {
     World(WorldError),
     Skill(SkillPlanError),
+    InternalComposition(InternalCompositionRuntimeError),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum InternalCompositionRuntimeError {
+    UnavailableMechanism(Hash32),
+    Proposal(ConsolidationError),
 }
 
 impl CognitionRuntime {
@@ -514,6 +522,46 @@ impl CognitionRuntime {
         SkillPlanner
             .plan(initial, goal, skills, maximum_expansions)
             .map_err(CognitionError::Skill)
+    }
+
+    /// Propose a bounded joint proof using distinct persistent internal
+    /// mechanisms. This runtime path cannot verify its own proposal.
+    ///
+    /// # Errors
+    ///
+    /// Rejects missing/non-persistent mechanisms and bounded composition
+    /// failures from the reference proposer.
+    pub fn plan_internal_composition(
+        &self,
+        mechanism_ids: &[Hash32],
+        host: &ProofGraph,
+        maximum_windows_per_mechanism: usize,
+        maximum_combinations: u64,
+    ) -> Result<InternalCompositionPlan, CognitionError> {
+        let mechanisms = mechanism_ids
+            .iter()
+            .map(|id| {
+                let module = self
+                    .internal_mechanisms
+                    .get(*id)
+                    .filter(|module| module.status() == ModuleStatus::Persistent)
+                    .ok_or(InternalCompositionRuntimeError::UnavailableMechanism(*id))?;
+                Ok(module.mechanism().clone())
+            })
+            .collect::<Result<Vec<_>, InternalCompositionRuntimeError>>()
+            .map_err(CognitionError::InternalComposition)?;
+        Consolidator
+            .compose_compiled_internal_mechanisms(
+                &mechanisms,
+                host,
+                maximum_windows_per_mechanism,
+                maximum_combinations,
+            )
+            .map_err(|error| {
+                CognitionError::InternalComposition(InternalCompositionRuntimeError::Proposal(
+                    error,
+                ))
+            })
     }
 }
 

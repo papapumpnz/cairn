@@ -1,7 +1,8 @@
 use cairn_cas::{Cas, CasLimits};
 use cairn_consolidator::{
-    Consolidator, InternalMiningLimits, ProofDatum, ProofGraph, ProofGraphArchive,
-    ProofGraphArtifactMetadata, ProofNode, ProofValueType,
+    CompiledInternalMechanism, Consolidator, InternalGraphCompressionProposal,
+    InternalMiningLimits, ProofDatum, ProofGraph, ProofGraphArchive, ProofGraphArtifactMetadata,
+    ProofNode, ProofValueType,
 };
 use cairn_core::{
     ArtifactEnvelope, ArtifactKind, BlobId, BudgetRecord, CanonicalValue, Hash32, ProducerRecord,
@@ -19,7 +20,10 @@ use cairn_memory::{
     InternalReuseReplay, ModuleStatus, ReuseArtifactMetadata,
 };
 use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
-use cairn_verifier::InternalMechanismVerifier;
+use cairn_runtime::CognitionRuntime;
+use cairn_verifier::{
+    InternalCompositionEvidence, InternalMechanismVerifier, VerifiedInternalMechanism,
+};
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -44,6 +48,14 @@ struct PersistedFamily {
     proposal: Hash32,
 }
 
+#[derive(Clone)]
+struct LearnedFamily {
+    sources: [ProofGraph; 4],
+    proposal: InternalGraphCompressionProposal,
+    mechanism: CompiledInternalMechanism,
+    compilation: VerifiedInternalMechanism,
+}
+
 #[test]
 #[allow(clippy::too_many_lines)] // Frozen multi-phase autonomous/restart audit.
 fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
@@ -55,6 +67,7 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
     let mut store = InternalMechanismStore::new();
     let mut persisted = Vec::<PersistedFamily>::new();
     let mut retention_hosts = Vec::<ProofGraph>::new();
+    let mut learned = Vec::<LearnedFamily>::new();
     let mut points = Vec::<SustainedLearningPoint>::new();
     let mut completed_restarts = 0_u32;
     let mut curriculum_restores = 0_u32;
@@ -161,6 +174,12 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
             receipt_blobs: stored.1,
             mechanism: mechanism.semantic_hash(),
             proposal: proposal.semantic_hash(),
+        });
+        learned.push(LearnedFamily {
+            sources: sources.clone(),
+            proposal: proposal.clone(),
+            mechanism: mechanism.clone(),
+            compilation: compilation.clone(),
         });
         retention_hosts.push(hosts[0].clone());
 
@@ -288,10 +307,132 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
         .expect("generated composition objective");
     assert_eq!(composition.axis, LearningAxis::Composition);
     assert_eq!(composition.objective, generated.objective.id);
+    let mut runtime = CognitionRuntime::new();
+    *runtime.internal_mechanism_memory_mut() = store.clone();
+    let required = [
+        learned[0].mechanism.semantic_hash(),
+        learned[1].mechanism.semantic_hash(),
+    ];
+    let exercise_hosts = materialize_composition_exercises(
+        &generated.exercise_request(),
+        &families[0],
+        &families[1],
+    );
+    let verified_compositions = exercise_hosts
+        .iter()
+        .map(|host| {
+            let plan = runtime
+                .plan_internal_composition(&required, host, 64, 128)
+                .expect("runtime composition proposal");
+            assert_eq!(plan.invocations.len(), 2);
+            let first_binding = &plan
+                .invocations
+                .iter()
+                .find(|invocation| invocation.mechanism == required[0])
+                .expect("first prerequisite invocation")
+                .binding;
+            let second_binding = &plan
+                .invocations
+                .iter()
+                .find(|invocation| invocation.mechanism == required[1])
+                .expect("second prerequisite invocation")
+                .binding;
+            InternalMechanismVerifier
+                .verify_composition(
+                    host,
+                    &[
+                        InternalCompositionEvidence {
+                            proposal: &learned[0].proposal,
+                            mechanism: &learned[0].mechanism,
+                            compilation: &learned[0].compilation,
+                            sources: &learned[0].sources,
+                            binding: first_binding,
+                        },
+                        InternalCompositionEvidence {
+                            proposal: &learned[1].proposal,
+                            mechanism: &learned[1].mechanism,
+                            compilation: &learned[1].compilation,
+                            sources: &learned[1].sources,
+                            binding: second_binding,
+                        },
+                    ],
+                    64,
+                )
+                .expect("independent composition verification")
+        })
+        .collect::<Vec<_>>();
+    assert!(verified_compositions
+        .iter()
+        .all(|verified| verified.invocations().len() == 2));
+    let composition_candidates_without = verified_compositions
+        .iter()
+        .map(|verified| verified.metrics().candidate_windows_without)
+        .sum();
+    let composition_candidates_with = verified_compositions
+        .iter()
+        .map(|verified| verified.metrics().candidate_windows_with)
+        .sum();
+    let composition_proof_without = verified_compositions
+        .iter()
+        .map(|verified| verified.metrics().proof_units_without)
+        .sum::<u64>();
+    let composition_proof_with = verified_compositions
+        .iter()
+        .map(|verified| verified.metrics().proof_units_with)
+        .sum::<u64>();
+    let mut certificate_bytes = verified_compositions
+        .iter()
+        .map(cairn_verifier::VerifiedInternalComposition::certificate)
+        .collect::<Vec<_>>();
+    certificate_bytes.sort_unstable();
+    let composition_evidence = Hash32::digest(
+        &certificate_bytes
+            .iter()
+            .flat_map(|hash| hash.as_bytes().iter().copied())
+            .collect::<Vec<_>>(),
+    );
+    curriculum
+        .record(DevelopmentalOutcome {
+            decision_sequence: composition.sequence,
+            objective: composition.objective,
+            mechanism_evidence: composition_evidence.to_hex(),
+            independently_verified: true,
+            held_out_transfer_cases: 2,
+            candidate_work_without: composition_candidates_without,
+            candidate_work_with: composition_candidates_with,
+            examples_without: 16,
+            examples_with: 2,
+            retained_prior_tasks: 4,
+            prior_tasks: 4,
+            negative_transfers: 0,
+        })
+        .expect("record generated composition capability");
+    let completed_checkpoint = CurriculumCheckpointArchive
+        .persist(
+            &cas,
+            &curriculum.checkpoint(),
+            CurriculumCheckpointMetadata {
+                parent_ids: vec![parent(&cas, "completed-generated-objective")],
+                producer: producer(),
+                budget: budget(),
+                created_at_logical: 3_000,
+            },
+        )
+        .expect("persist completed generated objective");
+    curriculum_checkpoints.push(completed_checkpoint.artifact_id);
+    curriculum = CurriculumCheckpointArchive
+        .load(&cas, completed_checkpoint.envelope_blob_id)
+        .expect("restore completed generated objective");
+    curriculum_restores = curriculum_restores.saturating_add(1);
+    assert_eq!(curriculum.completed_objectives(), 5);
+    assert_eq!(
+        curriculum.select_next(),
+        Err(cairn_curriculum::AutonomousCurriculumError::Complete)
+    );
     assert_eq!(selected, ["family-a", "family-b", "family-c", "family-d"]);
     assert_eq!(completed_restarts, 2);
-    assert_eq!(curriculum_restores, 3);
-    assert_eq!(curriculum_checkpoints.len(), 3);
+    assert_eq!(curriculum_restores, 4);
+    assert_eq!(curriculum_checkpoints.len(), 4);
     assert_eq!(
         curriculum
             .mechanisms()
@@ -310,16 +451,22 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
     assert!(points.iter().all(|point| point.proof_units_with == 4));
     assert_eq!(store.len(), 4);
     eprintln!(
-        "G6_AUTONOMOUS_INTERNAL selected=family-a,family-b,family-c,family-d next=generated-composition generated_core={} generated_objective={} mechanisms=1->2->3->4 mechanism_hashes={},{},{},{} curriculum_checkpoints={},{},{} candidate_windows=18->9_each examples=4->1_each proof_units=28->4_each restarts=2 curriculum_restores=3 deprecated=target-d retained=6/6 negative_transfer=0/10",
+        "G6_AUTONOMOUS_INTERNAL selected=family-a,family-b,family-c,family-d generated=composition completed=1 generated_core={} generated_objective={} composition_evidence={} mechanisms=1->2->3->4 mechanism_hashes={},{},{},{} composition_invocations=2x2 composition_candidates={}->{} composition_examples=16->2 composition_proof={}->{} curriculum_checkpoints={},{},{},{} restarts=2 curriculum_restores=4 deprecated=target-d retained=6/6 negative_transfer=0/10",
         generated.failure_core,
         generated.objective.id.0,
+        composition_evidence,
         persisted[0].mechanism,
         persisted[1].mechanism,
         persisted[2].mechanism,
         persisted[3].mechanism,
+        composition_candidates_without,
+        composition_candidates_with,
+        composition_proof_without,
+        composition_proof_with,
         curriculum_checkpoints[0],
         curriculum_checkpoints[1],
         curriculum_checkpoints[2],
+        curriculum_checkpoints[3],
     );
 }
 
@@ -550,6 +697,114 @@ fn negative_host(episode: u8) -> ProofGraph {
         second_host: (2, 1),
     };
     host_graph(&spec, episode, 2, 1, "noise", "none")
+}
+
+fn composition_exercise_host(
+    episode: u8,
+    first: &FamilySpec,
+    second: &FamilySpec,
+    prefix_noise: usize,
+    suffix_noise: usize,
+) -> ProofGraph {
+    let mut nodes = vec![ProofNode {
+        operation: "exercise-observation".to_owned(),
+        output_type: ProofValueType::EntitySet,
+        inputs: vec![],
+        arguments: vec![datum(ProofValueType::Atom, "changed-composition-world")],
+    }];
+    for index in 0..prefix_noise {
+        nodes.push(ProofNode {
+            operation: format!("exercise-prefix-{episode}-{index}"),
+            output_type: ProofValueType::Integer,
+            inputs: vec![],
+            arguments: vec![datum(ProofValueType::Integer, &index.to_string())],
+        });
+    }
+    let first_output = append_family_occurrence(&mut nodes, first, "novel-first", "violet");
+    nodes.push(ProofNode {
+        operation: format!("exercise-separator-{episode}"),
+        output_type: ProofValueType::Integer,
+        inputs: vec![],
+        arguments: vec![datum(ProofValueType::Integer, "1")],
+    });
+    let second_output = append_family_occurrence(&mut nodes, second, "novel-second", "orange");
+    nodes.push(ProofNode {
+        operation: "combine-required-effects".to_owned(),
+        output_type: ProofValueType::Effect,
+        inputs: vec![first_output, second_output],
+        arguments: vec![],
+    });
+    let mut output = u32::try_from(nodes.len() - 1).expect("small");
+    for index in 0..suffix_noise {
+        nodes.push(ProofNode {
+            operation: format!("exercise-suffix-{episode}-{index}"),
+            output_type: ProofValueType::Effect,
+            inputs: vec![output],
+            arguments: vec![],
+        });
+        output = u32::try_from(nodes.len() - 1).expect("small");
+    }
+    ProofGraph {
+        episode: Hash32::digest(&[episode]),
+        nodes,
+        output,
+    }
+}
+
+fn materialize_composition_exercises(
+    request: &cairn_curriculum::DevelopmentalExerciseRequest,
+    first: &FamilySpec,
+    second: &FamilySpec,
+) -> [ProofGraph; 2] {
+    assert_eq!(request.need, DevelopmentalNeed::MechanismComposition);
+    assert_eq!(request.minimum_independent_variations, 2);
+    assert_eq!(
+        request.prerequisites,
+        BTreeSet::from([
+            MechanismTarget(first.target.to_owned()),
+            MechanismTarget(second.target.to_owned()),
+        ])
+    );
+    [
+        composition_exercise_host(91, first, second, 1, 1),
+        composition_exercise_host(92, first, second, 3, 2),
+    ]
+}
+
+fn append_family_occurrence(
+    nodes: &mut Vec<ProofNode>,
+    spec: &FamilySpec,
+    role: &str,
+    effect: &str,
+) -> u32 {
+    let start = nodes.len();
+    nodes.extend([
+        ProofNode {
+            operation: spec.operations[0].to_owned(),
+            output_type: ProofValueType::EntitySet,
+            inputs: vec![0],
+            arguments: vec![datum(ProofValueType::Atom, role)],
+        },
+        ProofNode {
+            operation: spec.operations[1].to_owned(),
+            output_type: ProofValueType::EntitySet,
+            inputs: vec![u32::try_from(start).expect("small")],
+            arguments: vec![datum(ProofValueType::Relation, "inside")],
+        },
+        ProofNode {
+            operation: spec.operations[2].to_owned(),
+            output_type: ProofValueType::Effect,
+            inputs: vec![u32::try_from(start + 1).expect("small")],
+            arguments: vec![datum(ProofValueType::Atom, effect)],
+        },
+        ProofNode {
+            operation: spec.operations[3].to_owned(),
+            output_type: ProofValueType::Effect,
+            inputs: vec![u32::try_from(start + 2).expect("small")],
+            arguments: vec![],
+        },
+    ]);
+    u32::try_from(start + 3).expect("small")
 }
 
 const fn limits() -> InternalMiningLimits {

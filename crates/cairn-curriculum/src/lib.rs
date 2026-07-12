@@ -505,6 +505,32 @@ pub struct GeneratedDevelopmentalObjective {
     pub failure_core: Hash32,
 }
 
+/// Content-free contract sent to a separately governed environment
+/// materializer after the curriculum selects a generated objective.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DevelopmentalExerciseRequest {
+    pub objective: ExperienceId,
+    pub need: DevelopmentalNeed,
+    pub prerequisites: BTreeSet<MechanismTarget>,
+    pub failure_core: Hash32,
+    pub minimum_independent_variations: u32,
+}
+
+impl GeneratedDevelopmentalObjective {
+    /// Derive the materializer request without exposing task content or giving
+    /// the curriculum authority over a concrete environment.
+    #[must_use]
+    pub fn exercise_request(&self) -> DevelopmentalExerciseRequest {
+        DevelopmentalExerciseRequest {
+            objective: self.objective.id.clone(),
+            need: self.need,
+            prerequisites: self.objective.prerequisites.clone(),
+            failure_core: self.failure_core,
+            minimum_independent_variations: 2,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ObjectiveGenerationError {
     UnsupportedFailureCoreSemantics,

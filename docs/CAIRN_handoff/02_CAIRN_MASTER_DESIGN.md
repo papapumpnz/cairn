@@ -91,6 +91,13 @@ can become composition prerequisites. Each addition is replayed at its original
 event boundary. The generator proposes what capability should be exercised; it
 does not yet synthesize the environment that exercises it.
 
+At the proof-mechanism layer, a separate materializer now consumes that request
+and produces changed hosts. The cognition runtime searches bounded combinations
+of persistent internal mechanisms; an independent implementation verifies each
+expansion, pairwise disjointness, contribution to the result, and measured
+learning reduction. Verified completion returns to the curriculum journal.
+Constructing the full proof from raw observations remains the next boundary.
+
 The architecture deliberately avoids two failed patterns:
 
 ```text

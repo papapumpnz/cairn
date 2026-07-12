@@ -38,6 +38,13 @@ selected next. This is objective-frontier expansion, not concrete curriculum
 instance generation or a new learned capability, so G6 and general intelligence
 remain incomplete.
 
+The generated composition objective now completes on two changed proof hosts
+through the shared runtime and independent verifier. Both learned mechanisms
+are explicitly necessary in each case; candidate, sample, and proof work fall
+from 72 to 46, 16 to two, and 112 to 16 respectively. This closes a bounded G6
+feedback loop but not raw-world experience generation, so the general-learning
+gate remains incomplete and ARC remains 36/400.
+
 ## 0. Dataset policy
 
 ### Development partitions

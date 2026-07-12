@@ -40,7 +40,7 @@ candidate windows: 18 -> 9 in every family
 examples: 4 -> 1 in every family
 proof units: 28 -> 4 in every family
 CAS restarts: 2
-curriculum checkpoint restores: 3
+curriculum checkpoint restores: 4
 restored lifecycle state: target-d deprecated from two verified counterexamples
 aggregate retained prior tasks: 6/6
 unrelated negative transfer: 0/10
@@ -61,6 +61,7 @@ Curriculum checkpoint identities:
 107d19a230dd1d5e681cdacf75dc25dfff2cd07b56856fd38ad7cd98420685c9
 03291a681ebe3c59225a15447456500db91e62fe60f80465f5115f6da303ab97
 0271e0c8c5146a578a60340d8ca74e39c0c1a1d99cb2c9bb438464231d142897
+1b24355fd6d822812a9a4c388786acb84622d1b14eff02daa191c27f967daede
 ```
 
 No composition objective exists in the initial curriculum. After all four
@@ -68,10 +69,25 @@ families, a bounded failed invention is reduced to a content-free core. The
 failure-driven generator classifies it as a composition gap, binds the first two
 active mechanism roles as prerequisites, assigns a canonical identity, and
 journals the objective. A third curriculum reconstruction reproduces the
-objective-addition boundary before selecting it. This validates generation and
-choice, not materialization or composition execution; separate G3/G6 suites
-validate execution and report same-task reductions from 24 to 16 candidates and
-ten to six examples.
+objective-addition boundary before selecting it.
+
+The generated request then crosses a separate materializer boundary. Two proof
+hosts vary prefix/suffix geometry and parameter values. The shared cognition
+runtime retrieves the two persistent prerequisite mechanisms and proposes two
+pairwise-disjoint, result-ancestral invocations in each host. The independent
+verifier reconstructs both compilations and all four invocations and reports:
+
+```text
+explicit learned invocations: 2 mechanisms x 2 changed exercises
+candidate windows: 72 -> 46
+examples: 16 -> 2
+proof units: 112 -> 16
+composition evidence: e48a1d839abdd757daf4ea02009a578535b7876d65d6266e3ab34c775f59d60f
+```
+
+Overlap, duplicate mechanisms, irrelevant invocations, and exhausted bounds
+fail closed. The verified outcome is recorded, checkpointed, reconstructed a
+fourth time, and the five-objective curriculum terminates complete.
 
 ## Restart and counterexample behavior
 
@@ -90,10 +106,9 @@ recorded choice fail closed.
 ## Claim boundary
 
 This replaces scripted order and the authored composition objective with
-bounded failure-driven frontier expansion. It demonstrates four learned
-mechanisms plus reconstructed developmental authority across restart. The
-system still does not materialize concrete experiences for its generated
-objective. It does not establish open-ended environment generation, RKL
-lowering of arbitrary proof operations, unrestricted composition discovery,
-natural perception, broad general intelligence, or the 80% ARC target. ARC
-remains at the last measured 36/400.
+bounded failure-driven frontier expansion and independently verified completion
+at the proof-mechanism layer. The materializer still supplies complete proof
+hosts rather than raw observations from which CAIRN constructs the entire
+proof. It does not establish open-ended environment generation, arbitrary RKL
+composition, natural perception, broad general intelligence, or the 80% ARC
+target. ARC remains at the last measured 36/400.

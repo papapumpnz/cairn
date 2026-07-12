@@ -1,7 +1,8 @@
+use cairn_consolidator::{ProofGraph, ProofNode, ProofValueType};
 use cairn_core::Hash32;
 use cairn_invent::{BindingExample, InventionLimits, InventionProblem};
 use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
-use cairn_runtime::CognitionRuntime;
+use cairn_runtime::{CognitionError, CognitionRuntime, InternalCompositionRuntimeError};
 use cairn_skill::{Condition, Fluent, ResourceModel, SkillInducer, SuccessfulTrace};
 use cairn_world::{
     ActionId, GoalObservation, PlanLimits, StateSpace, TransitionObservation, WorldState,
@@ -60,6 +61,32 @@ fn one_runtime_serves_task_world_and_skill_learning_loops() {
         )
         .expect("skill composition");
     assert_eq!(skill_plan.invocations.len(), 2);
+
+    let unavailable = Hash32::digest(b"not-in-persistent-memory");
+    assert_eq!(
+        runtime.plan_internal_composition(
+            &[unavailable, Hash32::digest(b"other")],
+            &proof_host(),
+            8,
+            8
+        ),
+        Err(CognitionError::InternalComposition(
+            InternalCompositionRuntimeError::UnavailableMechanism(unavailable)
+        ))
+    );
+}
+
+fn proof_host() -> ProofGraph {
+    ProofGraph {
+        episode: Hash32::digest(b"runtime-proof-host"),
+        nodes: vec![ProofNode {
+            operation: "observe".to_owned(),
+            output_type: ProofValueType::EntitySet,
+            inputs: vec![],
+            arguments: vec![],
+        }],
+        output: 0,
+    }
 }
 
 fn scalar_task() -> InventionProblem {

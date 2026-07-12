@@ -20,6 +20,10 @@ fn redacted_failure_generates_a_deterministic_composition_objective() {
     assert_eq!(generated.objective.prerequisites, support);
     assert!(generated.objective.id.0.starts_with("generated-"));
     assert!(generated.objective.produces.0.starts_with("mechanism-"));
+    let request = generated.exercise_request();
+    assert_eq!(request.objective, generated.objective.id);
+    assert_eq!(request.prerequisites, support);
+    assert_eq!(request.minimum_independent_variations, 2);
 
     let reversed = BTreeSet::from([
         MechanismTarget("map-effect".to_owned()),

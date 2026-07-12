@@ -192,9 +192,13 @@ pub enum InternalCompressionVerifyError {
     IdentityMismatch,
     CompiledLineageMismatch,
     CompiledSchemaMismatch,
+    DuplicateMechanism,
+    OverlappingInvocation,
+    IrrelevantInvocation,
     InsufficientReuseEvidence,
     NoLearningReduction,
     NoCompression,
+    Canonicalization,
     Capacity,
 }
 
@@ -270,6 +274,49 @@ pub struct VerifiedInternalReuse {
     experience: Hash32,
     verified_cases: u64,
     metrics: InternalReuseMetrics,
+}
+
+/// Complete current-process evidence for one prerequisite mechanism in a
+/// proposed composition. No serialized verifier authority is accepted.
+#[derive(Clone, Copy)]
+pub struct InternalCompositionEvidence<'a> {
+    pub proposal: &'a InternalGraphCompressionProposal,
+    pub mechanism: &'a CompiledInternalMechanism,
+    pub compilation: &'a VerifiedInternalMechanism,
+    pub sources: &'a [ProofGraph],
+    pub binding: &'a InternalEpisodeBindings,
+}
+
+/// Opaque verifier result proving that distinct learned mechanisms jointly
+/// contribute to one current proof and reduce relearning work.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedInternalComposition {
+    experience: Hash32,
+    invocations: Vec<VerifiedInternalInvocation>,
+    metrics: InternalReuseMetrics,
+    certificate: Hash32,
+}
+
+impl VerifiedInternalComposition {
+    #[must_use]
+    pub const fn experience(&self) -> Hash32 {
+        self.experience
+    }
+
+    #[must_use]
+    pub fn invocations(&self) -> &[VerifiedInternalInvocation] {
+        &self.invocations
+    }
+
+    #[must_use]
+    pub const fn metrics(&self) -> InternalReuseMetrics {
+        self.metrics
+    }
+
+    #[must_use]
+    pub const fn certificate(&self) -> Hash32 {
+        self.certificate
+    }
 }
 
 impl VerifiedInternalReuse {
@@ -530,6 +577,114 @@ impl InternalMechanismVerifier {
                 .checked_add(1)
                 .ok_or(InternalCompressionVerifyError::Capacity)?,
             metrics,
+        })
+    }
+
+    /// Independently replay every learned invocation, require pairwise-disjoint
+    /// occurrences whose outputs are ancestors of the host result, and derive
+    /// aggregate memory-off/on learning work.
+    ///
+    /// # Errors
+    ///
+    /// Rejects fewer than two or duplicate mechanisms, overlap, irrelevant
+    /// invocations, changed compilation evidence, replay mismatch, capacity,
+    /// and absent candidate/sample/proof reduction.
+    pub fn verify_composition(
+        &self,
+        host: &ProofGraph,
+        evidence: &[InternalCompositionEvidence<'_>],
+        maximum_match_windows: usize,
+    ) -> Result<VerifiedInternalComposition, InternalCompressionVerifyError> {
+        verifier_validate_graph(host)?;
+        if evidence.len() < 2 || maximum_match_windows == 0 {
+            return Err(InternalCompressionVerifyError::EmptyEvidence);
+        }
+        let mut ordered = evidence.iter().collect::<Vec<_>>();
+        ordered.sort_unstable_by_key(|item| item.mechanism.semantic_hash());
+        if ordered
+            .windows(2)
+            .any(|pair| pair[0].mechanism.semantic_hash() == pair[1].mechanism.semantic_hash())
+        {
+            return Err(InternalCompressionVerifyError::DuplicateMechanism);
+        }
+        let ancestors = verifier_proof_ancestors(host)?;
+        let mut selected = BTreeSet::new();
+        let mut invocations = Vec::with_capacity(ordered.len());
+        let mut source_proposals = Vec::with_capacity(ordered.len());
+        let mut metrics = InternalReuseMetrics {
+            candidate_windows_without: 0,
+            candidate_windows_with: 0,
+            examples_without: 0,
+            examples_with: 1,
+            proof_units_without: 0,
+            proof_units_with: 0,
+        };
+        for item in ordered {
+            let output = usize::try_from(item.mechanism.output())
+                .ok()
+                .and_then(|index| item.binding.selected_nodes.get(index))
+                .ok_or(InternalCompressionVerifyError::ReplayMismatch)?;
+            if !ancestors.contains(output) {
+                return Err(InternalCompressionVerifyError::IrrelevantInvocation);
+            }
+            if item
+                .binding
+                .selected_nodes
+                .iter()
+                .any(|node| !selected.insert(*node))
+            {
+                return Err(InternalCompressionVerifyError::OverlappingInvocation);
+            }
+            invocations.push(self.verify_invocation(item.mechanism, host, item.binding)?);
+            source_proposals.push(item.proposal.semantic_hash());
+            let receipt = self.verify_reuse(
+                item.proposal,
+                item.mechanism,
+                item.compilation,
+                item.sources,
+                host,
+                item.binding,
+                maximum_match_windows,
+            )?;
+            let measured = receipt.metrics();
+            metrics.candidate_windows_without = metrics
+                .candidate_windows_without
+                .checked_add(measured.candidate_windows_without)
+                .ok_or(InternalCompressionVerifyError::Capacity)?;
+            metrics.candidate_windows_with = metrics
+                .candidate_windows_with
+                .checked_add(measured.candidate_windows_with)
+                .ok_or(InternalCompressionVerifyError::Capacity)?;
+            metrics.examples_without = metrics
+                .examples_without
+                .checked_add(measured.examples_without)
+                .ok_or(InternalCompressionVerifyError::Capacity)?;
+            metrics.proof_units_without = metrics
+                .proof_units_without
+                .checked_add(measured.proof_units_without)
+                .ok_or(InternalCompressionVerifyError::Capacity)?;
+            metrics.proof_units_with = metrics
+                .proof_units_with
+                .checked_add(measured.proof_units_with)
+                .ok_or(InternalCompressionVerifyError::Capacity)?;
+        }
+        if metrics.candidate_windows_with >= metrics.candidate_windows_without
+            || metrics.examples_with >= metrics.examples_without
+            || metrics.proof_units_with >= metrics.proof_units_without
+        {
+            return Err(InternalCompressionVerifyError::NoLearningReduction);
+        }
+        let certificate = verifier_internal_composition_certificate(
+            host.episode,
+            &source_proposals,
+            &invocations,
+            metrics,
+        )?;
+        Ok(VerifiedInternalComposition {
+            experience: host.episode,
+            invocations,
+            metrics,
+            certificate,
         })
     }
 }
@@ -1066,6 +1221,69 @@ fn verifier_validate_graph(graph: &ProofGraph) -> Result<(), InternalCompression
         }
     }
     Ok(())
+}
+
+fn verifier_proof_ancestors(
+    graph: &ProofGraph,
+) -> Result<BTreeSet<u32>, InternalCompressionVerifyError> {
+    let mut ancestors = BTreeSet::new();
+    let mut frontier = vec![graph.output];
+    while let Some(node_id) = frontier.pop() {
+        if !ancestors.insert(node_id) {
+            continue;
+        }
+        let node = graph
+            .nodes
+            .get(usize::try_from(node_id).map_err(|_| InternalCompressionVerifyError::Capacity)?)
+            .ok_or(InternalCompressionVerifyError::InvalidTopology)?;
+        frontier.extend(node.inputs.iter().copied());
+    }
+    Ok(ancestors)
+}
+
+fn verifier_internal_composition_certificate(
+    experience: Hash32,
+    source_proposals: &[Hash32],
+    invocations: &[VerifiedInternalInvocation],
+    metrics: InternalReuseMetrics,
+) -> Result<Hash32, InternalCompressionVerifyError> {
+    if source_proposals.len() != invocations.len() {
+        return Err(InternalCompressionVerifyError::CompiledLineageMismatch);
+    }
+    CanonicalValue::Array(vec![
+        CanonicalValue::Text("cairn.verified-internal-composition.v1".to_owned()),
+        CanonicalValue::Bytes(experience.as_bytes().to_vec()),
+        CanonicalValue::Array(
+            source_proposals
+                .iter()
+                .zip(invocations)
+                .map(|(proposal, invocation)| {
+                    CanonicalValue::Array(vec![
+                        CanonicalValue::Bytes(proposal.as_bytes().to_vec()),
+                        CanonicalValue::Bytes(invocation.mechanism().as_bytes().to_vec()),
+                        CanonicalValue::Array(
+                            invocation
+                                .selected_nodes()
+                                .iter()
+                                .map(|node| CanonicalValue::Unsigned(u64::from(*node)))
+                                .collect(),
+                        ),
+                    ])
+                })
+                .collect(),
+        ),
+        CanonicalValue::Array(vec![
+            CanonicalValue::Unsigned(metrics.candidate_windows_without),
+            CanonicalValue::Unsigned(metrics.candidate_windows_with),
+            CanonicalValue::Unsigned(u64::from(metrics.examples_without)),
+            CanonicalValue::Unsigned(u64::from(metrics.examples_with)),
+            CanonicalValue::Unsigned(metrics.proof_units_without),
+            CanonicalValue::Unsigned(metrics.proof_units_with),
+        ]),
+    ])
+    .encode_canonical()
+    .map(|bytes| Hash32::digest(&bytes))
+    .map_err(|_| InternalCompressionVerifyError::Canonicalization)
 }
 
 fn verifier_fresh_window_work(

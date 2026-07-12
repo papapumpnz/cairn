@@ -255,6 +255,7 @@ dependencies = [
 name = "cairn-runtime"
 version = "0.1.0"
 dependencies = [
+ "cairn-consolidator",
  "cairn-core",
  "cairn-invent",
  "cairn-knowledge",

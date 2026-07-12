@@ -556,6 +556,23 @@ pub struct CompiledInternalMechanism {
     semantic_hash: Hash32,
 }
 
+/// One occurrence selected by the runtime composition proposer. It is a
+/// proposal only; the independent verifier must reconstruct the invocation.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InternalMechanismInvocation {
+    pub mechanism: Hash32,
+    pub binding: InternalEpisodeBindings,
+}
+
+/// Deterministic proposal that several learned mechanisms jointly contribute
+/// to one host proof result.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InternalCompositionPlan {
+    pub episode: Hash32,
+    pub invocations: Vec<InternalMechanismInvocation>,
+    pub combinations_considered: u64,
+}
+
 impl CompiledInternalMechanism {
     #[must_use]
     pub fn pattern(&self) -> &[InternalGraphPatternNode] {
@@ -678,6 +695,8 @@ pub enum ConsolidationError {
     InvalidMiningLimits,
     NoInternalCompression,
     NoInternalMatch,
+    DuplicateMechanism,
+    NoInternalComposition,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -984,6 +1003,71 @@ impl Consolidator {
         expand_compiled_internal(mechanism, binding)
     }
 
+    /// Exhaustively bind distinct learned mechanisms to pairwise-disjoint
+    /// occurrences that all contribute ancestrally to the host result.
+    ///
+    /// # Errors
+    ///
+    /// Rejects fewer than two or duplicate mechanisms, malformed graphs,
+    /// exhausted work bounds, absent matches, overlapping occurrences, and
+    /// invocations that do not contribute to the selected proof output.
+    pub fn compose_compiled_internal_mechanisms(
+        &self,
+        mechanisms: &[CompiledInternalMechanism],
+        graph: &ProofGraph,
+        maximum_windows_per_mechanism: usize,
+        maximum_combinations: u64,
+    ) -> Result<InternalCompositionPlan, ConsolidationError> {
+        normalize_ancestral_subgraph(graph)?;
+        if mechanisms.len() < 2 || maximum_windows_per_mechanism == 0 || maximum_combinations == 0 {
+            return Err(ConsolidationError::NoInternalComposition);
+        }
+        let mut ordered = mechanisms.iter().collect::<Vec<_>>();
+        ordered.sort_unstable_by_key(|mechanism| mechanism.semantic_hash());
+        if ordered
+            .windows(2)
+            .any(|pair| pair[0].semantic_hash() == pair[1].semantic_hash())
+        {
+            return Err(ConsolidationError::DuplicateMechanism);
+        }
+        let candidates = ordered
+            .iter()
+            .map(|mechanism| {
+                let mut bindings = self.match_compiled_internal_mechanism(
+                    mechanism,
+                    graph,
+                    maximum_windows_per_mechanism,
+                )?;
+                bindings.sort_by(|left, right| {
+                    (&left.selected_nodes, &left.boundary_nodes, &left.values).cmp(&(
+                        &right.selected_nodes,
+                        &right.boundary_nodes,
+                        &right.values,
+                    ))
+                });
+                Ok(bindings)
+            })
+            .collect::<Result<Vec<_>, ConsolidationError>>()?;
+        let ancestors = proof_ancestors(graph)?;
+        let mut considered = 0_u64;
+        let mut selected = Vec::new();
+        if choose_internal_composition(
+            &ordered,
+            &candidates,
+            &ancestors,
+            &mut selected,
+            &mut considered,
+            maximum_combinations,
+        )? {
+            return Ok(InternalCompositionPlan {
+                episode: graph.episode,
+                invocations: selected,
+                combinations_considered: considered,
+            });
+        }
+        Err(ConsolidationError::NoInternalComposition)
+    }
+
     /// Anti-unify equally shaped proof traces, replacing varying operations by
     /// typed holes while retaining shared structure.
     ///
@@ -1046,6 +1130,73 @@ impl Consolidator {
             compressed_nodes,
         })
     }
+}
+
+fn proof_ancestors(graph: &ProofGraph) -> Result<BTreeSet<u32>, ConsolidationError> {
+    let mut ancestors = BTreeSet::new();
+    let mut frontier = vec![graph.output];
+    while let Some(node_id) = frontier.pop() {
+        if !ancestors.insert(node_id) {
+            continue;
+        }
+        let node = graph
+            .nodes
+            .get(usize::try_from(node_id).map_err(|_| ConsolidationError::Capacity)?)
+            .ok_or(ConsolidationError::InvalidTopology)?;
+        frontier.extend(node.inputs.iter().copied());
+    }
+    Ok(ancestors)
+}
+
+fn choose_internal_composition(
+    mechanisms: &[&CompiledInternalMechanism],
+    candidates: &[Vec<InternalEpisodeBindings>],
+    ancestors: &BTreeSet<u32>,
+    selected: &mut Vec<InternalMechanismInvocation>,
+    considered: &mut u64,
+    maximum: u64,
+) -> Result<bool, ConsolidationError> {
+    let index = selected.len();
+    if index == mechanisms.len() {
+        return Ok(true);
+    }
+    let mechanism = mechanisms[index];
+    let output_index =
+        usize::try_from(mechanism.output()).map_err(|_| ConsolidationError::Capacity)?;
+    for binding in &candidates[index] {
+        *considered = considered
+            .checked_add(1)
+            .ok_or(ConsolidationError::Capacity)?;
+        if *considered > maximum {
+            return Err(ConsolidationError::Capacity);
+        }
+        let output_node = binding
+            .selected_nodes
+            .get(output_index)
+            .ok_or(ConsolidationError::NoInternalComposition)?;
+        if !ancestors.contains(output_node)
+            || selected.iter().any(|invocation| {
+                invocation
+                    .binding
+                    .selected_nodes
+                    .iter()
+                    .any(|node| binding.selected_nodes.contains(node))
+            })
+        {
+            continue;
+        }
+        selected.push(InternalMechanismInvocation {
+            mechanism: mechanism.semantic_hash(),
+            binding: binding.clone(),
+        });
+        if choose_internal_composition(
+            mechanisms, candidates, ancestors, selected, considered, maximum,
+        )? {
+            return Ok(true);
+        }
+        selected.pop();
+    }
+    Ok(false)
 }
 
 fn anti_unify_graph_nodes(

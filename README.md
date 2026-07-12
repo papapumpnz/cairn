@@ -376,8 +376,13 @@ The next G6 step removes the authored composition objective. A failed bounded
 invention is redacted to structural counts and type classes; the curriculum
 generates a canonical composition objective from that core and two learned
 mechanism roles, journals its introduction, restores again, and selects it.
-This is autonomous objective generation. Concrete experience materialization
-and execution of the selected composition remain open.
+This is autonomous objective generation. A separate materializer now produces
+two changed proof-host exercises for that request. The shared cognition runtime
+invokes both learned prerequisites in each host, and the independent verifier
+requires disjoint result-relevant occurrences and exact replay. Aggregate work
+falls from 72 to 46 candidate windows, 16 to two examples, and 112 to 16 proof
+units; the completed objective survives another restart. Raw-observation to
+proof construction remains open.
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding,
 arbitrary non-contiguous internal-subgraph mining and RKL lowering,

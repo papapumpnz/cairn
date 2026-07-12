@@ -834,3 +834,23 @@ and reconstructed. The generated objective using the first two mechanism roles
 is selected next. This advances autonomous curriculum generation but does not
 yet materialize an environment that exercises the objective or execute the
 resulting composition. General intelligence and the ARC target remain unmet.
+
+## 33. Self-generated proof-composition completion checkpoint
+
+The generated objective now emits a domain-neutral exercise request to a
+separate materializer. Two changed proof-host exercises are constructed without
+ARC code or data. The unchanged cognition runtime retrieves the two persistent
+prerequisite mechanisms and proposes fresh occurrence bindings. No composite
+mechanism or task-specific schedule is supplied.
+
+The independent verifier reconstructs both source compilations, expands all
+four current invocations, requires pairwise-disjoint nodes and ancestry to the
+host result, and independently derives 72-to-46 candidate, 16-to-two example,
+and 112-to-16 proof-unit reductions. A fourth restart reproduces the completed
+generated objective and its evidence identity.
+
+This closes objective generation -> materialization -> proposal -> independent
+verification -> curriculum feedback for bounded proof hosts. It does not yet
+construct complete proof hosts from raw observations, learn a new action law in
+the generated exercise, or demonstrate unbounded self-curriculum. General
+intelligence and the ARC target remain unmet.
