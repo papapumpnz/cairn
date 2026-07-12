@@ -1097,3 +1097,13 @@ invents coordinate definitions from unordered point sets, and jointly replays
 the render. `ConstructionProgramStore` requires two disjoint verified cohorts.
 `propose_construction_programs_from_memory` executes persistent programs as
 untrusted proposals without v1 or expected output.
+
+## 32. Conditional construction program
+
+`ConditionalEntityConstructionProgram` canonically composes a
+`LearnedEntitySelector` with `JointEntityConstructionProgram`. The latter has
+per-axis extent definitions and one tuple-valued point definition. Training
+uses `ConditionalConstructionExample`; held-out execution uses only
+`RelationalGeometryScene`. `ConditionalConstructionVerifier` independently
+recomputes features and executes definitions. `ConditionalConstructionStore`
+requires two disjoint receipts; runtime retrieval returns proposals only.

@@ -1,9 +1,11 @@
 //! Environment-neutral induction of theory components from binding evidence.
 
+mod conditional_construction;
 mod construction_program;
 mod correspondence;
 mod layer;
 
+pub use conditional_construction::*;
 pub use construction_program::*;
 pub use correspondence::*;
 pub use layer::*;

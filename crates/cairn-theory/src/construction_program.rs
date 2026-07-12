@@ -18,6 +18,54 @@ pub struct EntityConstructionProgram {
     pub output_coordinates: Vec<DefinitionProposal>,
 }
 
+/// V2 program whose point mapping is invented and observed jointly, preserving
+/// coordinate correspondence that independent per-axis sets cannot establish.
+#[derive(Clone, Debug, PartialEq)]
+pub struct JointEntityConstructionProgram {
+    pub output_extents: Vec<DefinitionProposal>,
+    pub output_point: DefinitionProposal,
+}
+
+impl JointEntityConstructionProgram {
+    /// Return the canonical identity of executable v2 semantics.
+    ///
+    /// # Errors
+    ///
+    /// Returns canonical encoding failure.
+    pub fn semantic_hash(&self) -> Result<Hash32, cairn_core::CanonicalError> {
+        self.encode_canonical().map(|bytes| Hash32::digest(&bytes))
+    }
+}
+
+impl CanonicalEncode for JointEntityConstructionProgram {
+    fn encode_canonical(&self) -> Result<Vec<u8>, cairn_core::CanonicalError> {
+        CanonicalValue::Array(vec![
+            CanonicalValue::Text("cairn.entity-construction-program.v2".to_owned()),
+            CanonicalValue::Text("map-each-entity-point-joint".to_owned()),
+            CanonicalValue::Array(
+                self.output_extents
+                    .iter()
+                    .map(|item| {
+                        item.definition
+                            .encode_canonical()
+                            .map(CanonicalValue::Bytes)
+                    })
+                    .collect::<Result<Vec<_>, _>>()?,
+            ),
+            CanonicalValue::Bytes(self.output_point.definition.encode_canonical()?),
+        ])
+        .encode_canonical()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct JointConstructionProgramReport {
+    pub program: JointEntityConstructionProgram,
+    pub candidates_evaluated: u64,
+    pub example_count: usize,
+    pub point_examples: usize,
+}
+
 impl EntityConstructionProgram {
     /// Canonical identity includes only executable definitions and generic
     /// map-each semantics.
@@ -86,6 +134,224 @@ pub enum EntityConstructionProgramError {
 pub struct EntityConstructionProgramSynthesizer;
 
 impl EntityConstructionProgramSynthesizer {
+    /// Invent one joint tuple-valued coordinate mapping from unordered entity
+    /// point sets, preventing false cross-axis pairings.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed observations, unsupported dimensions, bounded search
+    /// failure, or joint replay mismatch.
+    #[allow(clippy::too_many_lines)]
+    pub fn synthesize_joint_unordered(
+        &self,
+        examples: &[EntityCorrespondenceExample],
+        limits: InventionLimits,
+    ) -> Result<JointConstructionProgramReport, EntityConstructionProgramError> {
+        if examples.is_empty() {
+            return Err(EntityConstructionProgramError::EmptyTraces);
+        }
+        let dimensions = examples[0].source.extents.len();
+        if dimensions == 0
+            || examples.iter().any(|example| {
+                example.source.extents.len() != dimensions
+                    || example.expected.extents.len() != dimensions
+            })
+        {
+            return Err(EntityConstructionProgramError::UnsupportedDimensions);
+        }
+        for example in examples {
+            validate_unordered_example(example)?;
+        }
+        let mut output_extents = Vec::new();
+        let mut candidates = 0_u64;
+        for axis in 0..dimensions {
+            let demonstrations = examples
+                .iter()
+                .map(|example| {
+                    Ok(BindingExample {
+                        inputs: scene_environment(&example.source, false)?,
+                        output: Value::Int(i64::from(example.expected.extents[axis])),
+                    })
+                })
+                .collect::<Result<Vec<_>, EntityConstructionProgramError>>()?;
+            let outcome = DefinitionInventor
+                .invent(&InventionProblem {
+                    definition_name: format!("invented_output_extent_{axis}"),
+                    parameters: extent_parameters(dimensions),
+                    return_type: scalar_type(),
+                    literals: vec![Value::Int(0), Value::Int(1)],
+                    demonstrations,
+                    limits,
+                })
+                .map_err(EntityConstructionProgramError::Invention)?;
+            candidates = candidates
+                .checked_add(outcome.proposal.candidates_evaluated)
+                .ok_or(EntityConstructionProgramError::Capacity)?;
+            output_extents.push(outcome.proposal);
+        }
+        let mut episodes = Vec::new();
+        let mut point_examples = 0_usize;
+        for example in examples {
+            let expected = example
+                .expected
+                .entities
+                .iter()
+                .map(|entity| (entity.value, entity))
+                .collect::<BTreeMap<_, _>>();
+            for entity in &example.source.entities {
+                let target = expected
+                    .get(&entity.value)
+                    .ok_or(EntityConstructionProgramError::InvalidTrace)?;
+                point_examples = point_examples
+                    .checked_add(entity.points.len())
+                    .ok_or(EntityConstructionProgramError::Capacity)?;
+                episodes.push(UnorderedMappingEpisode {
+                    inputs: entity
+                        .points
+                        .iter()
+                        .map(|point| point_environment(&example.source, point))
+                        .collect::<Result<Vec<_>, _>>()?,
+                    expected_outputs: target
+                        .points
+                        .iter()
+                        .map(|point| Value::Tuple(point.iter().copied().map(Value::Int).collect()))
+                        .collect(),
+                });
+            }
+        }
+        let outcome = DefinitionInventor
+            .invent_unordered_mapping(&UnorderedMappingProblem {
+                definition_name: "invented_output_point".to_owned(),
+                parameters: point_parameters(dimensions),
+                return_type: Type::Tuple(vec![joint_scalar_type(); dimensions]),
+                literals: vec![Value::Int(0), Value::Int(1)],
+                episodes,
+                limits,
+            })
+            .map_err(EntityConstructionProgramError::Invention)?;
+        candidates = candidates
+            .checked_add(outcome.proposal.candidates_evaluated)
+            .ok_or(EntityConstructionProgramError::Capacity)?;
+        let report = JointConstructionProgramReport {
+            program: JointEntityConstructionProgram {
+                output_extents,
+                output_point: outcome.proposal,
+            },
+            candidates_evaluated: candidates,
+            example_count: examples.len(),
+            point_examples,
+        };
+        for example in examples {
+            if self
+                .execute_joint(&report.program, &example.source, ExecLimits::default())?
+                .render
+                != example.expected
+            {
+                return Err(EntityConstructionProgramError::Prediction);
+            }
+        }
+        Ok(report)
+    }
+
+    /// Execute a tuple-valued joint coordinate program.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed scenes/programs, definition failure, bounds, or
+    /// conflicting constructions.
+    pub fn execute_joint(
+        &self,
+        program: &JointEntityConstructionProgram,
+        source: &EntityGeometryScene,
+        limits: ExecLimits,
+    ) -> Result<EntityConstruction, EntityConstructionProgramError> {
+        validate_source(source)?;
+        let dimensions = source.extents.len();
+        if program.output_extents.len() != dimensions {
+            return Err(EntityConstructionProgramError::UnsupportedDimensions);
+        }
+        let extents = program
+            .output_extents
+            .iter()
+            .map(|definition| {
+                predict_integer(definition, &scene_environment(source, false)?, limits)
+            })
+            .map(|result| {
+                result.and_then(|value| {
+                    u32::try_from(value)
+                        .ok()
+                        .filter(|value| *value > 0)
+                        .ok_or(EntityConstructionProgramError::OutOfBounds)
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut occupied = BTreeMap::new();
+        let mut rendered = Vec::new();
+        let mut provenance = Vec::new();
+        for entity in &source.entities {
+            let mut output_points = BTreeSet::new();
+            let mut point_provenance = Vec::new();
+            for point in &entity.points {
+                let output = match DefinitionInventor
+                    .predict(
+                        &program.output_point,
+                        &point_environment(source, point)?,
+                        limits,
+                    )
+                    .map_err(EntityConstructionProgramError::Invention)?
+                {
+                    Value::Tuple(values) if values.len() == dimensions => values
+                        .into_iter()
+                        .map(|value| match value {
+                            Value::Int(value) => Ok(value),
+                            _ => Err(EntityConstructionProgramError::Prediction),
+                        })
+                        .collect::<Result<Vec<_>, _>>()?,
+                    _ => return Err(EntityConstructionProgramError::Prediction),
+                };
+                if output.iter().zip(&extents).any(|(value, extent)| {
+                    *value < 0
+                        || u64::try_from(*value).map_or(true, |value| value >= u64::from(*extent))
+                }) {
+                    return Err(EntityConstructionProgramError::OutOfBounds);
+                }
+                if occupied
+                    .insert(output.clone(), entity.identity)
+                    .is_some_and(|owner| owner != entity.identity)
+                {
+                    return Err(EntityConstructionProgramError::ConstructionConflict);
+                }
+                output_points.insert(output.clone());
+                point_provenance.push(PointConstructionProvenance {
+                    output,
+                    source: point.clone(),
+                });
+            }
+            point_provenance.sort_by(|left, right| left.output.cmp(&right.output));
+            rendered.push(RenderedEntity {
+                value: entity.value,
+                points: output_points,
+            });
+            provenance.push(EntityConstructionProvenance {
+                source_entity: entity.identity,
+                points: point_provenance,
+            });
+        }
+        rendered.sort_by(|left, right| {
+            left.value
+                .cmp(&right.value)
+                .then_with(|| left.points.cmp(&right.points))
+        });
+        provenance.sort_by_key(|item| item.source_entity);
+        Ok(EntityConstruction {
+            render: EntityGeometryRender {
+                extents,
+                background: source.background,
+                entities: rendered,
+            },
+            provenance,
+        })
+    }
     /// Invent directly from unordered source/output entity-point sets. Entity
     /// values establish only the generic preserved-attribute relation; no point
     /// correspondence or v1 mechanism is supplied.
@@ -572,6 +838,13 @@ fn scalar_type() -> Type {
     Type::Int(IntRange {
         lower: -1_000_000,
         upper: 1_000_000,
+    })
+}
+
+fn joint_scalar_type() -> Type {
+    Type::Int(IntRange {
+        lower: -2_000_000,
+        upper: 2_000_000,
     })
 }
 

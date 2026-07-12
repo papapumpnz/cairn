@@ -1088,3 +1088,14 @@ is absent initially, synthesized from unordered observations, independently
 verified, promoted, rebound, and reduces future compute/sample cost. It is not
 general intelligence: preserved value matching and entities are supplied, and
 control remains bijective and unconditional. No ARC claim follows.
+
+## 45. Conditional relational construction checkpoint
+
+The runtime now learns a Boolean relation-conditioned selector and a joint
+tuple-valued constructor, promotes the composition from two independent
+cohorts, and reuses it at unseen output cardinalities with zero new examples.
+Fresh search is 140 candidates versus two memory attempts; two held-outs and
+one finite-field transfer are exact; changed relation truth is rejected. This
+advances G0-G2 and G5. It does not establish raw entity learning, split/merge,
+recursive construction, sustained open-ended scaling, general intelligence, or
+80% ARC. ARC-10 is unchanged and ARC-20 is a capacity result, not a score.

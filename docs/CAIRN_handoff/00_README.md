@@ -128,4 +128,11 @@ larger held-outs with two attempts and zero examples instead of 5,986 synthesis
 candidates. This is autonomous bounded program-library learning; conditional
 control, non-bijective construction, and raw perception remain open.
 
+ADR-0029 now composes an invented relational selector with joint tuple-valued
+RKL geometry, supports changing output cardinality, two-cohort promotion,
+zero-example reuse, and finite-field transfer. The frozen ARC-10 ablation is
+10/10 in both conditions; ARC-20 hit its 600-second command cap. Split/merge,
+creation, raw perception, broad general intelligence, and the ARC target remain
+open.
+
 The reference implementation is Rust with small, audited C/C++ solver dependencies when justified. The baseline machine is one commodity 8-core CPU with 16 GB RAM. The system must also support multi-process and multi-node CPU swarms through content-addressed, proof-carrying artifacts.

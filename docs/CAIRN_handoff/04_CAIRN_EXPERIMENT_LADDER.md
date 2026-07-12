@@ -779,3 +779,15 @@ definition; missing outputs and caps fail closed.
 Measured: eight experiences promote one program; 5,986 candidates become two
 attempts; examples fall from four to zero; two held-outs and one field transfer
 are exact; negative accepts are zero. ARC remains closed.
+
+## G2-CONDITIONAL: relation-conditioned non-bijective program learning
+
+Freeze relational collections with changing entity counts and unordered
+renders. Invent the selector and joint constructor without selected IDs or
+point correspondences. Require two verified cohorts, held-out cardinalities
+beyond training, zero-example reuse, a field-adapter transfer, blank-memory
+failure, and changed-truth rejection.
+
+Measured: 140 fresh candidates become two memory attempts and zero examples;
+held-outs 2/2, field transfer 1/1, negative accepts zero. ARC-10 remains 10/10
+in both conditions; ARC-20 terminates at the fixed 600-second command cap.

@@ -5,7 +5,7 @@ use cairn_rkl::{
 };
 use cairn_theory::{
     EntityConstructionProgram, EntityCorrespondenceExample, EntityGeometryRender,
-    EntityGeometryScene, RenderedEntity,
+    EntityGeometryScene, JointEntityConstructionProgram, RenderedEntity,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -162,7 +162,7 @@ impl EntityConstructionProgramVerifier {
     }
 }
 
-fn reference_execute(
+pub(super) fn reference_execute(
     program: &EntityConstructionProgram,
     source: &EntityGeometryScene,
     limits: ExecLimits,
@@ -235,6 +235,83 @@ fn reference_execute(
     })
 }
 
+pub(super) fn reference_execute_joint(
+    program: &JointEntityConstructionProgram,
+    source: &EntityGeometryScene,
+    limits: ExecLimits,
+) -> Result<EntityGeometryRender, EntityConstructionProgramVerifyError> {
+    validate_source(source)?;
+    let dimensions = source.extents.len();
+    if program.output_extents.len() != dimensions {
+        return Err(EntityConstructionProgramVerifyError::InvalidProgram);
+    }
+    let extents = program
+        .output_extents
+        .iter()
+        .map(|proposal| execute_integer(&proposal.definition, &scene_environment(source)?, limits))
+        .map(|result| {
+            result.and_then(|value| {
+                u32::try_from(value)
+                    .ok()
+                    .filter(|value| *value > 0)
+                    .ok_or(EntityConstructionProgramVerifyError::OutOfBounds)
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut occupied = BTreeMap::<Vec<i64>, Hash32>::new();
+    let mut entities = Vec::new();
+    for entity in &source.entities {
+        let mut points = BTreeSet::new();
+        for source_point in &entity.points {
+            let mut environment = scene_environment(source)?;
+            for (axis, value) in source_point.iter().copied().enumerate() {
+                environment.insert(
+                    VarName(format!("source_coordinate_{axis}")),
+                    Value::Int(value),
+                );
+            }
+            let output =
+                match execute_value(&program.output_point.definition, &environment, limits)? {
+                    Value::Tuple(values) if values.len() == dimensions => values
+                        .into_iter()
+                        .map(|value| match value {
+                            Value::Int(value) => Ok(value),
+                            _ => Err(EntityConstructionProgramVerifyError::DefinitionFailure),
+                        })
+                        .collect::<Result<Vec<_>, _>>()?,
+                    _ => return Err(EntityConstructionProgramVerifyError::DefinitionFailure),
+                };
+            if output.iter().zip(&extents).any(|(value, extent)| {
+                *value < 0
+                    || u64::try_from(*value).map_or(true, |value| value >= u64::from(*extent))
+            }) {
+                return Err(EntityConstructionProgramVerifyError::OutOfBounds);
+            }
+            if occupied
+                .insert(output.clone(), entity.identity)
+                .is_some_and(|owner| owner != entity.identity)
+            {
+                return Err(EntityConstructionProgramVerifyError::ConstructionConflict);
+            }
+            points.insert(output);
+        }
+        entities.push(RenderedEntity {
+            value: entity.value,
+            points,
+        });
+    }
+    entities.sort_by(|left, right| {
+        left.value
+            .cmp(&right.value)
+            .then_with(|| left.points.cmp(&right.points))
+    });
+    Ok(EntityGeometryRender {
+        extents,
+        background: source.background,
+        entities,
+    })
+}
+
 fn execute_integer(
     definition: &cairn_rkl::Definition,
     inputs: &RuntimeEnvironment,
@@ -255,6 +332,24 @@ fn execute_integer(
         Value::Int(value) => Ok(value),
         _ => Err(EntityConstructionProgramVerifyError::DefinitionFailure),
     }
+}
+
+fn execute_value(
+    definition: &cairn_rkl::Definition,
+    inputs: &RuntimeEnvironment,
+    limits: ExecLimits,
+) -> Result<Value, EntityConstructionProgramVerifyError> {
+    let mut types = TypeEnvironment::new();
+    for parameter in &definition.parameters {
+        types.insert(parameter.name.clone(), parameter.ty.clone());
+    }
+    let checked = TypeChecker::new(10_000)
+        .check(&definition.body, &types)
+        .map_err(|_| EntityConstructionProgramVerifyError::DefinitionFailure)?;
+    ReferenceExecutor::without_definitions(limits, TraceLevel::Off)
+        .execute(&checked, inputs)
+        .map(|trace| trace.result)
+        .map_err(|_| EntityConstructionProgramVerifyError::DefinitionFailure)
 }
 
 fn scene_environment(

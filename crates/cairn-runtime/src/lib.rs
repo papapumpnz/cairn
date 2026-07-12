@@ -16,9 +16,10 @@ use cairn_core::{
 use cairn_invent::{InventionError, InventionProblem};
 use cairn_knowledge::KnowledgeBase;
 use cairn_memory::{
-    ConstructionProgramStore, EntityCorrespondenceStore, InternalMechanismStore,
-    LatentMechanismStore, LayerMechanismStore, MechanismStore, MemoryAssistedInventor,
-    MemorySolveOutcome, ModuleStatus, ProceduralMechanismModule, ProceduralMechanismStore,
+    ConditionalConstructionStore, ConstructionProgramStore, EntityCorrespondenceStore,
+    InternalMechanismStore, LatentMechanismStore, LayerMechanismStore, MechanismStore,
+    MemoryAssistedInventor, MemorySolveOutcome, ModuleStatus, ProceduralMechanismModule,
+    ProceduralMechanismStore,
 };
 use cairn_rkl::{
     ExecLimits, ReferenceTheoryExecutor, RuntimeEnvironment, TheoryExecLimits,
@@ -26,9 +27,11 @@ use cairn_rkl::{
 };
 use cairn_skill::{Condition, Skill, SkillPlan, SkillPlanError, SkillPlanner};
 use cairn_theory::{
-    EntityConstruction, EntityConstructionProgramError, EntityConstructionProgramSynthesizer,
+    ConditionalConstructionError, ConditionalConstructionSynthesizer, EntityConstruction,
+    EntityConstructionProgramError, EntityConstructionProgramSynthesizer,
     EntityCorrespondenceError, EntityCorrespondenceLearner, EntityCorrespondenceLimits,
     EntityGeometryScene, LayerMechanismError, LayerMechanismLearner, LayerRender, LayerScene,
+    RelationalGeometryScene,
 };
 use cairn_world::{
     ActionId, ActiveLatentInductionReport, ActiveLatentLimits, ActiveLatentWorldLearner,
@@ -48,6 +51,7 @@ pub struct CognitionRuntime {
     layer_mechanisms: LayerMechanismStore,
     entity_correspondences: EntityCorrespondenceStore,
     construction_programs: ConstructionProgramStore,
+    conditional_constructions: ConditionalConstructionStore,
     knowledge: KnowledgeBase,
 }
 
@@ -203,6 +207,7 @@ pub enum CognitionError {
     LayerMemory(LayerMemoryRuntimeError),
     EntityCorrespondenceMemory(EntityCorrespondenceMemoryRuntimeError),
     ConstructionProgramMemory(ConstructionProgramMemoryRuntimeError),
+    ConditionalConstructionMemory(ConditionalConstructionMemoryRuntimeError),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -278,6 +283,24 @@ pub struct ConstructionProgramMemoryOutcome {
     pub persistent_programs_attempted: u64,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ConditionalConstructionMemoryRuntimeError {
+    NoVerifiedProposal,
+    Capacity,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ConditionalConstructionMemoryProposal {
+    pub program: Hash32,
+    pub construction: EntityConstruction,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ConditionalConstructionMemoryOutcome {
+    pub proposals: Vec<ConditionalConstructionMemoryProposal>,
+    pub persistent_programs_attempted: u64,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum InternalCompositionRuntimeError {
     UnavailableMechanism(Hash32),
@@ -295,6 +318,7 @@ impl CognitionRuntime {
             layer_mechanisms: LayerMechanismStore::new(),
             entity_correspondences: EntityCorrespondenceStore::new(),
             construction_programs: ConstructionProgramStore::new(),
+            conditional_constructions: ConditionalConstructionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -309,6 +333,7 @@ impl CognitionRuntime {
             layer_mechanisms: LayerMechanismStore::new(),
             entity_correspondences: EntityCorrespondenceStore::new(),
             construction_programs: ConstructionProgramStore::new(),
+            conditional_constructions: ConditionalConstructionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -326,6 +351,7 @@ impl CognitionRuntime {
             layer_mechanisms: LayerMechanismStore::new(),
             entity_correspondences: EntityCorrespondenceStore::new(),
             construction_programs: ConstructionProgramStore::new(),
+            conditional_constructions: ConditionalConstructionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -342,6 +368,7 @@ impl CognitionRuntime {
             layer_mechanisms: LayerMechanismStore::new(),
             entity_correspondences: EntityCorrespondenceStore::new(),
             construction_programs: ConstructionProgramStore::new(),
+            conditional_constructions: ConditionalConstructionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -358,6 +385,7 @@ impl CognitionRuntime {
             layer_mechanisms,
             entity_correspondences: EntityCorrespondenceStore::new(),
             construction_programs: ConstructionProgramStore::new(),
+            conditional_constructions: ConditionalConstructionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -375,6 +403,7 @@ impl CognitionRuntime {
             layer_mechanisms: LayerMechanismStore::new(),
             entity_correspondences,
             construction_programs: ConstructionProgramStore::new(),
+            conditional_constructions: ConditionalConstructionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -392,6 +421,25 @@ impl CognitionRuntime {
             layer_mechanisms: LayerMechanismStore::new(),
             entity_correspondences: EntityCorrespondenceStore::new(),
             construction_programs,
+            conditional_constructions: ConditionalConstructionStore::new(),
+            knowledge: KnowledgeBase::new(),
+        }
+    }
+
+    /// Construct a runtime with proof-gated conditional program memory.
+    #[must_use]
+    pub const fn with_conditional_construction_memory(
+        conditional_constructions: ConditionalConstructionStore,
+    ) -> Self {
+        Self {
+            memory: MechanismStore::new(),
+            procedures: ProceduralMechanismStore::new(),
+            internal_mechanisms: InternalMechanismStore::new(),
+            latent_mechanisms: LatentMechanismStore::new(),
+            layer_mechanisms: LayerMechanismStore::new(),
+            entity_correspondences: EntityCorrespondenceStore::new(),
+            construction_programs: ConstructionProgramStore::new(),
+            conditional_constructions,
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -457,6 +505,17 @@ impl CognitionRuntime {
 
     pub const fn construction_program_memory_mut(&mut self) -> &mut ConstructionProgramStore {
         &mut self.construction_programs
+    }
+
+    #[must_use]
+    pub const fn conditional_construction_memory(&self) -> &ConditionalConstructionStore {
+        &self.conditional_constructions
+    }
+
+    pub const fn conditional_construction_memory_mut(
+        &mut self,
+    ) -> &mut ConditionalConstructionStore {
+        &mut self.conditional_constructions
     }
 
     #[must_use]
@@ -953,6 +1012,54 @@ impl CognitionRuntime {
             ));
         }
         Ok(ConstructionProgramMemoryOutcome {
+            proposals,
+            persistent_programs_attempted,
+        })
+    }
+
+    /// Execute persistent conditional programs as untrusted current-scene
+    /// proposals. Neither selected entities nor expected output are supplied.
+    ///
+    /// # Errors
+    ///
+    /// Returns typed absence or capacity failure. Independent replay remains
+    /// the sole acceptance authority.
+    pub fn propose_conditional_constructions_from_memory(
+        &self,
+        scene: &RelationalGeometryScene,
+        limits: ExecLimits,
+    ) -> Result<ConditionalConstructionMemoryOutcome, CognitionError> {
+        let mut persistent_programs_attempted = 0_u64;
+        let mut proposals = Vec::new();
+        for program in self.conditional_constructions.persistent_programs() {
+            persistent_programs_attempted = persistent_programs_attempted.saturating_add(1);
+            match ConditionalConstructionSynthesizer.execute(program, scene, limits) {
+                Ok(construction) => proposals.push(ConditionalConstructionMemoryProposal {
+                    program: program.semantic_hash().map_err(|_| {
+                        CognitionError::ConditionalConstructionMemory(
+                            ConditionalConstructionMemoryRuntimeError::Capacity,
+                        )
+                    })?,
+                    construction,
+                }),
+                Err(
+                    ConditionalConstructionError::InvalidScene
+                    | ConditionalConstructionError::AmbiguousPreservedAttribute
+                    | ConditionalConstructionError::Prediction,
+                ) => {}
+                Err(_) => {
+                    return Err(CognitionError::ConditionalConstructionMemory(
+                        ConditionalConstructionMemoryRuntimeError::Capacity,
+                    ));
+                }
+            }
+        }
+        if proposals.is_empty() {
+            return Err(CognitionError::ConditionalConstructionMemory(
+                ConditionalConstructionMemoryRuntimeError::NoVerifiedProposal,
+            ));
+        }
+        Ok(ConditionalConstructionMemoryOutcome {
             proposals,
             persistent_programs_attempted,
         })

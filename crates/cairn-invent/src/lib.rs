@@ -539,7 +539,15 @@ impl Search<'_> {
             let definition = Definition {
                 name: self.problem.definition_name.clone(),
                 parameters: self.problem.parameters.clone(),
-                return_type: self.problem.return_type.clone(),
+                // Preserve the checker-derived exact range. The problem type
+                // is an admissibility envelope; using it verbatim can make a
+                // valid tuple body fail definition checking when its component
+                // ranges are narrower.
+                return_type: if matches!(self.problem.return_type, Type::Tuple(_)) {
+                    typed.ty().clone()
+                } else {
+                    self.problem.return_type.clone()
+                },
                 body: expression,
                 recursion: None,
                 proof_annotations: Vec::new(),

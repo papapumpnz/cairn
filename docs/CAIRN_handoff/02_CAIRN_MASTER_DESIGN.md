@@ -2378,3 +2378,13 @@ larger held-outs, 5,986 fresh candidates become two memory attempts and zero
 examples. Exactness, field transfer, blank-memory failure, and zero wrong-family
 acceptance hold. Attribute discovery, conditional selection, split/merge, and
 raw entity hypotheses remain open.
+
+## 30. Conditional relational construction checkpoint
+
+ADR-0029 introduces a separate conditional program identity: an invented
+Boolean selector over generic attributes/relation degrees followed by a v2
+joint tuple-valued point constructor. Joint output invention preserves
+coordinate pairing that independent axis sets cannot prove. Independent replay,
+two disjoint cohorts, proposal-only runtime reuse, and a finite-field
+ordered-contact frontend are implemented. This establishes filter/delete with
+variable output cardinality, not split/merge or perception.

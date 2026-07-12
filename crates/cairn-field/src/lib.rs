@@ -17,11 +17,12 @@ use cairn_reg::{
 };
 use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
 use cairn_theory::{
-    ContrastExample, ContrastPredicateInventor, CoordinateLayer, EntityConstructionProgram,
+    ConditionalConstructionSynthesizer, ConditionalEntityConstructionProgram, ContrastExample,
+    ContrastPredicateInventor, CoordinateLayer, EntityConstructionProgram,
     EntityConstructionProgramSynthesizer, EntityCorrespondenceLearner, EntityCorrespondenceLimits,
     EntityCorrespondenceMechanism, EntityGeometryRender, EntityGeometryScene, GeometricEntity,
     LayerMechanism, LayerMechanismLearner, LayerRender, LayerScene, LearnedEntitySelector,
-    RelationalEntitySelectorInventor,
+    RelationalEntitySelectorInventor, RelationalGeometryScene,
 };
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
@@ -825,6 +826,7 @@ pub enum LearnedStructuralFieldBinding {
     EntityFrameExtraction(LearnedEntityFrameExtractionBinding),
     LayerMechanism(LayerMechanism),
     EntityCorrespondence(EntityCorrespondenceMechanism),
+    ConditionalOrderedContact(ConditionalEntityConstructionProgram),
 }
 
 impl LearnedStructuralFieldBinding {
@@ -848,6 +850,8 @@ impl LearnedStructuralFieldBinding {
                 input,
                 EntityCorrespondenceLimits::default(),
             ),
+            Self::ConditionalOrderedContact(program) => ConditionalConstructionFieldAdapter
+                .predict_ordered_contact(program, input, cairn_rkl::ExecLimits::default()),
         }
     }
 }
@@ -1044,6 +1048,130 @@ impl EntityConstructionProgramFieldAdapter {
         let scene = EntityCorrespondenceFieldAdapter.lower(input)?;
         let construction = EntityConstructionProgramSynthesizer
             .execute(program, &scene, limits)
+            .map_err(|_| FieldError::Prediction)?;
+        EntityCorrespondenceFieldAdapter.realize(&construction.render)
+    }
+}
+
+/// Field realization boundary for a learned relational selector composed with
+/// a learned joint construction program.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ConditionalConstructionFieldAdapter;
+
+impl ConditionalConstructionFieldAdapter {
+    /// Derive a generic directed contact relation (lower categorical value to
+    /// higher categorical value) and execute a conditional program.
+    ///
+    /// # Errors
+    ///
+    /// Rejects invalid fields, relation lowering failure, program execution
+    /// failure, and render conflicts.
+    pub fn predict_ordered_contact(
+        &self,
+        program: &ConditionalEntityConstructionProgram,
+        input: &FiniteField,
+        limits: cairn_rkl::ExecLimits,
+    ) -> Result<FiniteField, FieldError> {
+        let geometry = EntityCorrespondenceFieldAdapter.lower(input)?;
+        let entities = geometry
+            .entities
+            .iter()
+            .map(|entity| EntityRecord {
+                id: EntityId(entity.identity),
+                attributes: BTreeMap::new(),
+            })
+            .collect::<Vec<_>>();
+        let point_owner = geometry
+            .entities
+            .iter()
+            .flat_map(|entity| {
+                entity
+                    .points
+                    .iter()
+                    .cloned()
+                    .map(|point| (point, (entity.identity, entity.value)))
+            })
+            .collect::<BTreeMap<_, _>>();
+        let mut contacts = BTreeSet::new();
+        for entity in &geometry.entities {
+            for point in &entity.points {
+                for axis in 0..point.len() {
+                    for delta in [-1_i64, 1] {
+                        let mut neighbour = point.clone();
+                        let Some(value) = neighbour[axis].checked_add(delta) else {
+                            continue;
+                        };
+                        if value < 0
+                            || u64::try_from(value)
+                                .map_or(true, |value| value >= u64::from(geometry.extents[axis]))
+                        {
+                            continue;
+                        }
+                        neighbour[axis] = value;
+                        let Some((other_id, other_value)) = point_owner.get(&neighbour) else {
+                            continue;
+                        };
+                        if *other_id == entity.identity {
+                            continue;
+                        }
+                        let pair = if entity.value < *other_value {
+                            (entity.identity, *other_id)
+                        } else {
+                            (*other_id, entity.identity)
+                        };
+                        contacts.insert(pair);
+                    }
+                }
+            }
+        }
+        let relations = contacts
+            .into_iter()
+            .map(|(subject, object)| cairn_core::RelationRecord {
+                role: cairn_core::RelationRole("ordered-contact".to_owned()),
+                subject: EntityId(subject),
+                object: EntityId(object),
+            })
+            .collect();
+        let construction = ConditionalConstructionSynthesizer
+            .execute(
+                program,
+                &RelationalGeometryScene {
+                    geometry,
+                    relations: RelationalEntityCollection {
+                        entities,
+                        relations,
+                    },
+                },
+                limits,
+            )
+            .map_err(|_| FieldError::Prediction)?;
+        EntityCorrespondenceFieldAdapter.realize(&construction.render)
+    }
+
+    /// Lower categorical geometry, attach adapter-supplied generic relations,
+    /// execute the program, and realize only the selected construction.
+    ///
+    /// # Errors
+    ///
+    /// Rejects lowering, identity/relation misalignment, learned-program
+    /// failure, and categorical render conflicts.
+    pub fn predict(
+        &self,
+        program: &ConditionalEntityConstructionProgram,
+        input: &FiniteField,
+        relations: RelationalEntityCollection,
+        limits: cairn_rkl::ExecLimits,
+    ) -> Result<FiniteField, FieldError> {
+        let geometry = EntityCorrespondenceFieldAdapter.lower(input)?;
+        let construction = ConditionalConstructionSynthesizer
+            .execute(
+                program,
+                &RelationalGeometryScene {
+                    geometry,
+                    relations,
+                },
+                limits,
+            )
             .map_err(|_| FieldError::Prediction)?;
         EntityCorrespondenceFieldAdapter.realize(&construction.render)
     }
