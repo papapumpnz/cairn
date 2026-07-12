@@ -1067,3 +1067,20 @@ proposal-only `propose_entity_constructions_from_memory`.
 `EntityCorrespondenceFieldAdapter` lowers non-background categories as disjoint
 entities and exactly realizes verified renders; categorical overlap fails rather
 than being approximated.
+
+## 30. Generic entity-construction program contracts
+
+`EntityConstructionProgram` contains learned `output_extents` and
+`output_coordinates` definitions. Canonical marker
+`cairn.entity-construction-program.v1` includes executable RKL and the generic
+`map-each-entity-point` contract, excluding proposal statistics and source data.
+
+`EntityConstructionTrace` carries source geometry, expected render, and complete
+entity/point provenance. The synthesizer validates trace closure, creates
+binding examples, invokes RKL invention, and exactly replays the program.
+
+`EntityConstructionProgramVerifier` independently type-checks raw definitions
+and executes through `TypeChecker` and `ReferenceExecutor`. Its receipt commits
+to program identity, experiences, and replay counts.
+`EntityConstructionProgramFieldAdapter` executes the same program after field
+lowering.

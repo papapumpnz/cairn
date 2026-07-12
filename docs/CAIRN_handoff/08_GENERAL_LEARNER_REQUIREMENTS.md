@@ -1057,3 +1057,19 @@ correspondence-only memory both score 17/40 exact, zero incorrect, and 23
 limited. Full-400 was not run. This does not erase the source-domain learning
 result, but it establishes no ARC contribution. General intelligence and 80%
 ARC remain unmet.
+
+## 43. Self-expanding construction-language checkpoint
+
+Four independently verified non-ARC traces now produce four learned RKL
+definitions after 5,986 candidate evaluations. Definitions use source
+coordinates, extents, collection minima/maxima, literals, and arithmetic. No
+reflection, rotation, crop, axis-map, ARC, or modality node exists.
+
+After synthesis v1 is removed. The program alone solves two changed held-outs;
+the verifier executes raw definitions independently; field transfer is exact;
+changed truth is rejected; and deleting one definition removes capability.
+
+An initial two-trace program overfit and failed held-out replay. Training grew to
+four varied traces without weakening held-outs. This is bounded structural
+learning, not autonomous trace discovery, persistent program learning,
+conditional/non-bijective construction, general intelligence, or ARC progress.

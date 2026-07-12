@@ -1,8 +1,10 @@
 //! Independent promotion boundary combining replay provenance and learning gates.
 
+mod construction_program;
 mod correspondence;
 mod layer;
 
+pub use construction_program::*;
 pub use correspondence::*;
 pub use layer::*;
 

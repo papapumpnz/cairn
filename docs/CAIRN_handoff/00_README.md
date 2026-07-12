@@ -112,4 +112,13 @@ CAIRN starts from observed differences and relational correspondences, construct
 
 ## Implementation language and baseline hardware
 
+The first self-expanding-language pivot no longer persists the signed-axis
+configuration. Four independently verified executions compile into generic RKL
+definitions over source coordinates, extents, and collection bounds. After
+compilation v1 is removed: the synthesized program alone replays two changed
+held-outs, transfers to a field, and is independently executed by the verifier.
+Retained executable rule structure is now synthesized rather than selected from
+a named transform representation. Autonomous trace discovery and program
+promotion remain open.
+
 The reference implementation is Rust with small, audited C/C++ solver dependencies when justified. The baseline machine is one commodity 8-core CPU with 16 GB RAM. The system must also support multi-process and multi-node CPU swarms through content-addressed, proof-carrying artifacts.

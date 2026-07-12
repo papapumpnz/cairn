@@ -750,3 +750,17 @@ correspondence-only memory both score 17/40 exact with zero incorrect. The
 mandatory strict-gain assertion fails, so full-400 was not run. Preserve the
 failure under ADR-0026 and require a richer non-bijective, relation-conditioned
 mechanism to restart at the non-ARC source gate.
+
+## G0-PROGRAM: rule structure synthesized from verified traces
+
+Use v1 only to create independently verified non-ARC traces. Synthesize extents
+and coordinates through generic RKL invention. The program may contain no
+transform enum, named operation, v1 configuration, source ID/value, or modality.
+
+Remove v1 before held-out execution. Require changed held-outs, independent
+verifier replay, field transfer, changed-truth rejection, and capability loss
+when a learned definition is removed. Preserve the initial two-trace
+overgeneralization failure.
+
+This gate does not authorize ARC. Next require equivalent programs from
+independent correspondence-discovery cohorts and promotion without v1 traces.

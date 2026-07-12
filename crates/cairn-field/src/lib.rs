@@ -17,10 +17,11 @@ use cairn_reg::{
 };
 use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
 use cairn_theory::{
-    ContrastExample, ContrastPredicateInventor, CoordinateLayer, EntityCorrespondenceLearner,
-    EntityCorrespondenceLimits, EntityCorrespondenceMechanism, EntityGeometryRender,
-    EntityGeometryScene, GeometricEntity, LayerMechanism, LayerMechanismLearner, LayerRender,
-    LayerScene, LearnedEntitySelector, RelationalEntitySelectorInventor,
+    ContrastExample, ContrastPredicateInventor, CoordinateLayer, EntityConstructionProgram,
+    EntityConstructionProgramSynthesizer, EntityCorrespondenceLearner, EntityCorrespondenceLimits,
+    EntityCorrespondenceMechanism, EntityGeometryRender, EntityGeometryScene, GeometricEntity,
+    LayerMechanism, LayerMechanismLearner, LayerRender, LayerScene, LearnedEntitySelector,
+    RelationalEntitySelectorInventor,
 };
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
@@ -1020,6 +1021,31 @@ impl EntityCorrespondenceFieldAdapter {
             .execute(mechanism, &scene, limits)
             .map_err(|_| FieldError::Prediction)?;
         self.realize(&construction.render)
+    }
+}
+
+/// Field frontend for generic synthesized entity-construction programs.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct EntityConstructionProgramFieldAdapter;
+
+impl EntityConstructionProgramFieldAdapter {
+    /// Execute a learned RKL-backed construction program through the generic
+    /// entity scene, then realize the result as a categorical field.
+    ///
+    /// # Errors
+    ///
+    /// Rejects field lowering, program execution, or categorical conflicts.
+    pub fn predict(
+        &self,
+        program: &EntityConstructionProgram,
+        input: &FiniteField,
+        limits: cairn_rkl::ExecLimits,
+    ) -> Result<FiniteField, FieldError> {
+        let scene = EntityCorrespondenceFieldAdapter.lower(input)?;
+        let construction = EntityConstructionProgramSynthesizer
+            .execute(program, &scene, limits)
+            .map_err(|_| FieldError::Prediction)?;
+        EntityCorrespondenceFieldAdapter.realize(&construction.render)
     }
 }
 

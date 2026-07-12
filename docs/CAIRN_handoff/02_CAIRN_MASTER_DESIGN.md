@@ -2345,3 +2345,22 @@ mechanism but stops signed-axis correspondence as an ARC-directed path. The
 failure indicates that unsolved tasks require richer conditional entity
 selection, entity-to-entity role matching, non-bijective construction, or
 topological relations rather than one global coordinate map.
+
+## 28. Synthesized entity-construction programs
+
+The v1 signed-axis mechanism is now temporary teaching evidence only.
+`EntityConstructionProgram` stores no axis map, reversal flag, frame, or
+transform enum. It contains ordinary RKL definitions for output extents and
+coordinates plus bounded map-each semantics over entities and points. Inputs are
+source coordinates, observation extents, and collection minima/maxima.
+
+Four independently verified traces containing 30 point examples produce a
+program after 5,986 candidate evaluations. V1 is then dropped. The program alone
+passes two changed held-outs, vector-to-field transfer, changed-truth rejection,
+and definition ablation. The verifier type-checks and executes raw definitions
+through its independent RKL path.
+
+This is structural program synthesis, not yet autonomous discovery: traces
+currently come from a previous learned mechanism. Next, infer correspondence
+directly from observations/residuals, promote equivalent programs from
+independent cohorts, and compose conditional/non-bijective programs.
