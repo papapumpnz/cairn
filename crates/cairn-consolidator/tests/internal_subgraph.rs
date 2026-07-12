@@ -1,6 +1,7 @@
 use cairn_consolidator::{
-    ConsolidationError, Consolidator, InternalEpisodeBindings, InternalMiningLimits,
-    InternalPatternInput, ProofDatum, ProofGraph, ProofNode, ProofValueType,
+    ConsolidationError, Consolidator, InternalConstructionLimits, InternalEpisodeBindings,
+    InternalMiningLimits, InternalPatternInput, ProofDatum, ProofFrontier, ProofGraph, ProofNode,
+    ProofValueType,
 };
 use cairn_core::{CanonicalEncode, Hash32};
 
@@ -276,6 +277,170 @@ fn composes_distinct_learned_mechanisms_only_when_both_contribute() {
         Consolidator.compose_compiled_internal_mechanisms(&[second, first], &host, 64, 1),
         Err(ConsolidationError::Capacity)
     );
+}
+
+#[test]
+fn constructs_composition_candidates_from_evidence_without_a_completed_host() {
+    let (first, second, frontier) = construction_fixture();
+    assert!(frontier
+        .nodes
+        .iter()
+        .all(|node| !node.operation.starts_with("a-") && !node.operation.starts_with("b-")));
+    let candidates = Consolidator
+        .construct_compiled_internal_compositions(
+            &[first.clone(), second.clone()],
+            &frontier,
+            InternalConstructionLimits {
+                maximum_bindings_per_mechanism: 32,
+                maximum_candidates: 512,
+            },
+        )
+        .expect("constructed candidates");
+    assert_eq!(candidates.len(), 256);
+    assert!(candidates.iter().all(|candidate| {
+        candidate.graph.nodes.len() == frontier.nodes.len() + 9
+            && candidate
+                .graph
+                .nodes
+                .last()
+                .is_some_and(|node| node.operation == "join-learned-results")
+            && candidate.invocations.len() == 2
+    }));
+    let desired = [
+        datum(ProofValueType::Atom, "first-role"),
+        datum(ProofValueType::Atom, "first-effect"),
+        datum(ProofValueType::Atom, "second-role"),
+        datum(ProofValueType::Atom, "second-effect"),
+    ];
+    assert_eq!(
+        candidates
+            .iter()
+            .filter(|candidate| {
+                candidate.invocations.iter().all(|invocation| {
+                    if invocation.mechanism == first.semantic_hash() {
+                        invocation.binding.values == desired[..2]
+                    } else {
+                        invocation.binding.values == desired[2..]
+                    }
+                })
+            })
+            .count(),
+        1
+    );
+    let training = candidates
+        .iter()
+        .find(|candidate| {
+            candidate.invocations.iter().all(|invocation| {
+                if invocation.mechanism == first.semantic_hash() {
+                    invocation.binding.values == desired[..2]
+                } else {
+                    invocation.binding.values == desired[2..]
+                }
+            })
+        })
+        .expect("training construction");
+    let policy = Consolidator
+        .induce_internal_construction_policy(&[first.clone(), second.clone()], &frontier, training)
+        .expect("typed ordinal policy");
+    let mut changed = construction_frontier(81);
+    changed.nodes[1].arguments = ["new-a", "new-b", "new-c", "new-d"]
+        .into_iter()
+        .map(|value| datum(ProofValueType::Atom, value))
+        .collect();
+    let transferred = Consolidator
+        .apply_internal_construction_policy(&[first.clone(), second.clone()], &changed, &policy)
+        .expect("changed-value construction");
+    assert_eq!(transferred.candidates_considered, 1);
+    assert!(transferred.invocations.iter().all(|invocation| {
+        if invocation.mechanism == first.semantic_hash() {
+            invocation.binding.values == changed.nodes[1].arguments[..2]
+        } else {
+            invocation.binding.values == changed.nodes[1].arguments[2..]
+        }
+    }));
+    changed.nodes[1].arguments.pop();
+    assert_eq!(
+        Consolidator.apply_internal_construction_policy(
+            &[first.clone(), second.clone()],
+            &changed,
+            &policy
+        ),
+        Err(ConsolidationError::ReplayMismatch)
+    );
+    assert_eq!(
+        Consolidator.construct_compiled_internal_compositions(
+            &[first, second],
+            &frontier,
+            InternalConstructionLimits {
+                maximum_bindings_per_mechanism: 1,
+                maximum_candidates: 1,
+            },
+        ),
+        Err(ConsolidationError::Capacity)
+    );
+}
+
+fn construction_fixture() -> (
+    cairn_consolidator::CompiledInternalMechanism,
+    cairn_consolidator::CompiledInternalMechanism,
+    ProofFrontier,
+) {
+    let limits = InternalMiningLimits {
+        minimum_nodes: 4,
+        maximum_nodes: 4,
+        minimum_independent_episodes: 4,
+        maximum_windows_per_episode: 64,
+    };
+    let first_sources = [
+        renamed_host(31, "a", "triangle", "red"),
+        renamed_host(32, "a", "circle", "blue"),
+        renamed_host(33, "a", "segment", "green"),
+        renamed_host(34, "a", "polygon", "yellow"),
+    ];
+    let second_sources = [
+        renamed_host(41, "b", "arc", "cyan"),
+        renamed_host(42, "b", "box", "magenta"),
+        renamed_host(43, "b", "line", "amber"),
+        renamed_host(44, "b", "point", "white"),
+    ];
+    (
+        plan_mechanism(&first_sources, limits),
+        plan_mechanism(&second_sources, limits),
+        construction_frontier(80),
+    )
+}
+
+fn plan_mechanism(
+    sources: &[ProofGraph],
+    limits: InternalMiningLimits,
+) -> cairn_consolidator::CompiledInternalMechanism {
+    Consolidator
+        .mine_internal_proof_subgraphs(sources, limits)
+        .and_then(|proposal| Consolidator.compile_internal_proof_mechanism(&proposal))
+        .expect("compiled mechanism")
+}
+
+fn construction_frontier(episode: u8) -> ProofFrontier {
+    ProofFrontier {
+        episode: Hash32::digest(&[episode]),
+        nodes: vec![
+            ProofNode {
+                operation: "observe-entity-set".to_owned(),
+                output_type: ProofValueType::EntitySet,
+                inputs: vec![],
+                arguments: vec![],
+            },
+            ProofNode {
+                operation: "observe-typed-values".to_owned(),
+                output_type: ProofValueType::Atom,
+                inputs: vec![],
+                arguments: ["first-role", "first-effect", "second-role", "second-effect"]
+                    .into_iter()
+                    .map(|value| datum(ProofValueType::Atom, value))
+                    .collect(),
+            },
+        ],
+    }
 }
 
 fn renamed_host(episode: u8, family: &str, role: &str, effect: &str) -> ProofGraph {

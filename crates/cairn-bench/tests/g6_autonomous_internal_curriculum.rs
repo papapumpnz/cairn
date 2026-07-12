@@ -1,8 +1,9 @@
 use cairn_cas::{Cas, CasLimits};
 use cairn_consolidator::{
-    CompiledInternalMechanism, Consolidator, InternalGraphCompressionProposal,
-    InternalMiningLimits, ProofDatum, ProofGraph, ProofGraphArchive, ProofGraphArtifactMetadata,
-    ProofNode, ProofValueType,
+    CompiledInternalMechanism, Consolidator, ConstructedInternalComposition,
+    InternalConstructionLimits, InternalGraphCompressionProposal, InternalMiningLimits, ProofDatum,
+    ProofFrontier, ProofGraph, ProofGraphArchive, ProofGraphArtifactMetadata, ProofNode,
+    ProofValueType,
 };
 use cairn_core::{
     ArtifactEnvelope, ArtifactKind, BlobId, BudgetRecord, CanonicalValue, Hash32, ProducerRecord,
@@ -20,9 +21,10 @@ use cairn_memory::{
     InternalReuseReplay, ModuleStatus, ReuseArtifactMetadata,
 };
 use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
-use cairn_runtime::CognitionRuntime;
+use cairn_runtime::{CognitionError, CognitionRuntime, InternalCompositionRuntimeError};
 use cairn_verifier::{
-    InternalCompositionEvidence, InternalMechanismVerifier, VerifiedInternalMechanism,
+    InternalCompositionEvidence, InternalCompressionVerifyError, InternalMechanismVerifier,
+    VerifiedInternalConstruction, VerifiedInternalMechanism,
 };
 use std::collections::BTreeSet;
 use std::path::PathBuf;
@@ -54,6 +56,63 @@ struct LearnedFamily {
     proposal: InternalGraphCompressionProposal,
     mechanism: CompiledInternalMechanism,
     compilation: VerifiedInternalMechanism,
+}
+
+#[derive(Debug)]
+struct MaterializedConstructionExercise {
+    frontier: ProofFrontier,
+    expected: ProofGraph,
+}
+
+fn verify_materialized_candidate(
+    exercise: &MaterializedConstructionExercise,
+    candidate: &ConstructedInternalComposition,
+    learned: &[LearnedFamily],
+    required: [Hash32; 2],
+) -> Result<VerifiedInternalConstruction, InternalCompressionVerifyError> {
+    let first = learned
+        .iter()
+        .find(|family| family.mechanism.semantic_hash() == required[0])
+        .ok_or(InternalCompressionVerifyError::CompiledLineageMismatch)?;
+    let second = learned
+        .iter()
+        .find(|family| family.mechanism.semantic_hash() == required[1])
+        .ok_or(InternalCompressionVerifyError::CompiledLineageMismatch)?;
+    let first_binding = candidate
+        .invocations
+        .iter()
+        .find(|invocation| invocation.mechanism == required[0])
+        .map(|invocation| &invocation.binding)
+        .ok_or(InternalCompressionVerifyError::CompiledLineageMismatch)?;
+    let second_binding = candidate
+        .invocations
+        .iter()
+        .find(|invocation| invocation.mechanism == required[1])
+        .map(|invocation| &invocation.binding)
+        .ok_or(InternalCompressionVerifyError::CompiledLineageMismatch)?;
+    let evidence = [
+        InternalCompositionEvidence {
+            proposal: &first.proposal,
+            mechanism: &first.mechanism,
+            compilation: &first.compilation,
+            sources: &first.sources,
+            binding: first_binding,
+        },
+        InternalCompositionEvidence {
+            proposal: &second.proposal,
+            mechanism: &second.mechanism,
+            compilation: &second.compilation,
+            sources: &second.sources,
+            binding: second_binding,
+        },
+    ];
+    InternalMechanismVerifier.verify_constructed_composition(
+        &exercise.frontier,
+        &exercise.expected,
+        candidate,
+        &evidence,
+        64,
+    )
 }
 
 #[test]
@@ -313,76 +372,81 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
         learned[0].mechanism.semantic_hash(),
         learned[1].mechanism.semantic_hash(),
     ];
-    let exercise_hosts = materialize_composition_exercises(
+    let exercises = materialize_composition_exercises(
         &generated.exercise_request(),
         &families[0],
         &families[1],
+        required,
     );
-    let verified_compositions = exercise_hosts
+    assert!(matches!(
+        CognitionRuntime::new().construct_internal_compositions(
+            &required,
+            &exercises[0].frontier,
+            InternalConstructionLimits::default(),
+        ),
+        Err(CognitionError::InternalComposition(
+            InternalCompositionRuntimeError::UnavailableMechanism(_)
+        ))
+    ));
+    let training_candidates = runtime
+        .construct_internal_compositions(
+            &required,
+            &exercises[0].frontier,
+            InternalConstructionLimits {
+                maximum_bindings_per_mechanism: 8,
+                maximum_candidates: 32,
+            },
+        )
+        .expect("training construction candidates");
+    let (training_candidate, training_verified) = training_candidates
         .iter()
-        .map(|host| {
-            let plan = runtime
-                .plan_internal_composition(&required, host, 64, 128)
-                .expect("runtime composition proposal");
-            assert_eq!(plan.invocations.len(), 2);
-            let first_binding = &plan
-                .invocations
-                .iter()
-                .find(|invocation| invocation.mechanism == required[0])
-                .expect("first prerequisite invocation")
-                .binding;
-            let second_binding = &plan
-                .invocations
-                .iter()
-                .find(|invocation| invocation.mechanism == required[1])
-                .expect("second prerequisite invocation")
-                .binding;
-            InternalMechanismVerifier
-                .verify_composition(
-                    host,
-                    &[
-                        InternalCompositionEvidence {
-                            proposal: &learned[0].proposal,
-                            mechanism: &learned[0].mechanism,
-                            compilation: &learned[0].compilation,
-                            sources: &learned[0].sources,
-                            binding: first_binding,
-                        },
-                        InternalCompositionEvidence {
-                            proposal: &learned[1].proposal,
-                            mechanism: &learned[1].mechanism,
-                            compilation: &learned[1].compilation,
-                            sources: &learned[1].sources,
-                            binding: second_binding,
-                        },
-                    ],
-                    64,
-                )
-                .expect("independent composition verification")
+        .find_map(|candidate| {
+            verify_materialized_candidate(&exercises[0], candidate, &learned, required)
+                .ok()
+                .map(|verified| (candidate, verified))
         })
-        .collect::<Vec<_>>();
-    assert!(verified_compositions
+        .expect("verified training construction");
+    let policy = Consolidator
+        .induce_internal_construction_policy(
+            &[learned[0].mechanism.clone(), learned[1].mechanism.clone()],
+            &exercises[0].frontier,
+            training_candidate,
+        )
+        .expect("typed correspondence policy from verified construction");
+    let held_out_candidate = runtime
+        .apply_internal_construction_policy(&required, &exercises[1].frontier, &policy)
+        .expect("one held-out construction without expected-proof input");
+    let held_out_verified =
+        verify_materialized_candidate(&exercises[1], &held_out_candidate, &learned, required)
+            .expect("independently verified held-out prediction");
+    let verified_constructions = [training_verified, held_out_verified];
+    assert!(verified_constructions.iter().all(|verified| verified
+        .composition()
+        .invocations()
+        .len()
+        == 2));
+    let construction_candidates_generated =
+        u64::try_from(training_candidates.len()).expect("small") + 1;
+    let construction_candidate_rank = training_candidate.candidates_considered + 1;
+    let composition_candidates_without = verified_constructions
         .iter()
-        .all(|verified| verified.invocations().len() == 2));
-    let composition_candidates_without = verified_compositions
-        .iter()
-        .map(|verified| verified.metrics().candidate_windows_without)
+        .map(|verified| verified.composition().metrics().candidate_windows_without)
         .sum();
-    let composition_candidates_with = verified_compositions
+    let composition_candidates_with = verified_constructions
         .iter()
-        .map(|verified| verified.metrics().candidate_windows_with)
+        .map(|verified| verified.composition().metrics().candidate_windows_with)
         .sum();
-    let composition_proof_without = verified_compositions
+    let composition_proof_without = verified_constructions
         .iter()
-        .map(|verified| verified.metrics().proof_units_without)
+        .map(|verified| verified.composition().metrics().proof_units_without)
         .sum::<u64>();
-    let composition_proof_with = verified_compositions
+    let composition_proof_with = verified_constructions
         .iter()
-        .map(|verified| verified.metrics().proof_units_with)
+        .map(|verified| verified.composition().metrics().proof_units_with)
         .sum::<u64>();
-    let mut certificate_bytes = verified_compositions
+    let mut certificate_bytes = verified_constructions
         .iter()
-        .map(cairn_verifier::VerifiedInternalComposition::certificate)
+        .map(cairn_verifier::VerifiedInternalConstruction::certificate)
         .collect::<Vec<_>>();
     certificate_bytes.sort_unstable();
     let composition_evidence = Hash32::digest(
@@ -397,11 +461,11 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
             objective: composition.objective,
             mechanism_evidence: composition_evidence.to_hex(),
             independently_verified: true,
-            held_out_transfer_cases: 2,
+            held_out_transfer_cases: 1,
             candidate_work_without: composition_candidates_without,
             candidate_work_with: composition_candidates_with,
             examples_without: 16,
-            examples_with: 2,
+            examples_with: 1,
             retained_prior_tasks: 4,
             prior_tasks: 4,
             negative_transfers: 0,
@@ -451,7 +515,7 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
     assert!(points.iter().all(|point| point.proof_units_with == 4));
     assert_eq!(store.len(), 4);
     eprintln!(
-        "G6_AUTONOMOUS_INTERNAL selected=family-a,family-b,family-c,family-d generated=composition completed=1 generated_core={} generated_objective={} composition_evidence={} mechanisms=1->2->3->4 mechanism_hashes={},{},{},{} composition_invocations=2x2 composition_candidates={}->{} composition_examples=16->2 composition_proof={}->{} curriculum_checkpoints={},{},{},{} restarts=2 curriculum_restores=4 deprecated=target-d retained=6/6 negative_transfer=0/10",
+        "G6_AUTONOMOUS_INTERNAL selected=family-a,family-b,family-c,family-d generated=composition constructed_from_frontier=1 held_out_without_expected=1 completed=1 generated_core={} generated_objective={} composition_evidence={} mechanisms=1->2->3->4 mechanism_hashes={},{},{},{} construction_generated={} construction_exact_rank_sum={} composition_invocations=2x2 composition_candidates={}->{} composition_examples=16->1 composition_proof={}->{} curriculum_checkpoints={},{},{},{} restarts=2 curriculum_restores=4 deprecated=target-d retained=6/6 negative_transfer=0/10",
         generated.failure_core,
         generated.objective.id.0,
         composition_evidence,
@@ -459,6 +523,8 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
         persisted[1].mechanism,
         persisted[2].mechanism,
         persisted[3].mechanism,
+        construction_candidates_generated,
+        construction_candidate_rank,
         composition_candidates_without,
         composition_candidates_with,
         composition_proof_without,
@@ -649,7 +715,7 @@ fn host_graph(
             operation: spec.operations[0].to_owned(),
             output_type: ProofValueType::EntitySet,
             inputs: vec![0],
-            arguments: vec![datum(ProofValueType::Atom, role)],
+            arguments: vec![datum(ProofValueType::Entity, role)],
         },
         ProofNode {
             operation: spec.operations[1].to_owned(),
@@ -661,7 +727,7 @@ fn host_graph(
             operation: spec.operations[2].to_owned(),
             output_type: ProofValueType::Effect,
             inputs: vec![u32::try_from(start + 1).expect("small")],
-            arguments: vec![datum(ProofValueType::Atom, effect)],
+            arguments: vec![datum(ProofValueType::Effect, effect)],
         },
         ProofNode {
             operation: spec.operations[3].to_owned(),
@@ -699,13 +765,7 @@ fn negative_host(episode: u8) -> ProofGraph {
     host_graph(&spec, episode, 2, 1, "noise", "none")
 }
 
-fn composition_exercise_host(
-    episode: u8,
-    first: &FamilySpec,
-    second: &FamilySpec,
-    prefix_noise: usize,
-    suffix_noise: usize,
-) -> ProofGraph {
+fn construction_frontier(episode: u8, prefix_noise: usize) -> ProofFrontier {
     let mut nodes = vec![ProofNode {
         operation: "exercise-observation".to_owned(),
         output_type: ProofValueType::EntitySet,
@@ -720,34 +780,20 @@ fn composition_exercise_host(
             arguments: vec![datum(ProofValueType::Integer, &index.to_string())],
         });
     }
-    let first_output = append_family_occurrence(&mut nodes, first, "novel-first", "violet");
     nodes.push(ProofNode {
-        operation: format!("exercise-separator-{episode}"),
-        output_type: ProofValueType::Integer,
+        operation: "exercise-typed-values".to_owned(),
+        output_type: ProofValueType::Atom,
         inputs: vec![],
-        arguments: vec![datum(ProofValueType::Integer, "1")],
+        arguments: vec![
+            datum(ProofValueType::Entity, &format!("novel-first-{episode}")),
+            datum(ProofValueType::Effect, &format!("violet-{episode}")),
+            datum(ProofValueType::Entity, &format!("novel-second-{episode}")),
+            datum(ProofValueType::Effect, &format!("orange-{episode}")),
+        ],
     });
-    let second_output = append_family_occurrence(&mut nodes, second, "novel-second", "orange");
-    nodes.push(ProofNode {
-        operation: "combine-required-effects".to_owned(),
-        output_type: ProofValueType::Effect,
-        inputs: vec![first_output, second_output],
-        arguments: vec![],
-    });
-    let mut output = u32::try_from(nodes.len() - 1).expect("small");
-    for index in 0..suffix_noise {
-        nodes.push(ProofNode {
-            operation: format!("exercise-suffix-{episode}-{index}"),
-            output_type: ProofValueType::Effect,
-            inputs: vec![output],
-            arguments: vec![],
-        });
-        output = u32::try_from(nodes.len() - 1).expect("small");
-    }
-    ProofGraph {
+    ProofFrontier {
         episode: Hash32::digest(&[episode]),
         nodes,
-        output,
     }
 }
 
@@ -755,7 +801,8 @@ fn materialize_composition_exercises(
     request: &cairn_curriculum::DevelopmentalExerciseRequest,
     first: &FamilySpec,
     second: &FamilySpec,
-) -> [ProofGraph; 2] {
+    required: [Hash32; 2],
+) -> [MaterializedConstructionExercise; 2] {
     assert_eq!(request.need, DevelopmentalNeed::MechanismComposition);
     assert_eq!(request.minimum_independent_variations, 2);
     assert_eq!(
@@ -765,10 +812,61 @@ fn materialize_composition_exercises(
             MechanismTarget(second.target.to_owned()),
         ])
     );
-    [
-        composition_exercise_host(91, first, second, 1, 1),
-        composition_exercise_host(92, first, second, 3, 2),
-    ]
+    [1_usize, 3]
+        .into_iter()
+        .zip([91_u8, 92])
+        .map(|(prefix_noise, episode)| {
+            let frontier = construction_frontier(episode, prefix_noise);
+            let expected = expected_composition(&frontier, first, second, required, episode);
+            MaterializedConstructionExercise { frontier, expected }
+        })
+        .collect::<Vec<_>>()
+        .try_into()
+        .expect("two materialized variations")
+}
+
+fn expected_composition(
+    frontier: &ProofFrontier,
+    first: &FamilySpec,
+    second: &FamilySpec,
+    required: [Hash32; 2],
+    episode: u8,
+) -> ProofGraph {
+    let mut nodes = frontier.nodes.clone();
+    let first_role = format!("novel-first-{episode}");
+    let first_effect = format!("violet-{episode}");
+    let second_role = format!("novel-second-{episode}");
+    let second_effect = format!("orange-{episode}");
+    let mut families = [
+        (
+            required[0],
+            first,
+            first_role.as_str(),
+            first_effect.as_str(),
+        ),
+        (
+            required[1],
+            second,
+            second_role.as_str(),
+            second_effect.as_str(),
+        ),
+    ];
+    families.sort_unstable_by_key(|family| family.0);
+    let outputs = families
+        .into_iter()
+        .map(|(_, family, role, effect)| append_family_occurrence(&mut nodes, family, role, effect))
+        .collect::<Vec<_>>();
+    nodes.push(ProofNode {
+        operation: "join-learned-results".to_owned(),
+        output_type: ProofValueType::Effect,
+        inputs: outputs,
+        arguments: vec![],
+    });
+    ProofGraph {
+        episode: frontier.episode,
+        output: u32::try_from(nodes.len() - 1).expect("small"),
+        nodes,
+    }
 }
 
 fn append_family_occurrence(
@@ -783,7 +881,7 @@ fn append_family_occurrence(
             operation: spec.operations[0].to_owned(),
             output_type: ProofValueType::EntitySet,
             inputs: vec![0],
-            arguments: vec![datum(ProofValueType::Atom, role)],
+            arguments: vec![datum(ProofValueType::Entity, role)],
         },
         ProofNode {
             operation: spec.operations[1].to_owned(),
@@ -795,7 +893,7 @@ fn append_family_occurrence(
             operation: spec.operations[2].to_owned(),
             output_type: ProofValueType::Effect,
             inputs: vec![u32::try_from(start + 1).expect("small")],
-            arguments: vec![datum(ProofValueType::Atom, effect)],
+            arguments: vec![datum(ProofValueType::Effect, effect)],
         },
         ProofNode {
             operation: spec.operations[3].to_owned(),

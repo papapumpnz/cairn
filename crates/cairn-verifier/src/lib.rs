@@ -1,10 +1,10 @@
 //! Independent promotion boundary combining replay provenance and learning gates.
 
 use cairn_consolidator::{
-    CompiledInternalMechanism, EpisodeBindings, GraphCompressionProposal, GraphPatternArgument,
-    GraphPatternNode, InternalEpisodeBindings, InternalGraphCompressionProposal,
-    InternalGraphPatternNode, InternalPatternInput, ProofDatum, ProofGraph, ProofNode,
-    ProofValueType,
+    CompiledInternalMechanism, ConstructedInternalComposition, EpisodeBindings,
+    GraphCompressionProposal, GraphPatternArgument, GraphPatternNode, InternalEpisodeBindings,
+    InternalGraphCompressionProposal, InternalGraphPatternNode, InternalPatternInput, ProofDatum,
+    ProofFrontier, ProofGraph, ProofNode, ProofValueType,
 };
 use cairn_core::{CanonicalEncode, CanonicalValue, CollectionProcedureProblem, Hash32};
 use cairn_mechanism::{
@@ -195,6 +195,9 @@ pub enum InternalCompressionVerifyError {
     DuplicateMechanism,
     OverlappingInvocation,
     IrrelevantInvocation,
+    FrontierMismatch,
+    ConstructedProofMismatch,
+    InvalidJointResult,
     InsufficientReuseEvidence,
     NoLearningReduction,
     NoCompression,
@@ -295,6 +298,32 @@ pub struct VerifiedInternalComposition {
     invocations: Vec<VerifiedInternalInvocation>,
     metrics: InternalReuseMetrics,
     certificate: Hash32,
+}
+
+/// Independent result proving that learned mechanisms constructed an exact
+/// held-out proof from an evidence-only frontier.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedInternalConstruction {
+    frontier: Hash32,
+    composition: VerifiedInternalComposition,
+    certificate: Hash32,
+}
+
+impl VerifiedInternalConstruction {
+    #[must_use]
+    pub const fn frontier(&self) -> Hash32 {
+        self.frontier
+    }
+
+    #[must_use]
+    pub const fn composition(&self) -> &VerifiedInternalComposition {
+        &self.composition
+    }
+
+    #[must_use]
+    pub const fn certificate(&self) -> Hash32 {
+        self.certificate
+    }
 }
 
 impl VerifiedInternalComposition {
@@ -684,6 +713,94 @@ impl InternalMechanismVerifier {
             experience: host.episode,
             invocations,
             metrics,
+            certificate,
+        })
+    }
+
+    /// Independently require that one runtime candidate exactly constructs a
+    /// held-out proof from the supplied evidence prefix and verified learned
+    /// invocations. The expected proof is verifier-only input.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed or changed frontiers, a candidate that differs from
+    /// held-out truth, invocation disagreement, invalid joint-result structure,
+    /// or any underlying composition/reuse verification failure.
+    pub fn verify_constructed_composition(
+        &self,
+        frontier: &ProofFrontier,
+        expected: &ProofGraph,
+        candidate: &ConstructedInternalComposition,
+        evidence: &[InternalCompositionEvidence<'_>],
+        maximum_match_windows: usize,
+    ) -> Result<VerifiedInternalConstruction, InternalCompressionVerifyError> {
+        verifier_validate_frontier(frontier)?;
+        verifier_validate_graph(expected)?;
+        verifier_validate_graph(&candidate.graph)?;
+        if expected != &candidate.graph
+            || candidate.graph.episode != frontier.episode
+            || expected.episode != frontier.episode
+        {
+            return Err(InternalCompressionVerifyError::ConstructedProofMismatch);
+        }
+        if candidate.graph.nodes.get(..frontier.nodes.len()) != Some(frontier.nodes.as_slice()) {
+            return Err(InternalCompressionVerifyError::FrontierMismatch);
+        }
+        let mut candidate_invocations = candidate.invocations.iter().collect::<Vec<_>>();
+        candidate_invocations.sort_unstable_by_key(|invocation| invocation.mechanism);
+        let mut ordered_evidence = evidence.iter().collect::<Vec<_>>();
+        ordered_evidence.sort_unstable_by_key(|item| item.mechanism.semantic_hash());
+        if candidate_invocations.len() != ordered_evidence.len()
+            || candidate_invocations
+                .iter()
+                .zip(&ordered_evidence)
+                .any(|(invocation, item)| {
+                    invocation.mechanism != item.mechanism.semantic_hash()
+                        || &invocation.binding != item.binding
+                })
+        {
+            return Err(InternalCompressionVerifyError::CompiledLineageMismatch);
+        }
+        let joint = candidate
+            .graph
+            .nodes
+            .last()
+            .ok_or(InternalCompressionVerifyError::InvalidJointResult)?;
+        let expected_inputs = ordered_evidence
+            .iter()
+            .map(|item| {
+                item.binding
+                    .selected_nodes
+                    .get(
+                        usize::try_from(item.mechanism.output())
+                            .map_err(|_| InternalCompressionVerifyError::Capacity)?,
+                    )
+                    .copied()
+                    .ok_or(InternalCompressionVerifyError::InvalidJointResult)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        if joint.operation != "join-learned-results"
+            || joint.inputs != expected_inputs
+            || candidate.graph.output
+                != u32::try_from(candidate.graph.nodes.len() - 1)
+                    .map_err(|_| InternalCompressionVerifyError::Capacity)?
+        {
+            return Err(InternalCompressionVerifyError::InvalidJointResult);
+        }
+        let composition =
+            self.verify_composition(&candidate.graph, evidence, maximum_match_windows)?;
+        let frontier_hash = verifier_frontier_hash(frontier)?;
+        let certificate = CanonicalValue::Array(vec![
+            CanonicalValue::Text("cairn.verified-internal-construction.v1".to_owned()),
+            CanonicalValue::Bytes(frontier_hash.as_bytes().to_vec()),
+            CanonicalValue::Bytes(composition.certificate().as_bytes().to_vec()),
+        ])
+        .encode_canonical()
+        .map(|bytes| Hash32::digest(&bytes))
+        .map_err(|_| InternalCompressionVerifyError::Canonicalization)?;
+        Ok(VerifiedInternalConstruction {
+            frontier: frontier_hash,
+            composition,
             certificate,
         })
     }
@@ -1221,6 +1338,69 @@ fn verifier_validate_graph(graph: &ProofGraph) -> Result<(), InternalCompression
         }
     }
     Ok(())
+}
+
+fn verifier_validate_frontier(
+    frontier: &ProofFrontier,
+) -> Result<(), InternalCompressionVerifyError> {
+    if frontier.nodes.is_empty() {
+        return Err(InternalCompressionVerifyError::FrontierMismatch);
+    }
+    for (index, node) in frontier.nodes.iter().enumerate() {
+        if node.operation.is_empty()
+            || node.operation == "join-learned-results"
+            || node
+                .inputs
+                .iter()
+                .any(|input| usize::try_from(*input).map_or(true, |value| value >= index))
+        {
+            return Err(InternalCompressionVerifyError::FrontierMismatch);
+        }
+    }
+    Ok(())
+}
+
+fn verifier_frontier_hash(
+    frontier: &ProofFrontier,
+) -> Result<Hash32, InternalCompressionVerifyError> {
+    CanonicalValue::Array(vec![
+        CanonicalValue::Text("cairn.proof-frontier.v1".to_owned()),
+        CanonicalValue::Bytes(frontier.episode.as_bytes().to_vec()),
+        CanonicalValue::Array(
+            frontier
+                .nodes
+                .iter()
+                .map(|node| {
+                    CanonicalValue::Array(vec![
+                        CanonicalValue::Text(node.operation.clone()),
+                        CanonicalValue::Unsigned(verifier_proof_type_code(node.output_type)),
+                        CanonicalValue::Array(
+                            node.inputs
+                                .iter()
+                                .map(|input| CanonicalValue::Unsigned(u64::from(*input)))
+                                .collect(),
+                        ),
+                        CanonicalValue::Array(
+                            node.arguments
+                                .iter()
+                                .map(|argument| {
+                                    CanonicalValue::Array(vec![
+                                        CanonicalValue::Unsigned(verifier_proof_type_code(
+                                            argument.ty,
+                                        )),
+                                        CanonicalValue::Bytes(argument.value.as_bytes().to_vec()),
+                                    ])
+                                })
+                                .collect(),
+                        ),
+                    ])
+                })
+                .collect(),
+        ),
+    ])
+    .encode_canonical()
+    .map(|bytes| Hash32::digest(&bytes))
+    .map_err(|_| InternalCompressionVerifyError::Canonicalization)
 }
 
 fn verifier_proof_ancestors(

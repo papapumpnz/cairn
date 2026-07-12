@@ -183,6 +183,14 @@ pub struct ProofGraph {
     pub output: u32,
 }
 
+/// Evidence-only proof prefix supplied by a frontend or curriculum
+/// materializer. It contains no completed mechanism occurrence or result node.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProofFrontier {
+    pub episode: Hash32,
+    pub nodes: Vec<ProofNode>,
+}
+
 impl CanonicalEncode for ProofGraph {
     fn encode_canonical(&self) -> Result<Vec<u8>, CanonicalError> {
         proof_graph_value(self).encode_canonical()
@@ -573,6 +581,40 @@ pub struct InternalCompositionPlan {
     pub combinations_considered: u64,
 }
 
+/// Fixed-work limits for constructing proof candidates from an evidence-only
+/// frontier.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct InternalConstructionLimits {
+    pub maximum_bindings_per_mechanism: u64,
+    pub maximum_candidates: u64,
+}
+
+impl Default for InternalConstructionLimits {
+    fn default() -> Self {
+        Self {
+            maximum_bindings_per_mechanism: 1_024,
+            maximum_candidates: 10_000,
+        }
+    }
+}
+
+/// One untrusted proof candidate constructed by executable learned mechanisms.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ConstructedInternalComposition {
+    pub graph: ProofGraph,
+    pub invocations: Vec<InternalMechanismInvocation>,
+    pub candidates_considered: u64,
+}
+
+/// Task-local correspondence learned from one verified construction. Ordinals
+/// refer to typed evidence order, never source values or node identities.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InternalConstructionPolicy {
+    pub mechanisms: Vec<Hash32>,
+    pub boundary_ordinals: Vec<Vec<u32>>,
+    pub value_ordinals: Vec<Vec<u32>>,
+}
+
 impl CompiledInternalMechanism {
     #[must_use]
     pub fn pattern(&self) -> &[InternalGraphPatternNode] {
@@ -697,6 +739,8 @@ pub enum ConsolidationError {
     NoInternalMatch,
     DuplicateMechanism,
     NoInternalComposition,
+    InvalidFrontier,
+    NoConstructionCandidate,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -1068,6 +1112,218 @@ impl Consolidator {
         Err(ConsolidationError::NoInternalComposition)
     }
 
+    /// Construct complete proof candidates from evidence-only nodes by
+    /// exhaustively instantiating learned mechanism boundaries and typed
+    /// parameter values. The final joint-result node is a fixed substrate
+    /// constructor; no completed host proof or expected result is inspected.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed evidence, fewer than two or duplicate mechanisms,
+    /// incompatible result types, missing typed bindings, and exhausted
+    /// binding/candidate limits.
+    #[allow(clippy::too_many_lines)] // Keep bounded construction and its accounting in one reference path.
+    pub fn construct_compiled_internal_compositions(
+        &self,
+        mechanisms: &[CompiledInternalMechanism],
+        frontier: &ProofFrontier,
+        limits: InternalConstructionLimits,
+    ) -> Result<Vec<ConstructedInternalComposition>, ConsolidationError> {
+        validate_proof_frontier(frontier)?;
+        if mechanisms.len() < 2
+            || limits.maximum_bindings_per_mechanism == 0
+            || limits.maximum_candidates == 0
+        {
+            return Err(ConsolidationError::NoConstructionCandidate);
+        }
+        let mut ordered = mechanisms.iter().collect::<Vec<_>>();
+        ordered.sort_unstable_by_key(|mechanism| mechanism.semantic_hash());
+        if ordered
+            .windows(2)
+            .any(|pair| pair[0].semantic_hash() == pair[1].semantic_hash())
+        {
+            return Err(ConsolidationError::DuplicateMechanism);
+        }
+        let output_types = ordered
+            .iter()
+            .map(|mechanism| {
+                mechanism
+                    .pattern()
+                    .get(
+                        usize::try_from(mechanism.output())
+                            .map_err(|_| ConsolidationError::Capacity)?,
+                    )
+                    .map(|node| node.output_type)
+                    .ok_or(ConsolidationError::InvalidOutput)
+            })
+            .collect::<Result<BTreeSet<_>, _>>()?;
+        if output_types.len() != 1 {
+            return Err(ConsolidationError::IncompatibleTypes);
+        }
+        let result_type = *output_types
+            .first()
+            .ok_or(ConsolidationError::InvalidOutput)?;
+        let binding_sets = ordered
+            .iter()
+            .map(|mechanism| {
+                frontier_bindings(mechanism, frontier, limits.maximum_bindings_per_mechanism)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let combinations = enumerate_products(&binding_sets, limits.maximum_candidates)?;
+        let mut output = Vec::with_capacity(combinations.len());
+        for (candidate_index, templates) in combinations.into_iter().enumerate() {
+            let mut nodes = frontier.nodes.clone();
+            let mut invocations = Vec::with_capacity(ordered.len());
+            let mut joint_inputs = Vec::with_capacity(ordered.len());
+            for (mechanism, template) in ordered.iter().zip(templates) {
+                let start = u32::try_from(nodes.len()).map_err(|_| ConsolidationError::Capacity)?;
+                let width = u32::try_from(mechanism.pattern().len())
+                    .map_err(|_| ConsolidationError::Capacity)?;
+                let selected_nodes = (0..width)
+                    .map(|offset| {
+                        start
+                            .checked_add(offset)
+                            .ok_or(ConsolidationError::Capacity)
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                let binding = InternalEpisodeBindings {
+                    episode: frontier.episode,
+                    selected_nodes,
+                    boundary_nodes: template.boundary_nodes,
+                    values: template.values,
+                };
+                let expanded = self.expand_compiled_internal_mechanism(mechanism, &binding)?;
+                nodes.extend(expanded);
+                joint_inputs.push(
+                    *binding
+                        .selected_nodes
+                        .get(
+                            usize::try_from(mechanism.output())
+                                .map_err(|_| ConsolidationError::Capacity)?,
+                        )
+                        .ok_or(ConsolidationError::InvalidOutput)?,
+                );
+                invocations.push(InternalMechanismInvocation {
+                    mechanism: mechanism.semantic_hash(),
+                    binding,
+                });
+            }
+            nodes.push(ProofNode {
+                operation: "join-learned-results".to_owned(),
+                output_type: result_type,
+                inputs: joint_inputs,
+                arguments: Vec::new(),
+            });
+            output.push(ConstructedInternalComposition {
+                graph: ProofGraph {
+                    episode: frontier.episode,
+                    output: u32::try_from(nodes.len() - 1)
+                        .map_err(|_| ConsolidationError::Capacity)?,
+                    nodes,
+                },
+                invocations,
+                candidates_considered: u64::try_from(candidate_index + 1)
+                    .map_err(|_| ConsolidationError::Capacity)?,
+            });
+        }
+        if output.is_empty() {
+            return Err(ConsolidationError::NoConstructionCandidate);
+        }
+        Ok(output)
+    }
+
+    /// Infer a task-local typed correspondence policy from a construction that
+    /// the caller has independently verified. The returned policy contains
+    /// only evidence ordinals and cannot certify the source construction.
+    ///
+    /// # Errors
+    ///
+    /// Rejects mechanism/invocation disagreement or bindings not present in
+    /// the evidence frontier.
+    pub fn induce_internal_construction_policy(
+        &self,
+        mechanisms: &[CompiledInternalMechanism],
+        frontier: &ProofFrontier,
+        construction: &ConstructedInternalComposition,
+    ) -> Result<InternalConstructionPolicy, ConsolidationError> {
+        validate_proof_frontier(frontier)?;
+        let mut ordered = mechanisms.iter().collect::<Vec<_>>();
+        ordered.sort_unstable_by_key(|mechanism| mechanism.semantic_hash());
+        let mut invocations = construction.invocations.iter().collect::<Vec<_>>();
+        invocations.sort_unstable_by_key(|invocation| invocation.mechanism);
+        if ordered.len() != invocations.len()
+            || ordered
+                .iter()
+                .zip(&invocations)
+                .any(|(mechanism, invocation)| {
+                    mechanism.semantic_hash() != invocation.mechanism
+                        || invocation.binding.episode != frontier.episode
+                })
+        {
+            return Err(ConsolidationError::ReplayMismatch);
+        }
+        let mut boundary_ordinals = Vec::with_capacity(ordered.len());
+        let mut value_ordinals = Vec::with_capacity(ordered.len());
+        for (mechanism, invocation) in ordered.iter().zip(invocations) {
+            let boundaries = boundary_candidate_dimensions(mechanism, frontier)?;
+            let values = value_candidate_dimensions(mechanism, frontier);
+            boundary_ordinals.push(binding_ordinals(
+                &boundaries,
+                &invocation.binding.boundary_nodes,
+            )?);
+            value_ordinals.push(binding_ordinals(&values, &invocation.binding.values)?);
+        }
+        Ok(InternalConstructionPolicy {
+            mechanisms: ordered
+                .iter()
+                .map(|mechanism| mechanism.semantic_hash())
+                .collect(),
+            boundary_ordinals,
+            value_ordinals,
+        })
+    }
+
+    /// Apply a learned typed-ordinal policy to a changed evidence frontier and
+    /// construct exactly one proof candidate without expected-proof input.
+    ///
+    /// # Errors
+    ///
+    /// Rejects changed mechanism identity, unsupported evidence cardinality,
+    /// missing ordinal bindings, and malformed construction.
+    pub fn apply_internal_construction_policy(
+        &self,
+        mechanisms: &[CompiledInternalMechanism],
+        frontier: &ProofFrontier,
+        policy: &InternalConstructionPolicy,
+    ) -> Result<ConstructedInternalComposition, ConsolidationError> {
+        validate_proof_frontier(frontier)?;
+        let mut ordered = mechanisms.iter().collect::<Vec<_>>();
+        ordered.sort_unstable_by_key(|mechanism| mechanism.semantic_hash());
+        if policy.mechanisms
+            != ordered
+                .iter()
+                .map(|mechanism| mechanism.semantic_hash())
+                .collect::<Vec<_>>()
+            || policy.boundary_ordinals.len() != ordered.len()
+            || policy.value_ordinals.len() != ordered.len()
+        {
+            return Err(ConsolidationError::ReplayMismatch);
+        }
+        let templates = ordered
+            .iter()
+            .enumerate()
+            .map(|(index, mechanism)| {
+                let boundaries = boundary_candidate_dimensions(mechanism, frontier)?;
+                let values = value_candidate_dimensions(mechanism, frontier);
+                Ok(FrontierBinding {
+                    boundary_nodes: select_ordinals(&boundaries, &policy.boundary_ordinals[index])?,
+                    values: select_ordinals(&values, &policy.value_ordinals[index])?,
+                })
+            })
+            .collect::<Result<Vec<_>, ConsolidationError>>()?;
+        construct_internal_candidate(&ordered, frontier, templates, 1)
+    }
+
     /// Anti-unify equally shaped proof traces, replacing varying operations by
     /// typed holes while retaining shared structure.
     ///
@@ -1197,6 +1453,250 @@ fn choose_internal_composition(
         selected.pop();
     }
     Ok(false)
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct FrontierBinding {
+    boundary_nodes: Vec<u32>,
+    values: Vec<ProofDatum>,
+}
+
+fn construct_internal_candidate(
+    mechanisms: &[&CompiledInternalMechanism],
+    frontier: &ProofFrontier,
+    templates: Vec<FrontierBinding>,
+    candidates_considered: u64,
+) -> Result<ConstructedInternalComposition, ConsolidationError> {
+    if mechanisms.len() != templates.len() {
+        return Err(ConsolidationError::ReplayMismatch);
+    }
+    let result_types = mechanisms
+        .iter()
+        .map(|mechanism| {
+            mechanism
+                .pattern()
+                .get(
+                    usize::try_from(mechanism.output())
+                        .map_err(|_| ConsolidationError::Capacity)?,
+                )
+                .map(|node| node.output_type)
+                .ok_or(ConsolidationError::InvalidOutput)
+        })
+        .collect::<Result<BTreeSet<_>, _>>()?;
+    if result_types.len() != 1 {
+        return Err(ConsolidationError::IncompatibleTypes);
+    }
+    let result_type = *result_types
+        .first()
+        .ok_or(ConsolidationError::InvalidOutput)?;
+    let mut nodes = frontier.nodes.clone();
+    let mut invocations = Vec::with_capacity(mechanisms.len());
+    let mut joint_inputs = Vec::with_capacity(mechanisms.len());
+    for (mechanism, template) in mechanisms.iter().zip(templates) {
+        let start = u32::try_from(nodes.len()).map_err(|_| ConsolidationError::Capacity)?;
+        let width =
+            u32::try_from(mechanism.pattern().len()).map_err(|_| ConsolidationError::Capacity)?;
+        let selected_nodes = (0..width)
+            .map(|offset| {
+                start
+                    .checked_add(offset)
+                    .ok_or(ConsolidationError::Capacity)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let binding = InternalEpisodeBindings {
+            episode: frontier.episode,
+            selected_nodes,
+            boundary_nodes: template.boundary_nodes,
+            values: template.values,
+        };
+        let expanded = Consolidator.expand_compiled_internal_mechanism(mechanism, &binding)?;
+        nodes.extend(expanded);
+        joint_inputs.push(
+            *binding
+                .selected_nodes
+                .get(
+                    usize::try_from(mechanism.output())
+                        .map_err(|_| ConsolidationError::Capacity)?,
+                )
+                .ok_or(ConsolidationError::InvalidOutput)?,
+        );
+        invocations.push(InternalMechanismInvocation {
+            mechanism: mechanism.semantic_hash(),
+            binding,
+        });
+    }
+    nodes.push(ProofNode {
+        operation: "join-learned-results".to_owned(),
+        output_type: result_type,
+        inputs: joint_inputs,
+        arguments: Vec::new(),
+    });
+    Ok(ConstructedInternalComposition {
+        graph: ProofGraph {
+            episode: frontier.episode,
+            output: u32::try_from(nodes.len() - 1).map_err(|_| ConsolidationError::Capacity)?,
+            nodes,
+        },
+        invocations,
+        candidates_considered,
+    })
+}
+
+fn boundary_candidate_dimensions(
+    mechanism: &CompiledInternalMechanism,
+    frontier: &ProofFrontier,
+) -> Result<Vec<Vec<u32>>, ConsolidationError> {
+    mechanism
+        .boundary_types()
+        .iter()
+        .map(|ty| {
+            frontier
+                .nodes
+                .iter()
+                .enumerate()
+                .filter(|(_, node)| node.output_type == *ty)
+                .map(|(index, _)| u32::try_from(index).map_err(|_| ConsolidationError::Capacity))
+                .collect::<Result<Vec<_>, _>>()
+        })
+        .collect()
+}
+
+fn value_candidate_dimensions(
+    mechanism: &CompiledInternalMechanism,
+    frontier: &ProofFrontier,
+) -> Vec<Vec<ProofDatum>> {
+    mechanism
+        .parameter_types()
+        .iter()
+        .map(|ty| {
+            let mut seen = BTreeSet::new();
+            frontier
+                .nodes
+                .iter()
+                .flat_map(|node| &node.arguments)
+                .filter(|value| value.ty == *ty && seen.insert(**value))
+                .copied()
+                .collect()
+        })
+        .collect()
+}
+
+fn binding_ordinals<T: Eq>(
+    dimensions: &[Vec<T>],
+    bindings: &[T],
+) -> Result<Vec<u32>, ConsolidationError> {
+    if dimensions.len() != bindings.len() {
+        return Err(ConsolidationError::ReplayMismatch);
+    }
+    dimensions
+        .iter()
+        .zip(bindings)
+        .map(|(values, binding)| {
+            values
+                .iter()
+                .position(|value| value == binding)
+                .ok_or(ConsolidationError::ReplayMismatch)
+                .and_then(|index| u32::try_from(index).map_err(|_| ConsolidationError::Capacity))
+        })
+        .collect()
+}
+
+fn select_ordinals<T: Clone>(
+    dimensions: &[Vec<T>],
+    ordinals: &[u32],
+) -> Result<Vec<T>, ConsolidationError> {
+    if dimensions.len() != ordinals.len() {
+        return Err(ConsolidationError::ReplayMismatch);
+    }
+    dimensions
+        .iter()
+        .zip(ordinals)
+        .map(|(values, ordinal)| {
+            values
+                .get(usize::try_from(*ordinal).map_err(|_| ConsolidationError::Capacity)?)
+                .cloned()
+                .ok_or(ConsolidationError::ReplayMismatch)
+        })
+        .collect()
+}
+
+fn validate_proof_frontier(frontier: &ProofFrontier) -> Result<(), ConsolidationError> {
+    if frontier.nodes.is_empty() {
+        return Err(ConsolidationError::InvalidFrontier);
+    }
+    for (index, node) in frontier.nodes.iter().enumerate() {
+        if node.operation.is_empty()
+            || node.operation == "join-learned-results"
+            || node
+                .inputs
+                .iter()
+                .any(|input| usize::try_from(*input).map_or(true, |value| value >= index))
+        {
+            return Err(ConsolidationError::InvalidFrontier);
+        }
+    }
+    Ok(())
+}
+
+fn frontier_bindings(
+    mechanism: &CompiledInternalMechanism,
+    frontier: &ProofFrontier,
+    maximum: u64,
+) -> Result<Vec<FrontierBinding>, ConsolidationError> {
+    let boundary_dimensions = boundary_candidate_dimensions(mechanism, frontier)?;
+    let value_dimensions = value_candidate_dimensions(mechanism, frontier);
+    if boundary_dimensions.iter().any(Vec::is_empty) || value_dimensions.iter().any(Vec::is_empty) {
+        return Err(ConsolidationError::NoConstructionCandidate);
+    }
+    let boundary_bindings = enumerate_products(&boundary_dimensions, maximum)?;
+    let value_bindings = enumerate_products(&value_dimensions, maximum)?;
+    let mut bindings = Vec::new();
+    for boundary_nodes in boundary_bindings {
+        for values in &value_bindings {
+            if u64::try_from(bindings.len()).map_err(|_| ConsolidationError::Capacity)? >= maximum {
+                return Err(ConsolidationError::Capacity);
+            }
+            bindings.push(FrontierBinding {
+                boundary_nodes: boundary_nodes.clone(),
+                values: values.clone(),
+            });
+        }
+    }
+    Ok(bindings)
+}
+
+fn enumerate_products<T: Clone>(
+    dimensions: &[Vec<T>],
+    maximum: u64,
+) -> Result<Vec<Vec<T>>, ConsolidationError> {
+    fn extend<T: Clone>(
+        dimensions: &[Vec<T>],
+        index: usize,
+        maximum: u64,
+        current: &mut Vec<T>,
+        output: &mut Vec<Vec<T>>,
+    ) -> Result<(), ConsolidationError> {
+        if index == dimensions.len() {
+            if u64::try_from(output.len()).map_err(|_| ConsolidationError::Capacity)? >= maximum {
+                return Err(ConsolidationError::Capacity);
+            }
+            output.push(current.clone());
+            return Ok(());
+        }
+        for value in &dimensions[index] {
+            current.push(value.clone());
+            extend(dimensions, index + 1, maximum, current, output)?;
+            current.pop();
+        }
+        Ok(())
+    }
+
+    if maximum == 0 || dimensions.iter().any(Vec::is_empty) {
+        return Err(ConsolidationError::NoConstructionCandidate);
+    }
+    let mut output = Vec::new();
+    extend(dimensions, 0, maximum, &mut Vec::new(), &mut output)?;
+    Ok(output)
 }
 
 fn anti_unify_graph_nodes(

@@ -23,6 +23,14 @@ and vector entities now rebinds unchanged to connected finite-field entities,
 adding one causally ablated solve. The result is 36/400 (9.00%) with zero
 incorrect tasks and does not satisfy the ARC or general-intelligence goals.
 
+Later checkpoint (2026-07-12): the generated G6 composition is no longer
+supplied as a completed proof host. A domain-neutral evidence frontier omits
+learned operations and expected output. The runtime constructs bounded typed
+candidates, learns a typed ordinal correspondence policy from one independently
+verified construction, and emits one exact candidate for changed held-out
+geometry and values. The expected graph remains verifier-only. This advances
+experience-dependent construction but is not raw-observation theory induction.
+
 ## 0. Executive decision
 
 CAIRN is a CPU-only, transformer-free self-compressing causal theory learner.
@@ -92,11 +100,14 @@ event boundary. The generator proposes what capability should be exercised; it
 does not yet synthesize the environment that exercises it.
 
 At the proof-mechanism layer, a separate materializer now consumes that request
-and produces changed hosts. The cognition runtime searches bounded combinations
-of persistent internal mechanisms; an independent implementation verifies each
-expansion, pairwise disjointness, contribution to the result, and measured
+and produces changed evidence-only frontiers. The cognition runtime searches
+bounded typed combinations of persistent mechanisms on a training frontier. A
+policy induced from the independently verified construction retains typed
+evidence ordinals, not an answer, and constructs one candidate on a changed
+held-out frontier. An independent implementation alone receives expected proof,
+checks the frontier prefix, every expansion, the joint result, and measured
 learning reduction. Verified completion returns to the curriculum journal.
-Constructing the full proof from raw observations remains the next boundary.
+Lowering raw observations into the proof frontier remains the next boundary.
 
 The architecture deliberately avoids two failed patterns:
 

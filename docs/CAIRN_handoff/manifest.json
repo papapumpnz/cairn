@@ -2,14 +2,14 @@
   "schema_version": "1.0",
   "bundle": "CAIRN_ARCHITECTURE_HANDOFF",
   "architecture": "CAIRN — Causal Analogical Induction over Relational Networks",
-  "generated_utc": "2026-07-12T06:37:34Z",
+  "generated_utc": "2026-07-12T07:05:45Z",
   "hash_algorithm": "SHA-256",
   "manifest_excludes": [
     "manifest.json",
     "manifest.sha256"
   ],
   "file_count": 63,
-  "total_bytes": 460423,
+  "total_bytes": 464743,
   "source_archives": [
     {
       "name": "mosasic_experiments.zip",
@@ -37,18 +37,18 @@
     },
     {
       "path": "02_CAIRN_MASTER_DESIGN.md",
-      "bytes": 83937,
-      "sha256": "db23308ccb7beb93ba7b45a18957b283a8d7982cb747c6d4aa7bc3dd32cd1acc"
+      "bytes": 84702,
+      "sha256": "5e84bd8cc959a91cc6b93c14d6b3fd2f89f9fa446e7648ab9565cc0bb07b29bc"
     },
     {
       "path": "03_CAIRN_INTERFACES.md",
-      "bytes": 28352,
-      "sha256": "f6b3b29bd28a891c8f2cf9cd143574ada1338e7f83c4dc8c9d8f98cbf20819bb"
+      "bytes": 29581,
+      "sha256": "05d0dd18a2a704368c0aa8225602300fc7ae4508a2368a721d9ea517f05b0abf"
     },
     {
       "path": "04_CAIRN_EXPERIMENT_LADDER.md",
-      "bytes": 22910,
-      "sha256": "9af8b8c3d4c6ca9918efa6dc3816cfe0296e30db2fb8c2058475c5c85b7a4495"
+      "bytes": 23106,
+      "sha256": "f25f2ad34d5249295bac670cd06aa36fad926073f6f82ba3f0158c9ea258bad6"
     },
     {
       "path": "05_CAIRN_SWARM_PROTOCOL.md",
@@ -67,8 +67,8 @@
     },
     {
       "path": "08_GENERAL_LEARNER_REQUIREMENTS.md",
-      "bytes": 45763,
-      "sha256": "25f36e6083d26e3d02e0f9086d153620cfb517f2ce0a36ec22ec439311013b7f"
+      "bytes": 47342,
+      "sha256": "c3a806a33c695cfae1c4ea4bf44b45728c1d8c6c0ab501cc6040b9df3df914fc"
     },
     {
       "path": "BIBLIOGRAPHY.md",
@@ -332,8 +332,8 @@
     },
     {
       "path": "work_packages/WP34.md",
-      "bytes": 5859,
-      "sha256": "037e54f0e48aa3519e9a6323f606db89fb4bc072df82c7107baa570610bbeafd"
+      "bytes": 6410,
+      "sha256": "21d7eea2d04f6258ce9fcff1d3e3247528e0beb6b945330f6e4e3f0df16e723b"
     },
     {
       "path": "work_packages/index.json",

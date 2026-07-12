@@ -1,5 +1,6 @@
 use cairn_consolidator::{
-    Consolidator, InternalMiningLimits, ProofDatum, ProofGraph, ProofNode, ProofValueType,
+    Consolidator, InternalConstructionLimits, InternalMiningLimits, ProofDatum, ProofFrontier,
+    ProofGraph, ProofNode, ProofValueType,
 };
 use cairn_core::Hash32;
 use cairn_verifier::{
@@ -327,6 +328,130 @@ fn independently_verifies_joint_contribution_and_composition_reduction() {
     );
 }
 
+#[test]
+#[allow(clippy::too_many_lines)] // Positive construction and planted trust-boundary changes form one audit.
+fn independently_verifies_proof_construction_from_an_evidence_frontier() {
+    let first_sources = family_sources(60, "first");
+    let second_sources = family_sources(70, "second");
+    let first_proposal = Consolidator
+        .mine_internal_proof_subgraphs(&first_sources, limits())
+        .expect("first proposal");
+    let second_proposal = Consolidator
+        .mine_internal_proof_subgraphs(&second_sources, limits())
+        .expect("second proposal");
+    let first = Consolidator
+        .compile_internal_proof_mechanism(&first_proposal)
+        .expect("first mechanism");
+    let second = Consolidator
+        .compile_internal_proof_mechanism(&second_proposal)
+        .expect("second mechanism");
+    let first_compilation = InternalMechanismVerifier
+        .verify_compilation(&first_proposal, &first, &first_sources)
+        .expect("first compilation");
+    let second_compilation = InternalMechanismVerifier
+        .verify_compilation(&second_proposal, &second, &second_sources)
+        .expect("second compilation");
+    let frontier = construction_frontier(100);
+    let expected = expected_construction(&frontier, &first, &second);
+    let candidates = Consolidator
+        .construct_compiled_internal_compositions(
+            &[first.clone(), second.clone()],
+            &frontier,
+            InternalConstructionLimits {
+                maximum_bindings_per_mechanism: 32,
+                maximum_candidates: 512,
+            },
+        )
+        .expect("construction candidates");
+    let candidate = candidates
+        .iter()
+        .find(|candidate| candidate.graph == expected)
+        .expect("exact held-out construction");
+    let first_binding = &candidate
+        .invocations
+        .iter()
+        .find(|invocation| invocation.mechanism == first.semantic_hash())
+        .expect("first invocation")
+        .binding;
+    let second_binding = &candidate
+        .invocations
+        .iter()
+        .find(|invocation| invocation.mechanism == second.semantic_hash())
+        .expect("second invocation")
+        .binding;
+    let evidence = [
+        InternalCompositionEvidence {
+            proposal: &first_proposal,
+            mechanism: &first,
+            compilation: &first_compilation,
+            sources: &first_sources,
+            binding: first_binding,
+        },
+        InternalCompositionEvidence {
+            proposal: &second_proposal,
+            mechanism: &second,
+            compilation: &second_compilation,
+            sources: &second_sources,
+            binding: second_binding,
+        },
+    ];
+    let verified = InternalMechanismVerifier
+        .verify_constructed_composition(&frontier, &expected, candidate, &evidence, 64)
+        .expect("independent construction verification");
+    assert_eq!(verified.composition().invocations().len(), 2);
+    assert_eq!(
+        verified.composition().metrics().candidate_windows_without,
+        36
+    );
+    assert_eq!(verified.composition().metrics().candidate_windows_with, 16);
+
+    let mut wrong_expected = expected.clone();
+    wrong_expected.nodes[2].operation = "changed-held-out-law".to_owned();
+    assert_eq!(
+        InternalMechanismVerifier.verify_constructed_composition(
+            &frontier,
+            &wrong_expected,
+            candidate,
+            &evidence,
+            64,
+        ),
+        Err(InternalCompressionVerifyError::ConstructedProofMismatch)
+    );
+    let mut wrong_frontier = frontier.clone();
+    wrong_frontier.nodes[1]
+        .arguments
+        .push(datum(ProofValueType::Atom, "new-value"));
+    assert_eq!(
+        InternalMechanismVerifier.verify_constructed_composition(
+            &wrong_frontier,
+            &expected,
+            candidate,
+            &evidence,
+            64,
+        ),
+        Err(InternalCompressionVerifyError::FrontierMismatch)
+    );
+    let mut invalid_joint = candidate.clone();
+    invalid_joint
+        .graph
+        .nodes
+        .last_mut()
+        .expect("joint")
+        .inputs
+        .pop();
+    let invalid_expected = invalid_joint.graph.clone();
+    assert_eq!(
+        InternalMechanismVerifier.verify_constructed_composition(
+            &frontier,
+            &invalid_expected,
+            &invalid_joint,
+            &evidence,
+            64,
+        ),
+        Err(InternalCompressionVerifyError::InvalidJointResult)
+    );
+}
+
 fn sources() -> [ProofGraph; 4] {
     [
         host_graph(1, 1, 1, "triangle", "red"),
@@ -409,6 +534,89 @@ fn composition_host(episode: u8) -> ProofGraph {
         episode: Hash32::digest(&[episode]),
         nodes,
         output: 9,
+    }
+}
+
+fn construction_frontier(episode: u8) -> ProofFrontier {
+    ProofFrontier {
+        episode: Hash32::digest(&[episode]),
+        nodes: vec![
+            ProofNode {
+                operation: "observe-entity-set".to_owned(),
+                output_type: ProofValueType::EntitySet,
+                inputs: vec![],
+                arguments: vec![],
+            },
+            ProofNode {
+                operation: "observe-typed-values".to_owned(),
+                output_type: ProofValueType::Atom,
+                inputs: vec![],
+                arguments: ["first-role", "first-effect", "second-role", "second-effect"]
+                    .into_iter()
+                    .map(|value| datum(ProofValueType::Atom, value))
+                    .collect(),
+            },
+        ],
+    }
+}
+
+fn expected_construction(
+    frontier: &ProofFrontier,
+    first: &cairn_consolidator::CompiledInternalMechanism,
+    second: &cairn_consolidator::CompiledInternalMechanism,
+) -> ProofGraph {
+    let mut nodes = frontier.nodes.clone();
+    let mut families = [
+        (first.semantic_hash(), "first", "first-role", "first-effect"),
+        (
+            second.semantic_hash(),
+            "second",
+            "second-role",
+            "second-effect",
+        ),
+    ];
+    families.sort_unstable_by_key(|family| family.0);
+    let mut outputs = Vec::new();
+    for (_, family, role, effect) in families {
+        let start = nodes.len();
+        nodes.extend([
+            ProofNode {
+                operation: format!("{family}-select"),
+                output_type: ProofValueType::EntitySet,
+                inputs: vec![0],
+                arguments: vec![datum(ProofValueType::Atom, role)],
+            },
+            ProofNode {
+                operation: format!("{family}-filter"),
+                output_type: ProofValueType::EntitySet,
+                inputs: vec![u32::try_from(start).expect("small")],
+                arguments: vec![datum(ProofValueType::Relation, "inside")],
+            },
+            ProofNode {
+                operation: format!("{family}-map"),
+                output_type: ProofValueType::Effect,
+                inputs: vec![u32::try_from(start + 1).expect("small")],
+                arguments: vec![datum(ProofValueType::Atom, effect)],
+            },
+            ProofNode {
+                operation: format!("{family}-render"),
+                output_type: ProofValueType::Effect,
+                inputs: vec![u32::try_from(start + 2).expect("small")],
+                arguments: vec![],
+            },
+        ]);
+        outputs.push(u32::try_from(start + 3).expect("small"));
+    }
+    nodes.push(ProofNode {
+        operation: "join-learned-results".to_owned(),
+        output_type: ProofValueType::Effect,
+        inputs: outputs,
+        arguments: vec![],
+    });
+    ProofGraph {
+        episode: frontier.episode,
+        output: u32::try_from(nodes.len() - 1).expect("small"),
+        nodes,
     }
 }
 

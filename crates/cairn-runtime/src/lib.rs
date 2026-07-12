@@ -1,6 +1,9 @@
 //! Online version-space maintenance; permanent promotion belongs elsewhere.
 
-use cairn_consolidator::{ConsolidationError, Consolidator, InternalCompositionPlan, ProofGraph};
+use cairn_consolidator::{
+    ConsolidationError, Consolidator, ConstructedInternalComposition, InternalCompositionPlan,
+    InternalConstructionLimits, InternalConstructionPolicy, ProofFrontier, ProofGraph,
+};
 use cairn_core::{CollectionProcedureProblem, Hash32, LearningProblem, ObservationId, TaskId};
 use cairn_invent::{InventionError, InventionProblem};
 use cairn_knowledge::KnowledgeBase;
@@ -557,6 +560,73 @@ impl CognitionRuntime {
                 maximum_windows_per_mechanism,
                 maximum_combinations,
             )
+            .map_err(|error| {
+                CognitionError::InternalComposition(InternalCompositionRuntimeError::Proposal(
+                    error,
+                ))
+            })
+    }
+
+    /// Construct bounded proof candidates from evidence-only nodes by applying
+    /// persistent learned mechanisms. Expected proof structure is not an input.
+    ///
+    /// # Errors
+    ///
+    /// Rejects missing/non-persistent mechanisms and bounded construction
+    /// failures from the reference proposer.
+    pub fn construct_internal_compositions(
+        &self,
+        mechanism_ids: &[Hash32],
+        frontier: &ProofFrontier,
+        limits: InternalConstructionLimits,
+    ) -> Result<Vec<ConstructedInternalComposition>, CognitionError> {
+        let mechanisms = mechanism_ids
+            .iter()
+            .map(|id| {
+                let module = self
+                    .internal_mechanisms
+                    .get(*id)
+                    .filter(|module| module.status() == ModuleStatus::Persistent)
+                    .ok_or(InternalCompositionRuntimeError::UnavailableMechanism(*id))?;
+                Ok(module.mechanism().clone())
+            })
+            .collect::<Result<Vec<_>, InternalCompositionRuntimeError>>()
+            .map_err(CognitionError::InternalComposition)?;
+        Consolidator
+            .construct_compiled_internal_compositions(&mechanisms, frontier, limits)
+            .map_err(|error| {
+                CognitionError::InternalComposition(InternalCompositionRuntimeError::Proposal(
+                    error,
+                ))
+            })
+    }
+
+    /// Apply a separately validated task-local typed correspondence policy to
+    /// a changed evidence frontier and construct one proof candidate.
+    ///
+    /// # Errors
+    ///
+    /// Rejects missing/non-persistent mechanisms and policy/evidence mismatch.
+    pub fn apply_internal_construction_policy(
+        &self,
+        mechanism_ids: &[Hash32],
+        frontier: &ProofFrontier,
+        policy: &InternalConstructionPolicy,
+    ) -> Result<ConstructedInternalComposition, CognitionError> {
+        let mechanisms = mechanism_ids
+            .iter()
+            .map(|id| {
+                let module = self
+                    .internal_mechanisms
+                    .get(*id)
+                    .filter(|module| module.status() == ModuleStatus::Persistent)
+                    .ok_or(InternalCompositionRuntimeError::UnavailableMechanism(*id))?;
+                Ok(module.mechanism().clone())
+            })
+            .collect::<Result<Vec<_>, InternalCompositionRuntimeError>>()
+            .map_err(CognitionError::InternalComposition)?;
+        Consolidator
+            .apply_internal_construction_policy(&mechanisms, frontier, policy)
             .map_err(|error| {
                 CognitionError::InternalComposition(InternalCompositionRuntimeError::Proposal(
                     error,

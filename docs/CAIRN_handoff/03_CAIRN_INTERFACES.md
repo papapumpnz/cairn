@@ -883,3 +883,25 @@ compilations, sources, mechanisms, and bindings to the independent verifier.
 joint-contribution checking, and strict aggregate candidate/sample/proof
 reduction. Its certificate is evidence, not an answer or a reusable verifier
 token after restart.
+
+ADR-0018 adds `ProofFrontier`, whose typed nodes are evidence only and cannot
+contain `join-learned-results`. `construct_compiled_internal_compositions`
+exhaustively expands persistent compiled mechanisms over bounded typed evidence
+bindings and returns untrusted `ConstructedInternalComposition` candidates.
+`CognitionRuntime::construct_internal_compositions` preserves the persistent
+memory boundary.
+
+After independent verification of one training candidate,
+`induce_internal_construction_policy` may derive a task-local
+`InternalConstructionPolicy` containing only typed binding ordinals and
+mechanism identities. `apply_internal_construction_policy` rebinds those
+ordinals to a changed frontier and emits exactly one candidate; unsupported
+cardinality fails closed. The policy is not a persisted mechanism, proof, or
+verification token.
+
+`InternalMechanismVerifier::verify_constructed_composition` alone receives the
+expected proof. It requires exact frontier prefix and complete-graph equality,
+reconstructs current invocations through the independent composition verifier,
+checks the fixed n-ary joint result, and returns
+`VerifiedInternalConstruction`. Producer construction and expected truth never
+share an interface.

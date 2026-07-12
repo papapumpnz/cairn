@@ -854,3 +854,29 @@ verification -> curriculum feedback for bounded proof hosts. It does not yet
 construct complete proof hosts from raw observations, learn a new action law in
 the generated exercise, or demonstrate unbounded self-curriculum. General
 intelligence and the ARC target remain unmet.
+
+## 34. Evidence-frontier construction and one-example transfer checkpoint
+
+The generated exercise no longer supplies a completed proof host. Its
+`ProofFrontier` contains typed observation/noise/value evidence only; learned
+operations, the joint result, and expected proof are absent. The shared runtime
+retrieves only persistent mechanisms and exhaustively constructs bounded
+training candidates. The expected training proof is visible only to the
+independent verifier.
+
+After one exact verified construction, the consolidator induces a task-local
+typed ordinal correspondence policy. On a second frontier with changed geometry
+and all-new typed values, that policy emits one candidate without expected-proof
+input. The independent verifier checks exact held-out truth and reconstructs
+both learned invocations. Blank memory, insufficient evidence cardinality,
+changed truth, changed frontier, invalid join, duplicate mechanism, and capacity
+cases fail closed.
+
+Frozen G6 generates 16 training candidates and one held-out candidate. Verified
+aggregate work changes from 72 to 40 candidate windows, 16 to one example, and
+112 to 16 proof units, with two distinct learned mechanisms necessary in both
+constructions and zero negative transfer. This demonstrates a bounded instance
+of experience changing future construction cost. It does not lower generic raw
+observations into proof evidence, induce relational correspondence policies,
+learn an action-conditioned world law, establish open-ended curriculum growth,
+or satisfy broad G0-G6/general intelligence. ARC remains 36/400.

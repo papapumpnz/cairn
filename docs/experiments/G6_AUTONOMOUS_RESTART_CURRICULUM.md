@@ -49,19 +49,19 @@ unrelated negative transfer: 0/10
 Mechanism identities:
 
 ```text
-a8438381973c8205112a6017ff7fd747009154990fe1e461ff67ec9a3321d781
-a8d9b6ed78b077561c009877df357e79ae0b521ecea6375a41a29532a3cbc918
-487f762058cb06e0373243cbfff4a3d30d1ad0c09a0aaadda235468805e05528
-a0c3bb5a8f164ee25b4c9658ff7879d090fa527006a919fed1c0122dc402c00e
+45f0ef9aa5f769980c1e41142530cc26b691b48c1bed887e7832af5c5f97fe4b
+ea4db297cdd1b3968a8b5d76e693d357e7f4c47f20c7354c020f092174d9af8c
+36142f8b0bb6b8516280d790479ee26f8a923f3aaa479db0dc1bd90ec3d11cec
+510dc7b9134bd7f30dd9b62ce960d2ad9727f4f992a8b0a4ee4a2a84df6ea684
 ```
 
 Curriculum checkpoint identities:
 
 ```text
-107d19a230dd1d5e681cdacf75dc25dfff2cd07b56856fd38ad7cd98420685c9
-03291a681ebe3c59225a15447456500db91e62fe60f80465f5115f6da303ab97
-0271e0c8c5146a578a60340d8ca74e39c0c1a1d99cb2c9bb438464231d142897
-1b24355fd6d822812a9a4c388786acb84622d1b14eff02daa191c27f967daede
+deff68108d34dcd1856618f70b25512180a978ab44e9d8d6d1fbb139e07c5942
+4fb39e7cd27f09571a15f939d096a538dce350b6ddfc3a3a66ffcfd3501be3cb
+622a5fd163f323272b529ab9f04c27f6f35af37b60d8752ef6aecf4824781d39
+3c98b2f528fb6c798869ff1517fe30ab57ecccd15ecfcfcec827427451af7749
 ```
 
 No composition objective exists in the initial curriculum. After all four
@@ -71,18 +71,24 @@ active mechanism roles as prerequisites, assigns a canonical identity, and
 journals the objective. A third curriculum reconstruction reproduces the
 objective-addition boundary before selecting it.
 
-The generated request then crosses a separate materializer boundary. Two proof
-hosts vary prefix/suffix geometry and parameter values. The shared cognition
-runtime retrieves the two persistent prerequisite mechanisms and proposes two
-pairwise-disjoint, result-ancestral invocations in each host. The independent
-verifier reconstructs both compilations and all four invocations and reports:
+The generated request then crosses a separate materializer boundary. Two
+evidence-only proof frontiers vary prefix geometry and typed parameter values;
+neither contains learned operation nodes, an output node, or expected truth.
+The shared cognition runtime retrieves the two persistent prerequisite
+mechanisms and enumerates typed constructions for the first frontier. After the
+independent verifier accepts one training construction, the consolidator learns
+a task-local typed ordinal correspondence policy. Applying it to the changed
+frontier produces exactly one held-out candidate without expected-proof input.
+The independent verifier alone receives both expected proofs, reconstructs both
+compilations and all four invocations, and reports:
 
 ```text
 explicit learned invocations: 2 mechanisms x 2 changed exercises
-candidate windows: 72 -> 46
-examples: 16 -> 2
+runtime candidates: 16 training + 1 held-out
+candidate windows: 72 -> 40
+examples: 16 -> 1
 proof units: 112 -> 16
-composition evidence: e48a1d839abdd757daf4ea02009a578535b7876d65d6266e3ab34c775f59d60f
+composition evidence: 3aae7022b583b25378eab43f140d68e52a219fc18852bc67fee38184ef806c59
 ```
 
 Overlap, duplicate mechanisms, irrelevant invocations, and exhausted bounds
@@ -105,10 +111,11 @@ recorded choice fail closed.
 
 ## Claim boundary
 
-This replaces scripted order and the authored composition objective with
-bounded failure-driven frontier expansion and independently verified completion
-at the proof-mechanism layer. The materializer still supplies complete proof
-hosts rather than raw observations from which CAIRN constructs the entire
-proof. It does not establish open-ended environment generation, arbitrary RKL
-composition, natural perception, broad general intelligence, or the 80% ARC
-target. ARC remains at the last measured 36/400.
+This replaces scripted order, the authored composition objective, and supplied
+complete proof hosts with bounded failure-driven frontier expansion plus
+experience-dependent proof construction. The materializer still supplies a
+typed proof-evidence frontier rather than raw generic observations; the learned
+policy is ordinal rather than relational. It does not establish open-ended
+environment generation, arbitrary RKL composition, natural perception, broad
+general intelligence, or the 80% ARC target. ARC remains at the last measured
+36/400.
