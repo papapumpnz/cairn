@@ -910,3 +910,28 @@ does not learn entities from raw sensors, discover a latent variable in this
 episode, induce arbitrary relational programs, sustain an open-ended generated
 curriculum, prove broad G0-G6, or meet general intelligence. ARC is unchanged at
 36/400.
+
+## 36. Active latent-world intervention checkpoint
+
+The runtime now closes one exact interactive causal loop rather than receiving
+all transition evidence. `LatentWorldLearner` identifies a terminal transition
+whose successor mode remains ambiguous and supplies a one-step action whose
+visible effects differ across candidate modes. `ActiveLatentWorldLearner`
+selects that action through a hidden-state-free environment contract, validates
+the returned visible continuation, appends it, and re-induces.
+
+On the frozen case, two initial visible episodes require two latent states and
+six action-conditioned rules but leave one successor unresolved. One selected
+intervention, versus three for uninformed action coverage, removes the
+ambiguity. The final theory predicts 150/150 held-out visible/latent outcomes.
+The unchanged cognition runtime infers a goal and generates a correct two-action
+plan through the hidden mode. Two learned mode-conditioned rules then become a
+generic relational observation and transfer through the same persistent
+mechanisms and independent verifier as static evidence.
+
+Zero intervention budget and corrupted visible continuity fail closed. The
+current reference path handles only immediate distinguishing actions, exact
+deterministic output and resettable episode continuation. It does not search
+long conditional experiments, maintain noisy posterior belief, consolidate the
+world model across environments, induce entities from sensors, establish broad
+G0-G6, or meet general intelligence. ARC remains 36/400.

@@ -30,9 +30,11 @@ use cairn_verifier::{
     VerifiedInternalConstruction, VerifiedInternalMechanism, VerifiedRelationalConstructionPolicy,
 };
 use cairn_world::{
-    ActionId, GoalObservation, PlanLimits, StateSpace, TransitionObservation, WorldState,
+    ActionId, ActiveLatentLimits, BeliefState, GoalObservation, LatentEpisode, LatentError,
+    LatentExperiment, LatentLimits, LatentTransitionTheory, PlanLimits, StateSpace,
+    TransitionObservation, WorldState,
 };
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -77,6 +79,8 @@ struct MaterializedCurriculum {
     learned_world_rules: usize,
     world_prediction_cases: usize,
     world_plan_length: usize,
+    active_interventions: usize,
+    uninformed_interventions: usize,
 }
 
 struct LearnedWorldExercise {
@@ -84,6 +88,56 @@ struct LearnedWorldExercise {
     rules: usize,
     prediction_cases: usize,
     plan_length: usize,
+    active_interventions: usize,
+    uninformed_interventions: usize,
+}
+
+#[derive(Clone, Copy)]
+struct G6TruthRule {
+    next_latent: u8,
+    delta: i64,
+}
+
+struct G6HiddenEnvironment {
+    space: StateSpace,
+    truth: BTreeMap<(u8, ActionId), G6TruthRule>,
+    initial: Vec<BeliefState>,
+}
+
+struct G6LatentFixture {
+    space: StateSpace,
+    actions: [ActionId; 3],
+    truth: BTreeMap<(u8, ActionId), G6TruthRule>,
+    initial: Vec<BeliefState>,
+    episodes: Vec<LatentEpisode>,
+}
+
+impl LatentExperiment for G6HiddenEnvironment {
+    fn observe_continuation(
+        &mut self,
+        episode_index: usize,
+        history: &[TransitionObservation],
+        action: ActionId,
+    ) -> Result<TransitionObservation, LatentError> {
+        let mut state = self
+            .initial
+            .get(episode_index)
+            .cloned()
+            .ok_or(LatentError::InvalidInterventionObservation)?;
+        for observed in history {
+            let next = g6_latent_step(&self.space, &self.truth, &state, observed.action);
+            if observed.before != state.visible || observed.after != next.visible {
+                return Err(LatentError::InvalidInterventionObservation);
+            }
+            state = next;
+        }
+        let next = g6_latent_step(&self.space, &self.truth, &state, action);
+        Ok(TransitionObservation {
+            before: state.visible,
+            action,
+            after: next.visible,
+        })
+    }
 }
 
 fn verify_materialized_candidate(
@@ -438,9 +492,11 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
         &runtime,
     );
     let exercises = &materialized.exercises;
-    assert_eq!(materialized.learned_world_rules, 2);
-    assert_eq!(materialized.world_prediction_cases, 2);
-    assert_eq!(materialized.world_plan_length, 1);
+    assert_eq!(materialized.learned_world_rules, 6);
+    assert_eq!(materialized.world_prediction_cases, 150);
+    assert_eq!(materialized.world_plan_length, 2);
+    assert_eq!(materialized.active_interventions, 1);
+    assert!(materialized.active_interventions * 2 <= materialized.uninformed_interventions);
     assert!(matches!(
         CognitionRuntime::new().construct_internal_compositions(
             &required,
@@ -645,7 +701,7 @@ fn autonomous_curriculum_grows_and_retains_a_restartable_mechanism_library() {
     assert!(points.iter().all(|point| point.proof_units_with == 4));
     assert_eq!(store.len(), 4);
     eprintln!(
-        "G6_AUTONOMOUS_INTERNAL selected=family-a,family-b,family-c,family-d generated=composition observation_lowering=2 relational_transfer=vector-to-unknown-world ordinal_ablation=fail held_out_without_expected=1 world_rules=2 world_predictions=2 world_plan=1 completed=1 generated_core={} generated_objective={} composition_evidence={} mechanisms=1->2->3->4 mechanism_hashes={},{},{},{} construction_generated={} construction_exact_rank_sum={} composition_invocations=2x2 composition_candidates={}->{} composition_examples=16->1 composition_proof={}->{} curriculum_checkpoints={},{},{},{} restarts=2 curriculum_restores=4 deprecated=target-d retained=6/6 negative_transfer=0/10",
+        "G6_AUTONOMOUS_INTERNAL selected=family-a,family-b,family-c,family-d generated=composition observation_lowering=2 relational_transfer=vector-to-active-latent-world ordinal_ablation=fail held_out_without_expected=1 latent_states=2 world_rules=6 world_predictions=150 active_interventions=1 uninformed_interventions=3 world_plan=2 completed=1 generated_core={} generated_objective={} composition_evidence={} mechanisms=1->2->3->4 mechanism_hashes={},{},{},{} construction_generated={} construction_exact_rank_sum={} composition_invocations=2x2 composition_candidates={}->{} composition_examples=16->1 composition_proof={}->{} curriculum_checkpoints={},{},{},{} restarts=2 curriculum_restores=4 deprecated=target-d retained=6/6 negative_transfer=0/10",
         generated.failure_core,
         generated.objective.id.0,
         composition_evidence,
@@ -973,65 +1029,43 @@ fn materialize_composition_exercises(
         learned_world_rules: world.rules,
         world_prediction_cases: world.prediction_cases,
         world_plan_length: world.plan_length,
+        active_interventions: world.active_interventions,
+        uninformed_interventions: world.uninformed_interventions,
     }
 }
 
 fn learn_unknown_world_exercise(runtime: &CognitionRuntime) -> LearnedWorldExercise {
-    let space = StateSpace::new(vec![-5, -5], vec![5, 5]).expect("world bounds");
-    let actions = [ActionId(7), ActionId(11)];
-    let transitions = [
-        TransitionObservation {
-            before: WorldState(vec![0, 0]),
-            action: actions[0],
-            after: WorldState(vec![1, 0]),
-        },
-        TransitionObservation {
-            before: WorldState(vec![-2, 3]),
-            action: actions[0],
-            after: WorldState(vec![-1, 3]),
-        },
-        TransitionObservation {
-            before: WorldState(vec![0, 0]),
-            action: actions[1],
-            after: WorldState(vec![0, 1]),
-        },
-        TransitionObservation {
-            before: WorldState(vec![2, -2]),
-            action: actions[1],
-            after: WorldState(vec![2, -1]),
-        },
-    ];
-    let world = runtime
-        .learn_and_plan_world(
-            &space,
-            &actions,
-            &transitions,
-            &[
-                GoalObservation {
-                    state: WorldState(vec![1, 0]),
-                    achieved: true,
-                },
-                GoalObservation {
-                    state: WorldState(vec![0, 0]),
-                    achieved: false,
-                },
-            ],
-            &WorldState(vec![0, 0]),
-            PlanLimits {
-                maximum_visited_states: 32,
-                maximum_plan_length: 4,
+    let fixture = g6_latent_fixture();
+    let mut environment = G6HiddenEnvironment {
+        space: fixture.space.clone(),
+        truth: fixture.truth.clone(),
+        initial: fixture.initial.clone(),
+    };
+    let active = runtime
+        .learn_latent_world_actively(
+            &fixture.space,
+            &fixture.actions,
+            &fixture.episodes,
+            ActiveLatentLimits {
+                induction: LatentLimits::default(),
+                maximum_interventions: 1,
             },
+            &mut environment,
         )
-        .expect("learn unknown action laws and plan");
-    let values = world
-        .transition_theory
+        .expect("actively learn hidden action laws");
+    assert_eq!(active.induction.theory.latent_states(), 2);
+    assert_eq!(active.interventions.len(), 1);
+    let values = active
+        .induction
+        .theory
         .rules()
+        .filter(|rule| rule.action == ActionId(4))
         .map(|rule| {
             (
-                format!("learned-world-action-{}", rule.action.0),
+                format!("learned-latent-{}-action-{}", rule.latent, rule.action.0),
                 format!(
-                    "learned-world-effect-{}-{}",
-                    rule.action.0,
+                    "learned-effect-next-{}-delta-{}",
+                    rule.next_latent,
                     rule.delta
                         .iter()
                         .map(i64::to_string)
@@ -1042,19 +1076,201 @@ fn learn_unknown_world_exercise(runtime: &CognitionRuntime) -> LearnedWorldExerc
         })
         .collect::<Vec<_>>()
         .try_into()
-        .expect("two independently learned action laws");
-    let predictions = [
-        (WorldState(vec![3, 2]), actions[0], WorldState(vec![4, 2])),
-        (WorldState(vec![3, 2]), actions[1], WorldState(vec![3, 3])),
-    ];
-    assert!(predictions.iter().all(|(before, action, expected)| {
-        world.transition_theory.predict(before, *action).as_ref() == Ok(expected)
-    }));
+        .expect("two mode-conditioned laws for one action");
+    let prediction_cases = verify_g6_latent_predictions(&fixture, &active.induction.theory);
+    let plan_length = plan_g6_latent_world(
+        runtime,
+        &fixture.space,
+        &active.induction.theory,
+        &fixture.initial[0],
+    );
     LearnedWorldExercise {
         values,
-        rules: world.transition_theory.rules().count(),
-        prediction_cases: predictions.len(),
-        plan_length: world.plan.actions.len(),
+        rules: active.induction.theory.rules().count(),
+        prediction_cases,
+        plan_length,
+        active_interventions: active.interventions.len(),
+        uninformed_interventions: fixture.actions.len(),
+    }
+}
+
+fn g6_latent_fixture() -> G6LatentFixture {
+    let space = StateSpace::new(vec![0], vec![30]).expect("world bounds");
+    let one = ActionId(4);
+    let two = ActionId(9);
+    let flip = ActionId(2);
+    let actions = [one, two, flip];
+    let truth = BTreeMap::from([
+        (
+            (0, one),
+            G6TruthRule {
+                next_latent: 0,
+                delta: 1,
+            },
+        ),
+        (
+            (0, two),
+            G6TruthRule {
+                next_latent: 0,
+                delta: 2,
+            },
+        ),
+        (
+            (0, flip),
+            G6TruthRule {
+                next_latent: 1,
+                delta: 0,
+            },
+        ),
+        (
+            (1, one),
+            G6TruthRule {
+                next_latent: 1,
+                delta: -1,
+            },
+        ),
+        (
+            (1, two),
+            G6TruthRule {
+                next_latent: 1,
+                delta: -2,
+            },
+        ),
+        (
+            (1, flip),
+            G6TruthRule {
+                next_latent: 0,
+                delta: 0,
+            },
+        ),
+    ]);
+    let initial = vec![
+        BeliefState {
+            visible: WorldState(vec![15]),
+            latent: 0,
+        },
+        BeliefState {
+            visible: WorldState(vec![9]),
+            latent: 0,
+        },
+    ];
+    let episodes = vec![
+        g6_latent_episode(&space, &truth, initial[0].clone(), &[one, two, flip, one]),
+        g6_latent_episode(
+            &space,
+            &truth,
+            initial[1].clone(),
+            &[flip, two, flip, one, two],
+        ),
+    ];
+    G6LatentFixture {
+        space,
+        actions,
+        truth,
+        initial,
+        episodes,
+    }
+}
+
+fn verify_g6_latent_predictions(
+    fixture: &G6LatentFixture,
+    theory: &LatentTransitionTheory,
+) -> usize {
+    let mut cases = 0_usize;
+    for latent in 0_u8..2 {
+        for visible in 3_i64..=27 {
+            for action in fixture.actions {
+                let state = BeliefState {
+                    visible: WorldState(vec![visible]),
+                    latent,
+                };
+                assert_eq!(
+                    theory.predict(&state, action).expect("latent prediction"),
+                    g6_latent_step(&fixture.space, &fixture.truth, &state, action)
+                );
+                cases += 1;
+            }
+        }
+    }
+    cases
+}
+
+fn plan_g6_latent_world(
+    runtime: &CognitionRuntime,
+    space: &StateSpace,
+    theory: &LatentTransitionTheory,
+    initial: &BeliefState,
+) -> usize {
+    let planning = runtime
+        .infer_goal_and_plan_latent_world(
+            space,
+            theory,
+            &[
+                GoalObservation {
+                    state: WorldState(vec![13]),
+                    achieved: true,
+                },
+                GoalObservation {
+                    state: WorldState(vec![15]),
+                    achieved: false,
+                },
+            ],
+            initial,
+            PlanLimits {
+                maximum_visited_states: 64,
+                maximum_plan_length: 8,
+            },
+        )
+        .expect("plan through learned latent state");
+    let terminal = planning
+        .plan
+        .actions
+        .iter()
+        .try_fold(initial.clone(), |state, action| {
+            theory.predict(&state, *action)
+        })
+        .expect("execute learned latent plan");
+    assert_eq!(terminal.visible, WorldState(vec![13]));
+    planning.plan.actions.len()
+}
+
+fn g6_latent_episode(
+    space: &StateSpace,
+    truth: &BTreeMap<(u8, ActionId), G6TruthRule>,
+    initial: BeliefState,
+    actions: &[ActionId],
+) -> LatentEpisode {
+    let mut state = initial;
+    let transitions = actions
+        .iter()
+        .map(|action| {
+            let next = g6_latent_step(space, truth, &state, *action);
+            let observation = TransitionObservation {
+                before: state.visible.clone(),
+                action: *action,
+                after: next.visible.clone(),
+            };
+            state = next;
+            observation
+        })
+        .collect();
+    LatentEpisode { transitions }
+}
+
+fn g6_latent_step(
+    space: &StateSpace,
+    truth: &BTreeMap<(u8, ActionId), G6TruthRule>,
+    state: &BeliefState,
+    action: ActionId,
+) -> BeliefState {
+    let rule = truth
+        .get(&(state.latent, action))
+        .expect("hidden truth rule");
+    BeliefState {
+        visible: WorldState(vec![
+            (state.visible.0[0] + rule.delta).clamp(space.lower()[0], space.upper()[0])
+        ]),
+        latent: rule.next_latent,
     }
 }
 

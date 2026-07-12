@@ -948,3 +948,23 @@ policy and binds it to a prior `VerifiedInternalConstruction`. Held-out
 replays the policy and learned mechanisms, and derives direct construction work
 rather than unrelated sliding-window matching cost. The runtime accepts only
 persistent mechanisms and never receives expected proof.
+
+## 26. Active latent-world experiment contracts
+
+ADR-0020 adds `LatentExperiment`, which receives an episode index, immutable
+visible transition history, and one selected `ActionId`. It returns one visible
+`TransitionObservation`; hidden state is absent from both sides.
+
+`ActiveLatentWorldLearner::induce` repeatedly runs exact minimal-transducer
+induction, sorts unresolved successor ambiguities canonically, selects an
+available one-step distinguishing action, validates the returned action,
+predecessor continuity and state bounds, appends evidence, and re-induces.
+`ActiveLatentInductionReport` contains the exact final theory, augmented visible
+episodes, and `SelectedLatentIntervention` journal.
+
+`ActiveLatentLimits` separately bounds exact induction and intervention count.
+No available one-step discriminator, cap exhaustion, malformed observation, and
+underlying search failures are distinct terminals. `CognitionRuntime` exposes
+this loop through `learn_latent_world_actively` and exposes exact goal/latent
+planning through `infer_goal_and_plan_latent_world`; it contains no environment
+truth or adapter logic.

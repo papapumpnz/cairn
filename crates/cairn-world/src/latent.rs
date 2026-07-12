@@ -207,6 +207,138 @@ impl LatentWorldLearner {
     }
 }
 
+/// Environment boundary for one learner-selected visible continuation. Hidden
+/// state is deliberately absent from the request and response.
+pub trait LatentExperiment {
+    /// Execute one selected action after the supplied immutable visible history.
+    ///
+    /// # Errors
+    ///
+    /// Returns an environment or resource failure. The active learner still
+    /// validates action identity, continuity, and state bounds independently.
+    fn observe_continuation(
+        &mut self,
+        episode_index: usize,
+        history: &[TransitionObservation],
+        action: ActionId,
+    ) -> Result<TransitionObservation, LatentError>;
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ActiveLatentLimits {
+    pub induction: LatentLimits,
+    pub maximum_interventions: u32,
+}
+
+impl Default for ActiveLatentLimits {
+    fn default() -> Self {
+        Self {
+            induction: LatentLimits::default(),
+            maximum_interventions: 32,
+        }
+    }
+}
+
+/// One canonical learner-selected experiment and the ambiguity it targeted.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SelectedLatentIntervention {
+    pub episode_index: usize,
+    pub source_action: ActionId,
+    pub action: ActionId,
+}
+
+/// Exact final theory plus the visible evidence and intervention journal that
+/// produced it.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ActiveLatentInductionReport {
+    pub induction: LatentInductionReport,
+    pub episodes: Vec<LatentEpisode>,
+    pub interventions: Vec<SelectedLatentIntervention>,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ActiveLatentWorldLearner;
+
+impl ActiveLatentWorldLearner {
+    /// Repeatedly infer a minimal hidden-state theory and select an exact
+    /// one-step continuation that distinguishes unresolved successor states.
+    ///
+    /// # Errors
+    ///
+    /// Returns induction failures, an ambiguity needing a longer experiment,
+    /// intervention-cap exhaustion, or malformed environment observations.
+    pub fn induce<E: LatentExperiment>(
+        &self,
+        space: &StateSpace,
+        actions: &[ActionId],
+        initial_episodes: &[LatentEpisode],
+        limits: ActiveLatentLimits,
+        experiment: &mut E,
+    ) -> Result<ActiveLatentInductionReport, LatentError> {
+        let mut episodes = initial_episodes.to_vec();
+        let mut interventions = Vec::new();
+        loop {
+            let report = LatentWorldLearner.induce(space, actions, &episodes, limits.induction)?;
+            if report.successor_ambiguities.is_empty() {
+                return Ok(ActiveLatentInductionReport {
+                    induction: report,
+                    episodes,
+                    interventions,
+                });
+            }
+            if interventions.len()
+                >= usize::try_from(limits.maximum_interventions)
+                    .map_err(|_| LatentError::Capacity)?
+            {
+                return Err(LatentError::InterventionCapacity {
+                    maximum: limits.maximum_interventions,
+                });
+            }
+            let mut candidates = report
+                .successor_ambiguities
+                .iter()
+                .filter_map(|ambiguity| {
+                    ambiguity
+                        .distinguishing_action
+                        .map(|action| (ambiguity.terminal_episode, ambiguity.source_action, action))
+                })
+                .collect::<Vec<_>>();
+            candidates.sort_unstable();
+            let Some((episode_index, source_action, action)) = candidates.first().copied() else {
+                return Err(LatentError::NoDistinguishingIntervention);
+            };
+            let history = episodes
+                .get(episode_index)
+                .ok_or(LatentError::InvalidInterventionObservation)?
+                .transitions
+                .as_slice();
+            let expected_before = history
+                .last()
+                .ok_or(LatentError::InvalidInterventionObservation)?
+                .after
+                .clone();
+            let observation = experiment.observe_continuation(episode_index, history, action)?;
+            if observation.action != action
+                || observation.before != expected_before
+                || !space.contains(&observation.before)
+                || !space.contains(&observation.after)
+            {
+                return Err(LatentError::InvalidInterventionObservation);
+            }
+            episodes
+                .get_mut(episode_index)
+                .ok_or(LatentError::InvalidInterventionObservation)?
+                .transitions
+                .push(observation);
+            interventions.push(SelectedLatentIntervention {
+                episode_index,
+                source_action,
+                action,
+            });
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LatentPlan {
     pub actions: Vec<ActionId>,
@@ -291,6 +423,9 @@ pub enum LatentError {
     LatentOutOfBounds(u8),
     UnknownRule { latent: u8, action: ActionId },
     AmbiguousSuccessor { latent: u8, action: ActionId },
+    NoDistinguishingIntervention,
+    InterventionCapacity { maximum: u32 },
+    InvalidInterventionObservation,
     SearchCapacity { maximum: u64 },
     NoTheory { maximum_latent_states: u8 },
     InvalidPlanLineage,

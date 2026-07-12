@@ -40,6 +40,16 @@ modality, IDs, values, order, cardinality, and a distractor. Ordinal transfer
 fails; relational transfer yields one exact candidate. This remains structured
 evidence learning, not raw sensor perception or broad general intelligence.
 
+Active checkpoint (2026-07-12): the runtime now automates one-step latent-world
+experiments. Exact induction exposes an unresolved successor; a generic
+environment boundary returns only the visible outcome of the selected
+distinguishing action. Continuity and bounds are checked before re-induction.
+The frozen case recovers two hidden states and six rules with one intervention
+versus three uninformed actions, predicts 150/150 held-out transitions, plans
+two actions to an inferred goal, and transfers learned mode-conditioned rules
+through the relational constructor. Longer experiments and noisy belief remain
+open.
+
 ## 0. Executive decision
 
 CAIRN is a CPU-only, transformer-free self-compressing causal theory learner.

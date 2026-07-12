@@ -59,6 +59,17 @@ and proof work is 72→35, 16→1, and 112→16. This advances G5/G6 coupling bu
 perception, complex hidden worlds, sustained open-ended development, general
 intelligence, and the 80% ARC gate remain incomplete. ARC remains 36/400.
 
+The active-latent checkpoint replaces complete held-out transition provision.
+Two visible histories initially leave one successor ambiguous. The shared
+runtime chooses one discriminating continuation, compared with three actions
+for uninformed coverage, and recovers two latent states plus six exact rules.
+It predicts 150/150 held-out joint transitions, infers a visible goal, executes
+a shortest two-action latent plan, and sends two mode-conditioned laws through
+the same verified relational transfer. This strengthens G4/G6 but supports only
+one-step deterministic experiments; raw perception, noisy beliefs, persistent
+world-model transfer, open-ended development, and general intelligence remain
+unmet. ARC remains quarantined at 36/400.
+
 ## 0. Dataset policy
 
 ### Development partitions

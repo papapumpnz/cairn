@@ -61,7 +61,7 @@ Curriculum checkpoint identities:
 deff68108d34dcd1856618f70b25512180a978ab44e9d8d6d1fbb139e07c5942
 4fb39e7cd27f09571a15f939d096a538dce350b6ddfc3a3a66ffcfd3501be3cb
 622a5fd163f323272b529ab9f04c27f6f35af37b60d8752ef6aecf4824781d39
-a2a8314cc30512ad7981d8db730b29977d12f0686bf1b47f773a379710465c56
+6aa1b382a08f5b86a7296f88363947fa8a68c258326fcf896895ad139e7c6bf7
 ```
 
 No composition objective exists in the initial curriculum. After all four
@@ -79,9 +79,11 @@ identical proof frontiers with explicit provenance.
 The first observation has static vector-like provenance. After exact training
 construction, the consolidator derives two-round relational neighbourhood
 selectors and the verifier binds them to that training certificate. The second
-observation is built from two action effects learned by the unchanged
-unknown-world runtime from four transitions. Both effects predict unseen states
-and support a one-step inferred-goal plan.
+observation is built from two mode-conditioned action effects learned by the
+unchanged runtime. Two visible histories leave a successor ambiguous; the
+runtime selects one distinguishing continuation, sees only its visible result,
+and re-induces a two-state/six-rule theory. That theory predicts 150 held-out
+joint states and supports a two-action inferred-goal plan.
 
 Held-out modality, element IDs, values, canonical order, and cardinality change,
 and an unrelated entity/effect pair is added. The ordinal-policy ablation emits
@@ -93,14 +95,17 @@ reports:
 ```text
 explicit learned invocations: 2 mechanisms x 2 changed exercises
 runtime candidates: 16 training + 1 held-out
-unknown-world laws: 2
-unseen world predictions: 2/2
-inferred-goal plan: 1 action
+latent states: 2
+unknown-world laws: 6
+active interventions: 1
+uninformed action coverage: 3
+unseen world predictions: 150/150
+inferred-goal plan: 2 actions
 ordinal ablation: failed exact held-out graph
 candidate windows: 72 -> 35
 examples: 16 -> 1
 proof units: 112 -> 16
-composition evidence: 7a7cbc0a7e44a06ad480a015b26c1b0a95b00b8e0991f83d448d07e1bb484f8a
+composition evidence: 7e6ef449387212a7027c09e7127d9020a85e01b2f91c8867b0450f45bc6ca8db
 ```
 
 Overlap, duplicate mechanisms, irrelevant invocations, and exhausted bounds
@@ -126,8 +131,9 @@ recorded choice fail closed.
 This replaces scripted order, the authored composition objective, supplied
 complete proof hosts, manual frontier assembly, and ordinal transfer with
 bounded failure-driven relational-observation learning. Entity/relation
-evidence remains generator-supplied rather than induced from raw sensors, and
-the world laws are small deterministic deltas without latent state. It does not
-establish open-ended environment generation, arbitrary RKL composition, natural
-perception, broad general intelligence, or the 80% ARC target. ARC remains at
-the last measured 36/400.
+evidence remains generator-supplied rather than induced from raw sensors. The
+world is an exact deterministic two-state transducer and active learning handles
+only one-step distinguishing continuations. It does not establish noisy belief,
+long experimental procedures, open-ended environment generation, arbitrary RKL
+composition, natural perception, broad general intelligence, or the 80% ARC
+target. ARC remains at the last measured 36/400.

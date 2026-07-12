@@ -21,8 +21,10 @@ use cairn_rkl::{
 };
 use cairn_skill::{Condition, Skill, SkillPlan, SkillPlanError, SkillPlanner};
 use cairn_world::{
-    ActionId, ExactPlanner, GoalObservation, GoalTheory, Plan, PlanLimits, StateSpace,
-    TransitionObservation, TransitionTheory, WorldError, WorldLearner, WorldState,
+    ActionId, ActiveLatentInductionReport, ActiveLatentLimits, ActiveLatentWorldLearner,
+    BeliefState, ExactPlanner, GoalObservation, GoalTheory, LatentEpisode, LatentError,
+    LatentExperiment, LatentPlan, LatentPlanner, LatentTransitionTheory, Plan, PlanLimits,
+    StateSpace, TransitionObservation, TransitionTheory, WorldError, WorldLearner, WorldState,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -118,6 +120,12 @@ pub struct InteractiveLearningOutcome {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LatentPlanningOutcome {
+    pub goal_theory: GoalTheory,
+    pub plan: LatentPlan,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CollectionPrediction {
     pub module: Hash32,
     pub output: BTreeSet<i64>,
@@ -173,6 +181,7 @@ pub enum ProceduralSolveError {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CognitionError {
     World(WorldError),
+    LatentWorld(LatentError),
     Skill(SkillPlanError),
     InternalComposition(InternalCompositionRuntimeError),
 }
@@ -511,6 +520,50 @@ impl CognitionRuntime {
             goal_theory,
             plan,
         })
+    }
+
+    /// Close the interactive latent-learning loop by selecting and validating
+    /// distinguishing continuations through an environment-neutral experiment
+    /// boundary.
+    ///
+    /// # Errors
+    ///
+    /// Returns exact latent induction, intervention, observation-integrity, or
+    /// resource failures.
+    pub fn learn_latent_world_actively<E: LatentExperiment>(
+        &self,
+        space: &StateSpace,
+        actions: &[ActionId],
+        episodes: &[LatentEpisode],
+        limits: ActiveLatentLimits,
+        experiment: &mut E,
+    ) -> Result<ActiveLatentInductionReport, CognitionError> {
+        ActiveLatentWorldLearner
+            .induce(space, actions, episodes, limits, experiment)
+            .map_err(CognitionError::LatentWorld)
+    }
+
+    /// Infer a visible goal and plan over a previously learned joint
+    /// visible/latent transition theory.
+    ///
+    /// # Errors
+    ///
+    /// Returns exact goal induction or latent planning failures.
+    pub fn infer_goal_and_plan_latent_world(
+        &self,
+        space: &StateSpace,
+        theory: &LatentTransitionTheory,
+        goals: &[GoalObservation],
+        initial: &BeliefState,
+        limits: PlanLimits,
+    ) -> Result<LatentPlanningOutcome, CognitionError> {
+        let goal_theory = WorldLearner
+            .induce_goal(space, goals)
+            .map_err(CognitionError::World)?;
+        let plan = LatentPlanner
+            .plan(theory, &goal_theory, initial, limits)
+            .map_err(CognitionError::LatentWorld)?;
+        Ok(LatentPlanningOutcome { goal_theory, plan })
     }
 
     /// Compose conditional learned skills using their initiation conditions

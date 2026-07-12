@@ -392,12 +392,20 @@ That next boundary now passes for exact structured evidence. A canonical
 source provenance. Producer and verifier lower it independently to identical
 proof frontiers. A two-round structural fingerprint policy learned on a static
 vector-like observation transfers to an interactive-world observation after
-the unchanged runtime learns two previously unknown action laws. IDs, values,
+the unchanged runtime learns previously unknown action laws. IDs, values,
 modality, canonical order, and cardinality change; an unrelated entity/effect
 pair is added; the ordinal-policy ablation fails while relational construction
 emits one exact held-out candidate. Verified candidate work is 72→35, examples
 16→1, and proof work 112→16. This is cross-domain structured causal transfer,
-not raw sensor perception, rich hidden-state discovery, or general intelligence.
+not raw sensor perception or general intelligence.
+The interactive case now contains genuine hidden state and active experiment
+selection. From two ambiguous visible histories, the runtime identifies one
+unresolved successor, chooses a one-step discriminating action, validates its
+visible outcome, and re-induces an exact two-state/six-rule theory. It uses one
+intervention versus three for uninformed coverage, predicts 150/150 held-out
+joint states, and finds a correct two-action plan to an inferred goal. Two
+mode-conditioned laws then pass through the same relational transfer path. See
+[ACTIVE_LATENT_WORLD_LEARNING.md](docs/experiments/ACTIVE_LATENT_WORLD_LEARNING.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding,
 arbitrary non-contiguous internal-subgraph mining and RKL lowering,
