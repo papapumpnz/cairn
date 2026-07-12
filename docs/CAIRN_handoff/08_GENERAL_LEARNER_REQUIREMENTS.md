@@ -1052,4 +1052,8 @@ truth, duplicate evidence, and candidate caps fail closed.
 This is narrow evidence for mechanism invention, persistent reuse, compute and
 sample reduction, cross-domain transfer, and proof lineage. It is not arbitrary
 affine learning, relation-path induction, raw perception, general intelligence,
-or an ARC score claim. ARC remains unopened at this checkpoint.
+or an ARC score claim. The post-freeze ARC gate failed: blank and
+correspondence-only memory both score 17/40 exact, zero incorrect, and 23
+limited. Full-400 was not run. This does not erase the source-domain learning
+result, but it establishes no ARC contribution. General intelligence and 80%
+ARC remain unmet.

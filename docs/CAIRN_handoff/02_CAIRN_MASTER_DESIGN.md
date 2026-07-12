@@ -2337,3 +2337,11 @@ families, fresh learning evaluates 16 candidates from two examples; persistent
 reuse attempts two mechanisms and needs zero new examples. The unchanged
 mechanism transfers from vector entities to a categorical finite field, while a
 transpose negative is rejected by independent replay.
+
+The frozen ARC causal gate at revision `a597bfc` fails: blank and
+correspondence-only memory both score 17/40 exact with zero incorrect. Per the
+experiment ladder, full-400 was not run. ADR-0026 retains the verified general
+mechanism but stops signed-axis correspondence as an ARC-directed path. The
+failure indicates that unsolved tasks require richer conditional entity
+selection, entity-to-entity role matching, non-bijective construction, or
+topological relations rather than one global coordinate map.

@@ -744,3 +744,9 @@ Only after a committed freeze, run blank versus correspondence-only ARC first
 40. Strict exact accuracy improvement with zero incorrect is mandatory. If it
 passes, run combined first 40 and full 400. If it fails, preserve evidence and
 stop before the complete run; applicability does not satisfy the gate.
+
+Measured result: the source-domain gate passes, but ARC blank and
+correspondence-only memory both score 17/40 exact with zero incorrect. The
+mandatory strict-gain assertion fails, so full-400 was not run. Preserve the
+failure under ADR-0026 and require a richer non-bijective, relation-conditioned
+mechanism to restart at the non-ARC source gate.

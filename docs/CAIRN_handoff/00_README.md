@@ -93,8 +93,10 @@ scenes, reconstructs each output entity, and records the exact source entity and
 point behind every emitted point. Two verified cohorts promote the mechanism;
 held-out reuse reduces 16 fresh candidates/two examples to two memory attempts
 and zero examples, transfers unchanged to categorical fields, and accepts zero
-wrong-family predictions. Its ARC effect remains unknown until the committed
-gate is opened.
+wrong-family predictions. Its frozen ARC gate is negative: correspondence-only
+and blank memory both score 17/40, so the complete 400 run was correctly not
+opened. The general capability remains; benchmark-directed signed-axis growth
+is stopped.
 
 The bounded developmental controller now persists only a canonical,
 content-free event journal. After process loss, a fresh controller must

@@ -2,7 +2,7 @@
 
 Date: 2026-07-13
 
-Status: source-domain gates passed; ARC gate frozen and pending
+Status: source-domain gates passed; ARC accuracy gate failed
 
 ## Frozen question
 
@@ -56,6 +56,31 @@ Strictly more exact tasks and zero incorrect are required. If the assertion
 fails, preserve the result and stop before full-400. If it passes, run the
 already frozen all-structural first-40 and full-400 tests without changing the
 mechanism, order, budget, or threshold.
+
+## ARC result
+
+The core and harness were frozen in commit
+`a597bfcbd2c6c75a7973e9602377f1be76990804` before ARC execution.
+
+```text
+blank memory:          17/40 exact, 0 incorrect, 23 limited
+correspondence memory: 17/40 exact, 0 incorrect, 23 limited
+mandatory assertion:  FAILED (strict exact improvement required)
+full 400:              not run, per pre-registration
+```
+
+Evidence:
+`evidence/arc1_first40_entity_correspondence_ablation_wp34_v0.11.json`
+
+SHA-256:
+`ec2b42cbe363a77d3610feb77d648a56503e4d1de54c2f208addb87558cb14fe`
+
+The result is byte-identical to the earlier layer-only/blank report because both
+proposal libraries add no accepted first-40 solve. The frozen non-ARC gates
+still establish exact invention, reuse, provenance, transfer, and work
+reduction. The ARC result shows that one global signed-axis collection map does
+not address the current failures. ADR-0026 stops benchmark-directed growth of
+this path.
 
 ## Limits
 
