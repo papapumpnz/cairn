@@ -337,9 +337,16 @@ the identical compression proposal hash; the independent verifier then replays
 all three reloaded sources and recalculates costs. Malformed and cyclic graphs
 fail closed. See
 [PERSISTED_PROOF_GRAPH_CONSOLIDATION.md](docs/experiments/PERSISTED_PROOF_GRAPH_CONSOLIDATION.md).
+The consolidator can now discover an internal four-node causal fragment across
+different host prefixes and suffixes. External dependencies become explicit
+typed boundary parameters; an independent verifier reconstructs all four
+sources, recalculates the 28-to-20 proof-unit compression, and a fifth changed
+host rebinds exactly. This is bounded contiguous-window mining, not arbitrary
+graph mining or a compiled learned mechanism. See
+[INTERNAL_SUBGRAPH_MECHANISM_DISCOVERY.md](docs/experiments/INTERNAL_SUBGRAPH_MECHANISM_DISCOVERY.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
-initial bounded implementations. Full generator coverage, certificate decoding
-and durable proof-DAG artifact storage, arbitrary internal-subgraph compilation,
+initial bounded implementations. Full generator coverage, certificate decoding,
+arbitrary internal-subgraph compilation,
 richer ontology invention, broad
 cross-domain curricula, ARC evaluation beyond the development training split,
 and knowledge frontends

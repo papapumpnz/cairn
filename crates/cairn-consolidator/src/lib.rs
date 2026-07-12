@@ -9,7 +9,7 @@ use cairn_core::{
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
-pub const CONSOLIDATOR_SEMANTICS_VERSION: &str = "2.1.0";
+pub const CONSOLIDATOR_SEMANTICS_VERSION: &str = "2.2.0";
 pub const PROOF_GRAPH_SCHEMA: &str = "cairn.consolidator.proof-graph";
 pub const PROOF_GRAPH_SCHEMA_VERSION: u32 = 1;
 
@@ -453,6 +453,134 @@ impl GraphCompressionProposal {
     }
 }
 
+/// Explicit input edge in a mined internal proof mechanism. Boundary inputs
+/// are parameters supplied by the surrounding host proof rather than hidden
+/// dependencies on source-node identifiers.
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum InternalPatternInput {
+    Internal(u32),
+    Boundary(u32),
+}
+
+/// One node in a boundary-aware internal proof mechanism.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InternalGraphPatternNode {
+    pub operation: String,
+    pub output_type: ProofValueType,
+    pub inputs: Vec<InternalPatternInput>,
+    pub arguments: Vec<GraphPatternArgument>,
+}
+
+/// Exact occurrence binding for one host proof. Selected and boundary node IDs
+/// are source-local evidence and never enter the generalized mechanism body.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InternalEpisodeBindings {
+    pub episode: Hash32,
+    pub selected_nodes: Vec<u32>,
+    pub boundary_nodes: Vec<u32>,
+    pub values: Vec<ProofDatum>,
+}
+
+/// A repeated internal mechanism mined across independently identified host
+/// proofs with different surrounding topology.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InternalGraphCompressionProposal {
+    pattern: Vec<InternalGraphPatternNode>,
+    boundary_types: Vec<ProofValueType>,
+    output: u32,
+    bindings: Vec<InternalEpisodeBindings>,
+    source_episodes: Vec<Hash32>,
+    uncompressed_nodes: u64,
+    compressed_nodes: u64,
+    verified_replays: u64,
+    semantic_hash: Hash32,
+}
+
+impl InternalGraphCompressionProposal {
+    #[must_use]
+    pub fn pattern(&self) -> &[InternalGraphPatternNode] {
+        &self.pattern
+    }
+
+    #[must_use]
+    pub fn boundary_types(&self) -> &[ProofValueType] {
+        &self.boundary_types
+    }
+
+    #[must_use]
+    pub const fn output(&self) -> u32 {
+        self.output
+    }
+
+    #[must_use]
+    pub fn bindings(&self) -> &[InternalEpisodeBindings] {
+        &self.bindings
+    }
+
+    #[must_use]
+    pub fn source_episodes(&self) -> &[Hash32] {
+        &self.source_episodes
+    }
+
+    #[must_use]
+    pub const fn uncompressed_nodes(&self) -> u64 {
+        self.uncompressed_nodes
+    }
+
+    #[must_use]
+    pub const fn compressed_nodes(&self) -> u64 {
+        self.compressed_nodes
+    }
+
+    #[must_use]
+    pub const fn verified_replays(&self) -> u64 {
+        self.verified_replays
+    }
+
+    #[must_use]
+    pub const fn semantic_hash(&self) -> Hash32 {
+        self.semantic_hash
+    }
+}
+
+/// Exhaustive reference-miner limits. Candidate windows are deterministic and
+/// bounded before allocation or comparison.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct InternalMiningLimits {
+    pub minimum_nodes: usize,
+    pub maximum_nodes: usize,
+    pub minimum_independent_episodes: usize,
+    pub maximum_windows_per_episode: usize,
+}
+
+impl Default for InternalMiningLimits {
+    fn default() -> Self {
+        Self {
+            minimum_nodes: 3,
+            maximum_nodes: 16,
+            minimum_independent_episodes: 3,
+            maximum_windows_per_episode: 10_000,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct InternalSourceNode {
+    operation: String,
+    output_type: ProofValueType,
+    inputs: Vec<InternalPatternInput>,
+    arguments: Vec<ProofDatum>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct InternalSourceSlice {
+    episode: Hash32,
+    nodes: Vec<InternalSourceNode>,
+    boundary_types: Vec<ProofValueType>,
+    selected_nodes: Vec<u32>,
+    boundary_nodes: Vec<u32>,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProofTrace {
     pub episode: Hash32,
@@ -490,6 +618,9 @@ pub enum ConsolidationError {
     IncompatibleArguments,
     ReplayMismatch,
     Canonicalization,
+    InvalidMiningLimits,
+    NoInternalCompression,
+    NoInternalMatch,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -571,6 +702,173 @@ impl Consolidator {
             verified_replays: trace_count,
             semantic_hash,
         })
+    }
+
+    /// Mine one repeated internal mechanism from differently shaped host proof
+    /// DAGs. The reference miner exhaustively enumerates bounded contiguous
+    /// topological windows, converts dependencies on surrounding nodes into
+    /// typed boundary parameters, cohorts by structure without family labels,
+    /// anti-unifies typed arguments, and exactly reconstructs every occurrence.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed/duplicate graphs, invalid or exhausted limits,
+    /// non-compressing evidence, incompatible types/topology, and replay or
+    /// canonicalization failures.
+    pub fn mine_internal_proof_subgraphs(
+        &self,
+        graphs: &[ProofGraph],
+        limits: InternalMiningLimits,
+    ) -> Result<InternalGraphCompressionProposal, ConsolidationError> {
+        if graphs.len() < 2 {
+            return Err(ConsolidationError::InsufficientEpisodes);
+        }
+        if limits.minimum_nodes < 2
+            || limits.maximum_nodes < limits.minimum_nodes
+            || limits.minimum_independent_episodes < 2
+            || limits.maximum_windows_per_episode == 0
+        {
+            return Err(ConsolidationError::InvalidMiningLimits);
+        }
+        let mut ordered = graphs.iter().collect::<Vec<_>>();
+        ordered.sort_unstable_by_key(|graph| graph.episode);
+        if ordered
+            .windows(2)
+            .any(|pair| pair[0].episode == pair[1].episode)
+        {
+            return Err(ConsolidationError::DuplicateEpisode);
+        }
+        let mut cohorts = BTreeMap::<Hash32, BTreeMap<Hash32, InternalSourceSlice>>::new();
+        for graph in ordered {
+            normalize_ancestral_subgraph(graph)?;
+            let mut considered = 0_usize;
+            let maximum = limits.maximum_nodes.min(graph.nodes.len());
+            for width in limits.minimum_nodes..=maximum {
+                for start in 0..=graph.nodes.len() - width {
+                    considered = considered
+                        .checked_add(1)
+                        .ok_or(ConsolidationError::Capacity)?;
+                    if considered > limits.maximum_windows_per_episode {
+                        return Err(ConsolidationError::Capacity);
+                    }
+                    let end = start + width;
+                    if start == 0 && end == graph.nodes.len()
+                        || !window_is_connected(graph, start, end)
+                    {
+                        continue;
+                    }
+                    let slice = internal_source_slice(graph, start, end)?;
+                    let shape = internal_slice_shape_hash(&slice)?;
+                    let episode_cohort = cohorts.entry(shape).or_default();
+                    match episode_cohort.get(&graph.episode) {
+                        Some(existing) if existing.selected_nodes <= slice.selected_nodes => {}
+                        _ => {
+                            episode_cohort.insert(graph.episode, slice);
+                        }
+                    }
+                }
+            }
+        }
+        let mut proposals = cohorts
+            .into_values()
+            .filter(|cohort| cohort.len() >= limits.minimum_independent_episodes)
+            .filter_map(|cohort| {
+                let slices = cohort.into_values().collect::<Vec<_>>();
+                match compress_internal_slices(&slices) {
+                    Ok(proposal) => Some(Ok(proposal)),
+                    Err(
+                        ConsolidationError::NoCompression | ConsolidationError::NoSharedStructure,
+                    ) => None,
+                    Err(error) => Some(Err(error)),
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        proposals.sort_by_key(|proposal| {
+            (
+                std::cmp::Reverse(
+                    proposal
+                        .uncompressed_nodes
+                        .saturating_sub(proposal.compressed_nodes),
+                ),
+                proposal.semantic_hash,
+            )
+        });
+        proposals
+            .into_iter()
+            .next()
+            .ok_or(ConsolidationError::NoInternalCompression)
+    }
+
+    /// Rebind a mined internal mechanism to every matching occurrence in a new
+    /// host proof. Fixed arguments and shared parameter equality are enforced;
+    /// source node IDs are returned only as occurrence-local bindings.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed hosts, zero work budget, capacity exhaustion, and
+    /// absence of a structurally and type-correct occurrence.
+    pub fn match_internal_proof_subgraph(
+        &self,
+        proposal: &InternalGraphCompressionProposal,
+        graph: &ProofGraph,
+        maximum_windows: usize,
+    ) -> Result<Vec<InternalEpisodeBindings>, ConsolidationError> {
+        if maximum_windows == 0 || proposal.pattern.is_empty() {
+            return Err(ConsolidationError::InvalidMiningLimits);
+        }
+        normalize_ancestral_subgraph(graph)?;
+        let width = proposal.pattern.len();
+        if width > graph.nodes.len() {
+            return Err(ConsolidationError::NoInternalMatch);
+        }
+        let parameter_types = proposal
+            .bindings
+            .first()
+            .map(|binding| {
+                binding
+                    .values
+                    .iter()
+                    .map(|value| value.ty)
+                    .collect::<Vec<_>>()
+            })
+            .ok_or(ConsolidationError::NoInternalMatch)?;
+        let mut matches = Vec::new();
+        let mut considered = 0_usize;
+        for start in 0..=graph.nodes.len() - width {
+            considered = considered
+                .checked_add(1)
+                .ok_or(ConsolidationError::Capacity)?;
+            if considered > maximum_windows {
+                return Err(ConsolidationError::Capacity);
+            }
+            let end = start + width;
+            if !window_is_connected(graph, start, end) {
+                continue;
+            }
+            let slice = internal_source_slice(graph, start, end)?;
+            if slice.boundary_types != proposal.boundary_types {
+                continue;
+            }
+            let Some(values) =
+                bind_internal_parameters(&proposal.pattern, &slice.nodes, &parameter_types)?
+            else {
+                continue;
+            };
+            let binding = InternalEpisodeBindings {
+                episode: graph.episode,
+                selected_nodes: slice.selected_nodes,
+                boundary_nodes: slice.boundary_nodes,
+                values,
+            };
+            if instantiate_internal_pattern(&proposal.pattern, &binding)? == slice.nodes {
+                matches.push(binding);
+            }
+        }
+        if matches.is_empty() {
+            Err(ConsolidationError::NoInternalMatch)
+        } else {
+            Ok(matches)
+        }
     }
 
     /// Anti-unify equally shaped proof traces, replacing varying operations by
@@ -920,6 +1218,444 @@ fn graph_shape_hash(nodes: &[ProofNode]) -> Result<Hash32, ConsolidationError> {
         .encode_canonical()
         .map(|bytes| Hash32::digest(&bytes))
         .map_err(|_| ConsolidationError::Canonicalization)
+}
+
+fn window_is_connected(graph: &ProofGraph, start: usize, end: usize) -> bool {
+    let mut adjacency = vec![Vec::<usize>::new(); end - start];
+    for source in start..end {
+        for input in &graph.nodes[source].inputs {
+            let Ok(target) = usize::try_from(*input) else {
+                return false;
+            };
+            if (start..end).contains(&target) {
+                adjacency[source - start].push(target - start);
+                adjacency[target - start].push(source - start);
+            }
+        }
+    }
+    let mut seen = BTreeSet::from([0_usize]);
+    let mut pending = vec![0_usize];
+    while let Some(node) = pending.pop() {
+        for neighbor in &adjacency[node] {
+            if seen.insert(*neighbor) {
+                pending.push(*neighbor);
+            }
+        }
+    }
+    seen.len() == end - start
+}
+
+fn internal_source_slice(
+    graph: &ProofGraph,
+    start: usize,
+    end: usize,
+) -> Result<InternalSourceSlice, ConsolidationError> {
+    let selected_nodes = (start..end)
+        .map(|node| u32::try_from(node).map_err(|_| ConsolidationError::Capacity))
+        .collect::<Result<Vec<_>, _>>()?;
+    let selected_map = selected_nodes
+        .iter()
+        .enumerate()
+        .map(|(local, source)| {
+            Ok((
+                *source,
+                u32::try_from(local).map_err(|_| ConsolidationError::Capacity)?,
+            ))
+        })
+        .collect::<Result<BTreeMap<_, _>, ConsolidationError>>()?;
+    let boundary_nodes = graph.nodes[start..end]
+        .iter()
+        .flat_map(|node| node.inputs.iter().copied())
+        .filter(|input| !selected_map.contains_key(input))
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>();
+    let boundary_map = boundary_nodes
+        .iter()
+        .enumerate()
+        .map(|(slot, source)| {
+            Ok((
+                *source,
+                u32::try_from(slot).map_err(|_| ConsolidationError::Capacity)?,
+            ))
+        })
+        .collect::<Result<BTreeMap<_, _>, ConsolidationError>>()?;
+    let boundary_types = boundary_nodes
+        .iter()
+        .map(|source| {
+            graph
+                .nodes
+                .get(usize::try_from(*source).map_err(|_| ConsolidationError::Capacity)?)
+                .map(|node| node.output_type)
+                .ok_or(ConsolidationError::InvalidTopology)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let nodes = graph.nodes[start..end]
+        .iter()
+        .map(|node| {
+            let inputs = node
+                .inputs
+                .iter()
+                .map(|input| {
+                    selected_map.get(input).copied().map_or_else(
+                        || {
+                            boundary_map
+                                .get(input)
+                                .copied()
+                                .map(InternalPatternInput::Boundary)
+                                .ok_or(ConsolidationError::InvalidTopology)
+                        },
+                        |local| Ok(InternalPatternInput::Internal(local)),
+                    )
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(InternalSourceNode {
+                operation: node.operation.clone(),
+                output_type: node.output_type,
+                inputs,
+                arguments: node.arguments.clone(),
+            })
+        })
+        .collect::<Result<Vec<_>, ConsolidationError>>()?;
+    Ok(InternalSourceSlice {
+        episode: graph.episode,
+        nodes,
+        boundary_types,
+        selected_nodes,
+        boundary_nodes,
+    })
+}
+
+fn internal_slice_shape_hash(slice: &InternalSourceSlice) -> Result<Hash32, ConsolidationError> {
+    let value = CanonicalValue::Array(vec![
+        CanonicalValue::Array(
+            slice
+                .boundary_types
+                .iter()
+                .map(|ty| CanonicalValue::Unsigned(proof_type_code(*ty)))
+                .collect(),
+        ),
+        CanonicalValue::Array(
+            slice
+                .nodes
+                .iter()
+                .map(|node| {
+                    CanonicalValue::Array(vec![
+                        CanonicalValue::Text(node.operation.clone()),
+                        CanonicalValue::Unsigned(proof_type_code(node.output_type)),
+                        CanonicalValue::Array(
+                            node.inputs
+                                .iter()
+                                .copied()
+                                .map(internal_input_value)
+                                .collect(),
+                        ),
+                        CanonicalValue::Array(
+                            node.arguments
+                                .iter()
+                                .map(|argument| {
+                                    CanonicalValue::Unsigned(proof_type_code(argument.ty))
+                                })
+                                .collect(),
+                        ),
+                    ])
+                })
+                .collect(),
+        ),
+    ]);
+    value
+        .encode_canonical()
+        .map(|bytes| Hash32::digest(&bytes))
+        .map_err(|_| ConsolidationError::Canonicalization)
+}
+
+fn compress_internal_slices(
+    slices: &[InternalSourceSlice],
+) -> Result<InternalGraphCompressionProposal, ConsolidationError> {
+    if slices.len() < 2 {
+        return Err(ConsolidationError::InsufficientEpisodes);
+    }
+    let width = slices[0].nodes.len();
+    let boundary_types = slices[0].boundary_types.clone();
+    if width < 2
+        || slices
+            .iter()
+            .any(|slice| slice.nodes.len() != width || slice.boundary_types != boundary_types)
+    {
+        return Err(ConsolidationError::IncompatibleGraphShapes);
+    }
+    let mut parameter_columns = Vec::<Vec<ProofDatum>>::new();
+    let mut pattern = Vec::with_capacity(width);
+    for node_index in 0..width {
+        let representative = &slices[0].nodes[node_index];
+        if slices.iter().skip(1).any(|slice| {
+            let node = &slice.nodes[node_index];
+            node.operation != representative.operation
+                || node.output_type != representative.output_type
+                || node.inputs != representative.inputs
+                || node.arguments.len() != representative.arguments.len()
+        }) {
+            return Err(ConsolidationError::IncompatibleOperation);
+        }
+        let arguments = (0..representative.arguments.len())
+            .map(|argument_index| {
+                let column = slices
+                    .iter()
+                    .map(|slice| slice.nodes[node_index].arguments[argument_index])
+                    .collect::<Vec<_>>();
+                anti_unify_argument(column, &mut parameter_columns)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        pattern.push(InternalGraphPatternNode {
+            operation: representative.operation.clone(),
+            output_type: representative.output_type,
+            inputs: representative.inputs.clone(),
+            arguments,
+        });
+    }
+    let bindings = slices
+        .iter()
+        .enumerate()
+        .map(|(episode_index, slice)| InternalEpisodeBindings {
+            episode: slice.episode,
+            selected_nodes: slice.selected_nodes.clone(),
+            boundary_nodes: slice.boundary_nodes.clone(),
+            values: parameter_columns
+                .iter()
+                .map(|column| column[episode_index])
+                .collect(),
+        })
+        .collect::<Vec<_>>();
+    let (uncompressed_nodes, compressed_nodes) =
+        internal_compression_costs(slices, &pattern, &boundary_types, &parameter_columns)?;
+    if compressed_nodes >= uncompressed_nodes {
+        return Err(ConsolidationError::NoCompression);
+    }
+    for (slice, binding) in slices.iter().zip(&bindings) {
+        if instantiate_internal_pattern(&pattern, binding)? != slice.nodes {
+            return Err(ConsolidationError::ReplayMismatch);
+        }
+    }
+    let source_episodes = slices.iter().map(|slice| slice.episode).collect::<Vec<_>>();
+    let semantic_hash = internal_proposal_hash(
+        &pattern,
+        &boundary_types,
+        &source_episodes,
+        uncompressed_nodes,
+        compressed_nodes,
+    )?;
+    Ok(InternalGraphCompressionProposal {
+        pattern,
+        boundary_types,
+        output: u32::try_from(width - 1).map_err(|_| ConsolidationError::Capacity)?,
+        bindings,
+        source_episodes,
+        uncompressed_nodes,
+        compressed_nodes,
+        verified_replays: u64::try_from(slices.len()).map_err(|_| ConsolidationError::Capacity)?,
+        semantic_hash,
+    })
+}
+
+fn instantiate_internal_pattern(
+    pattern: &[InternalGraphPatternNode],
+    bindings: &InternalEpisodeBindings,
+) -> Result<Vec<InternalSourceNode>, ConsolidationError> {
+    pattern
+        .iter()
+        .map(|node| {
+            let arguments = node
+                .arguments
+                .iter()
+                .map(|argument| match argument {
+                    GraphPatternArgument::Fixed(value) => Ok(*value),
+                    GraphPatternArgument::Parameter(index) => bindings
+                        .values
+                        .get(usize::try_from(*index).map_err(|_| ConsolidationError::Capacity)?)
+                        .copied()
+                        .ok_or(ConsolidationError::ReplayMismatch),
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(InternalSourceNode {
+                operation: node.operation.clone(),
+                output_type: node.output_type,
+                inputs: node.inputs.clone(),
+                arguments,
+            })
+        })
+        .collect()
+}
+
+fn bind_internal_parameters(
+    pattern: &[InternalGraphPatternNode],
+    nodes: &[InternalSourceNode],
+    parameter_types: &[ProofValueType],
+) -> Result<Option<Vec<ProofDatum>>, ConsolidationError> {
+    if pattern.len() != nodes.len() {
+        return Ok(None);
+    }
+    let mut values = vec![None; parameter_types.len()];
+    for (pattern_node, source_node) in pattern.iter().zip(nodes) {
+        if pattern_node.operation != source_node.operation
+            || pattern_node.output_type != source_node.output_type
+            || pattern_node.inputs != source_node.inputs
+            || pattern_node.arguments.len() != source_node.arguments.len()
+        {
+            return Ok(None);
+        }
+        for (pattern_argument, source_argument) in
+            pattern_node.arguments.iter().zip(&source_node.arguments)
+        {
+            match pattern_argument {
+                GraphPatternArgument::Fixed(expected) if expected != source_argument => {
+                    return Ok(None);
+                }
+                GraphPatternArgument::Fixed(_) => {}
+                GraphPatternArgument::Parameter(index) => {
+                    let index =
+                        usize::try_from(*index).map_err(|_| ConsolidationError::Capacity)?;
+                    if parameter_types.get(index) != Some(&source_argument.ty) {
+                        return Ok(None);
+                    }
+                    match values.get_mut(index) {
+                        Some(slot @ None) => *slot = Some(*source_argument),
+                        Some(Some(existing)) if existing == source_argument => {}
+                        Some(Some(_)) => return Ok(None),
+                        None => return Err(ConsolidationError::ReplayMismatch),
+                    }
+                }
+            }
+        }
+    }
+    values
+        .into_iter()
+        .collect::<Option<Vec<_>>>()
+        .map_or(Ok(None), |values| Ok(Some(values)))
+}
+
+fn internal_compression_costs(
+    slices: &[InternalSourceSlice],
+    pattern: &[InternalGraphPatternNode],
+    boundary_types: &[ProofValueType],
+    parameter_columns: &[Vec<ProofDatum>],
+) -> Result<(u64, u64), ConsolidationError> {
+    let uncompressed = slices.iter().try_fold(0_u64, |total, slice| {
+        let units = slice.nodes.iter().try_fold(0_u64, |node_total, node| {
+            node_total
+                .checked_add(1)
+                .and_then(|value| value.checked_add(u64::try_from(node.arguments.len()).ok()?))
+        })?;
+        total.checked_add(units)
+    });
+    let uncompressed = uncompressed.ok_or(ConsolidationError::Capacity)?;
+    let fixed_arguments = pattern.iter().try_fold(0_u64, |total, node| {
+        total.checked_add(
+            u64::try_from(
+                node.arguments
+                    .iter()
+                    .filter(|argument| matches!(argument, GraphPatternArgument::Fixed(_)))
+                    .count(),
+            )
+            .ok()?,
+        )
+    });
+    let fixed_arguments = fixed_arguments.ok_or(ConsolidationError::Capacity)?;
+    let parameters =
+        u64::try_from(parameter_columns.len()).map_err(|_| ConsolidationError::Capacity)?;
+    let boundaries =
+        u64::try_from(boundary_types.len()).map_err(|_| ConsolidationError::Capacity)?;
+    let episodes = u64::try_from(slices.len()).map_err(|_| ConsolidationError::Capacity)?;
+    let compressed = u64::try_from(pattern.len())
+        .map_err(|_| ConsolidationError::Capacity)?
+        .checked_add(fixed_arguments)
+        .and_then(|value| value.checked_add(parameters))
+        .and_then(|value| value.checked_add(boundaries))
+        .and_then(|value| {
+            value.checked_add(parameters.checked_add(boundaries)?.checked_mul(episodes)?)
+        })
+        .ok_or(ConsolidationError::Capacity)?;
+    Ok((uncompressed, compressed))
+}
+
+fn internal_proposal_hash(
+    pattern: &[InternalGraphPatternNode],
+    boundary_types: &[ProofValueType],
+    episodes: &[Hash32],
+    uncompressed: u64,
+    compressed: u64,
+) -> Result<Hash32, ConsolidationError> {
+    let value = CanonicalValue::Array(vec![
+        CanonicalValue::Text("cairn.consolidator.internal-compression.v1".to_owned()),
+        CanonicalValue::Array(
+            boundary_types
+                .iter()
+                .map(|ty| CanonicalValue::Unsigned(proof_type_code(*ty)))
+                .collect(),
+        ),
+        CanonicalValue::Array(
+            pattern
+                .iter()
+                .map(|node| {
+                    CanonicalValue::Array(vec![
+                        CanonicalValue::Text(node.operation.clone()),
+                        CanonicalValue::Unsigned(proof_type_code(node.output_type)),
+                        CanonicalValue::Array(
+                            node.inputs
+                                .iter()
+                                .copied()
+                                .map(internal_input_value)
+                                .collect(),
+                        ),
+                        CanonicalValue::Array(
+                            node.arguments
+                                .iter()
+                                .map(|argument| match argument {
+                                    GraphPatternArgument::Fixed(value) => {
+                                        CanonicalValue::Array(vec![
+                                            CanonicalValue::Unsigned(0),
+                                            CanonicalValue::Unsigned(proof_type_code(value.ty)),
+                                            CanonicalValue::Bytes(value.value.as_bytes().to_vec()),
+                                        ])
+                                    }
+                                    GraphPatternArgument::Parameter(index) => {
+                                        CanonicalValue::Array(vec![
+                                            CanonicalValue::Unsigned(1),
+                                            CanonicalValue::Unsigned(u64::from(*index)),
+                                        ])
+                                    }
+                                })
+                                .collect(),
+                        ),
+                    ])
+                })
+                .collect(),
+        ),
+        CanonicalValue::Array(
+            episodes
+                .iter()
+                .map(|episode| CanonicalValue::Bytes(episode.as_bytes().to_vec()))
+                .collect(),
+        ),
+        CanonicalValue::Unsigned(uncompressed),
+        CanonicalValue::Unsigned(compressed),
+    ]);
+    value
+        .encode_canonical()
+        .map(|bytes| Hash32::digest(&bytes))
+        .map_err(|_| ConsolidationError::Canonicalization)
+}
+
+fn internal_input_value(input: InternalPatternInput) -> CanonicalValue {
+    match input {
+        InternalPatternInput::Internal(index) => CanonicalValue::Array(vec![
+            CanonicalValue::Unsigned(0),
+            CanonicalValue::Unsigned(u64::from(index)),
+        ]),
+        InternalPatternInput::Boundary(index) => CanonicalValue::Array(vec![
+            CanonicalValue::Unsigned(1),
+            CanonicalValue::Unsigned(u64::from(index)),
+        ]),
+    }
 }
 
 const fn proof_type_code(value: ProofValueType) -> u64 {

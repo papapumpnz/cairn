@@ -710,3 +710,19 @@ Together with durable actual-use receipts, this makes the initial bounded
 self-compression loop reconstructable across process boundaries. Arbitrary
 internal-subgraph extraction across different proof shapes and sustained
 autonomous library growth remain unproven.
+
+## 27. Boundary-aware internal mechanism checkpoint
+
+The consolidator now discovers a repeated connected four-node causal fragment
+inside four differently shaped proof hosts. Incoming dependencies become one
+explicit typed boundary parameter, two varying values are anti-unified, and
+the independently verified description cost falls from 28 to 20 proof units.
+Whole-graph compression rejects the same cohort. A fifth changed host rebinds
+the learned pattern exactly, while operation, fixed-value, boundary, episode,
+source-content, and capacity negatives fail closed.
+
+This is the first measured internal helper-discovery result, but it covers only
+bounded contiguous topological windows. The proposal is not yet compiled to an
+executable RKL mechanism or promoted from measured runtime reuse. It therefore
+advances proof-subgraph compression without satisfying G0-G6, autonomous
+curriculum growth, general intelligence, or the ARC target.

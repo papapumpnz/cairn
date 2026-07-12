@@ -614,6 +614,17 @@ Compression remains a proposal until `CompressionVerifier` independently
 reconstructs every source and cost. Persisted proposals cannot replace their
 source DAGs.
 
+Consolidator semantics 2.2.0 adds `InternalGraphCompressionProposal`. Its
+pattern contains typed nodes whose inputs are local node references or explicit
+boundary-parameter references. `mine_internal_proof_subgraphs` exhaustively
+considers bounded contiguous topological windows, anti-unifies typed values,
+exactly reconstructs every source, and emits only positive-cost proposals.
+`match_internal_proof_subgraph` rebinds the pattern to an unseen host.
+`InternalCompressionVerifier` independently checks topology, selections,
+boundary edges and types, replay, costs, and semantic identity. This interface
+does not yet denote arbitrary non-contiguous subgraphs, an RKL definition, a
+persistent memory module, or a promotion certificate.
+
 ## 19. Planner interfaces
 
 ```rust

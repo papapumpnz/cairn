@@ -1,10 +1,11 @@
 //! Independent promotion boundary combining replay provenance and learning gates.
 
 use cairn_consolidator::{
-    EpisodeBindings, GraphCompressionProposal, GraphPatternArgument, GraphPatternNode, ProofGraph,
-    ProofNode,
+    EpisodeBindings, GraphCompressionProposal, GraphPatternArgument, GraphPatternNode,
+    InternalEpisodeBindings, InternalGraphCompressionProposal, InternalGraphPatternNode,
+    InternalPatternInput, ProofDatum, ProofGraph, ProofNode, ProofValueType,
 };
-use cairn_core::{CanonicalEncode, CollectionProcedureProblem, Hash32};
+use cairn_core::{CanonicalEncode, CanonicalValue, CollectionProcedureProblem, Hash32};
 use cairn_mechanism::{
     admit_persistent, AdmissionError, InventionEvidence, Mechanism, MechanismStatus,
 };
@@ -137,6 +138,166 @@ impl CompressionVerifier {
                 .map_err(|_| CompressionVerifyError::Capacity)?,
         })
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedInternalCompression {
+    proposal: Hash32,
+    source_episodes: BTreeSet<Hash32>,
+    uncompressed_nodes: u64,
+    compressed_nodes: u64,
+    replayed_sources: u64,
+}
+
+impl VerifiedInternalCompression {
+    #[must_use]
+    pub const fn proposal(&self) -> Hash32 {
+        self.proposal
+    }
+
+    #[must_use]
+    pub const fn source_episodes(&self) -> &BTreeSet<Hash32> {
+        &self.source_episodes
+    }
+
+    #[must_use]
+    pub const fn uncompressed_nodes(&self) -> u64 {
+        self.uncompressed_nodes
+    }
+
+    #[must_use]
+    pub const fn compressed_nodes(&self) -> u64 {
+        self.compressed_nodes
+    }
+
+    #[must_use]
+    pub const fn replayed_sources(&self) -> u64 {
+        self.replayed_sources
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum InternalCompressionVerifyError {
+    EmptyEvidence,
+    DuplicateEpisode,
+    SourceMismatch,
+    InvalidOutput,
+    InvalidTopology,
+    InvalidSelection,
+    BoundaryMismatch,
+    MissingBinding,
+    ReplayMismatch,
+    CostMismatch,
+    IdentityMismatch,
+    NoCompression,
+    Capacity,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct InternalCompressionVerifier;
+
+impl InternalCompressionVerifier {
+    /// Independently reconstruct every mined internal occurrence, including
+    /// source-local boundary edges, then recalculate representation costs and
+    /// semantic identity without using the producer's mining implementation.
+    ///
+    /// # Errors
+    ///
+    /// Rejects source/binding disagreement, malformed hosts, invalid selected
+    /// windows or boundary mappings, reconstruction mismatch, cost or identity
+    /// disagreement, and non-positive compression.
+    pub fn verify(
+        &self,
+        proposal: &InternalGraphCompressionProposal,
+        sources: &[ProofGraph],
+    ) -> Result<VerifiedInternalCompression, InternalCompressionVerifyError> {
+        if sources.is_empty() || proposal.pattern().is_empty() {
+            return Err(InternalCompressionVerifyError::EmptyEvidence);
+        }
+        let source_ids = sources
+            .iter()
+            .map(|source| source.episode)
+            .collect::<BTreeSet<_>>();
+        if source_ids.len() != sources.len() {
+            return Err(InternalCompressionVerifyError::DuplicateEpisode);
+        }
+        let proposal_ids = proposal
+            .source_episodes()
+            .iter()
+            .copied()
+            .collect::<BTreeSet<_>>();
+        if source_ids != proposal_ids || proposal.bindings().len() != sources.len() {
+            return Err(InternalCompressionVerifyError::SourceMismatch);
+        }
+        let mut raw_units = 0_u64;
+        for source in sources {
+            verifier_validate_graph(source)?;
+            let binding = proposal
+                .bindings()
+                .iter()
+                .find(|binding| binding.episode == source.episode)
+                .ok_or(InternalCompressionVerifyError::MissingBinding)?;
+            let occurrence = verifier_internal_occurrence(source, binding, proposal.pattern())?;
+            if occurrence.boundary_types != proposal.boundary_types() {
+                return Err(InternalCompressionVerifyError::BoundaryMismatch);
+            }
+            let reconstructed = verifier_instantiate_internal(proposal.pattern(), binding)?;
+            if occurrence.nodes != reconstructed
+                || proposal.output()
+                    != u32::try_from(reconstructed.len().saturating_sub(1))
+                        .map_err(|_| InternalCompressionVerifyError::Capacity)?
+            {
+                return Err(InternalCompressionVerifyError::ReplayMismatch);
+            }
+            raw_units = raw_units
+                .checked_add(verifier_internal_units(&occurrence.nodes)?)
+                .ok_or(InternalCompressionVerifyError::Capacity)?;
+        }
+        let compressed_units = verifier_internal_compressed_units(
+            proposal.pattern(),
+            proposal.boundary_types(),
+            proposal.bindings(),
+        )?;
+        if raw_units != proposal.uncompressed_nodes()
+            || compressed_units != proposal.compressed_nodes()
+        {
+            return Err(InternalCompressionVerifyError::CostMismatch);
+        }
+        if compressed_units >= raw_units {
+            return Err(InternalCompressionVerifyError::NoCompression);
+        }
+        let identity = verifier_internal_identity(
+            proposal.pattern(),
+            proposal.boundary_types(),
+            proposal.source_episodes(),
+            raw_units,
+            compressed_units,
+        )?;
+        if identity != proposal.semantic_hash() {
+            return Err(InternalCompressionVerifyError::IdentityMismatch);
+        }
+        Ok(VerifiedInternalCompression {
+            proposal: identity,
+            source_episodes: source_ids,
+            uncompressed_nodes: raw_units,
+            compressed_nodes: compressed_units,
+            replayed_sources: u64::try_from(sources.len())
+                .map_err(|_| InternalCompressionVerifyError::Capacity)?,
+        })
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct VerifierInternalNode {
+    operation: String,
+    output_type: ProofValueType,
+    inputs: Vec<InternalPatternInput>,
+    arguments: Vec<ProofDatum>,
+}
+
+struct VerifierInternalOccurrence {
+    nodes: Vec<VerifierInternalNode>,
+    boundary_types: Vec<ProofValueType>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -481,6 +642,323 @@ fn execute_collection(theory: &CheckedTheory, input: &[i64]) -> Option<BTreeSet<
             _ => None,
         })
         .collect()
+}
+
+fn verifier_validate_graph(graph: &ProofGraph) -> Result<(), InternalCompressionVerifyError> {
+    let output =
+        usize::try_from(graph.output).map_err(|_| InternalCompressionVerifyError::Capacity)?;
+    if graph.nodes.is_empty() || output >= graph.nodes.len() {
+        return Err(InternalCompressionVerifyError::InvalidOutput);
+    }
+    for (index, node) in graph.nodes.iter().enumerate() {
+        if node.operation.is_empty()
+            || node
+                .inputs
+                .iter()
+                .any(|input| usize::try_from(*input).map_or(true, |value| value >= index))
+        {
+            return Err(InternalCompressionVerifyError::InvalidTopology);
+        }
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_lines)] // Keep independent boundary reconstruction explicit.
+fn verifier_internal_occurrence(
+    graph: &ProofGraph,
+    binding: &InternalEpisodeBindings,
+    pattern: &[InternalGraphPatternNode],
+) -> Result<VerifierInternalOccurrence, InternalCompressionVerifyError> {
+    if binding.selected_nodes.len() != pattern.len()
+        || binding.selected_nodes.is_empty()
+        || binding
+            .selected_nodes
+            .windows(2)
+            .any(|pair| pair[0].checked_add(1) != Some(pair[1]))
+    {
+        return Err(InternalCompressionVerifyError::InvalidSelection);
+    }
+    let selected_map = binding
+        .selected_nodes
+        .iter()
+        .enumerate()
+        .map(|(local, source)| {
+            if usize::try_from(*source)
+                .ok()
+                .is_none_or(|source| source >= graph.nodes.len())
+            {
+                return Err(InternalCompressionVerifyError::InvalidSelection);
+            }
+            Ok((
+                *source,
+                u32::try_from(local).map_err(|_| InternalCompressionVerifyError::Capacity)?,
+            ))
+        })
+        .collect::<Result<BTreeMap<_, _>, _>>()?;
+    let mut expected_boundaries = BTreeSet::new();
+    for source in &binding.selected_nodes {
+        let source = usize::try_from(*source)
+            .map_err(|_| InternalCompressionVerifyError::InvalidSelection)?;
+        let node = graph
+            .nodes
+            .get(source)
+            .ok_or(InternalCompressionVerifyError::InvalidSelection)?;
+        expected_boundaries.extend(
+            node.inputs
+                .iter()
+                .filter(|input| !selected_map.contains_key(input))
+                .copied(),
+        );
+    }
+    let expected_boundaries = expected_boundaries.into_iter().collect::<Vec<_>>();
+    if expected_boundaries != binding.boundary_nodes {
+        return Err(InternalCompressionVerifyError::BoundaryMismatch);
+    }
+    let boundary_map = binding
+        .boundary_nodes
+        .iter()
+        .enumerate()
+        .map(|(slot, source)| {
+            Ok((
+                *source,
+                u32::try_from(slot).map_err(|_| InternalCompressionVerifyError::Capacity)?,
+            ))
+        })
+        .collect::<Result<BTreeMap<_, _>, InternalCompressionVerifyError>>()?;
+    let boundary_types = binding
+        .boundary_nodes
+        .iter()
+        .map(|source| {
+            graph
+                .nodes
+                .get(
+                    usize::try_from(*source)
+                        .map_err(|_| InternalCompressionVerifyError::Capacity)?,
+                )
+                .map(|node| node.output_type)
+                .ok_or(InternalCompressionVerifyError::BoundaryMismatch)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let nodes = binding
+        .selected_nodes
+        .iter()
+        .map(|source| {
+            let node = graph
+                .nodes
+                .get(
+                    usize::try_from(*source)
+                        .map_err(|_| InternalCompressionVerifyError::Capacity)?,
+                )
+                .ok_or(InternalCompressionVerifyError::InvalidSelection)?;
+            let inputs = node
+                .inputs
+                .iter()
+                .map(|input| {
+                    selected_map.get(input).copied().map_or_else(
+                        || {
+                            boundary_map
+                                .get(input)
+                                .copied()
+                                .map(InternalPatternInput::Boundary)
+                                .ok_or(InternalCompressionVerifyError::BoundaryMismatch)
+                        },
+                        |local| Ok(InternalPatternInput::Internal(local)),
+                    )
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(VerifierInternalNode {
+                operation: node.operation.clone(),
+                output_type: node.output_type,
+                inputs,
+                arguments: node.arguments.clone(),
+            })
+        })
+        .collect::<Result<Vec<_>, InternalCompressionVerifyError>>()?;
+    Ok(VerifierInternalOccurrence {
+        nodes,
+        boundary_types,
+    })
+}
+
+fn verifier_instantiate_internal(
+    pattern: &[InternalGraphPatternNode],
+    binding: &InternalEpisodeBindings,
+) -> Result<Vec<VerifierInternalNode>, InternalCompressionVerifyError> {
+    pattern
+        .iter()
+        .map(|node| {
+            let arguments = node
+                .arguments
+                .iter()
+                .map(|argument| match argument {
+                    GraphPatternArgument::Fixed(value) => Ok(*value),
+                    GraphPatternArgument::Parameter(index) => binding
+                        .values
+                        .get(
+                            usize::try_from(*index)
+                                .map_err(|_| InternalCompressionVerifyError::Capacity)?,
+                        )
+                        .copied()
+                        .ok_or(InternalCompressionVerifyError::MissingBinding),
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(VerifierInternalNode {
+                operation: node.operation.clone(),
+                output_type: node.output_type,
+                inputs: node.inputs.clone(),
+                arguments,
+            })
+        })
+        .collect()
+}
+
+fn verifier_internal_units(
+    nodes: &[VerifierInternalNode],
+) -> Result<u64, InternalCompressionVerifyError> {
+    nodes.iter().try_fold(0_u64, |total, node| {
+        total
+            .checked_add(1)
+            .and_then(|value| value.checked_add(u64::try_from(node.arguments.len()).ok()?))
+            .ok_or(InternalCompressionVerifyError::Capacity)
+    })
+}
+
+fn verifier_internal_compressed_units(
+    pattern: &[InternalGraphPatternNode],
+    boundary_types: &[ProofValueType],
+    bindings: &[InternalEpisodeBindings],
+) -> Result<u64, InternalCompressionVerifyError> {
+    let fixed_arguments = pattern.iter().try_fold(0_u64, |total, node| {
+        let count = node
+            .arguments
+            .iter()
+            .filter(|argument| matches!(argument, GraphPatternArgument::Fixed(_)))
+            .count();
+        total
+            .checked_add(
+                u64::try_from(count).map_err(|_| InternalCompressionVerifyError::Capacity)?,
+            )
+            .ok_or(InternalCompressionVerifyError::Capacity)
+    })?;
+    let parameters = bindings.first().map_or(0, |binding| binding.values.len());
+    let boundaries = boundary_types.len();
+    if bindings.iter().any(|binding| {
+        binding.values.len() != parameters || binding.boundary_nodes.len() != boundaries
+    }) {
+        return Err(InternalCompressionVerifyError::MissingBinding);
+    }
+    let parameters =
+        u64::try_from(parameters).map_err(|_| InternalCompressionVerifyError::Capacity)?;
+    let boundaries =
+        u64::try_from(boundaries).map_err(|_| InternalCompressionVerifyError::Capacity)?;
+    let episodes =
+        u64::try_from(bindings.len()).map_err(|_| InternalCompressionVerifyError::Capacity)?;
+    u64::try_from(pattern.len())
+        .map_err(|_| InternalCompressionVerifyError::Capacity)?
+        .checked_add(fixed_arguments)
+        .and_then(|value| value.checked_add(parameters))
+        .and_then(|value| value.checked_add(boundaries))
+        .and_then(|value| {
+            value.checked_add(parameters.checked_add(boundaries)?.checked_mul(episodes)?)
+        })
+        .ok_or(InternalCompressionVerifyError::Capacity)
+}
+
+fn verifier_internal_identity(
+    pattern: &[InternalGraphPatternNode],
+    boundary_types: &[ProofValueType],
+    episodes: &[Hash32],
+    uncompressed: u64,
+    compressed: u64,
+) -> Result<Hash32, InternalCompressionVerifyError> {
+    let value = CanonicalValue::Array(vec![
+        CanonicalValue::Text("cairn.consolidator.internal-compression.v1".to_owned()),
+        CanonicalValue::Array(
+            boundary_types
+                .iter()
+                .map(|ty| CanonicalValue::Unsigned(verifier_proof_type_code(*ty)))
+                .collect(),
+        ),
+        CanonicalValue::Array(
+            pattern
+                .iter()
+                .map(|node| {
+                    CanonicalValue::Array(vec![
+                        CanonicalValue::Text(node.operation.clone()),
+                        CanonicalValue::Unsigned(verifier_proof_type_code(node.output_type)),
+                        CanonicalValue::Array(
+                            node.inputs
+                                .iter()
+                                .copied()
+                                .map(verifier_internal_input_value)
+                                .collect(),
+                        ),
+                        CanonicalValue::Array(
+                            node.arguments
+                                .iter()
+                                .map(|argument| match argument {
+                                    GraphPatternArgument::Fixed(value) => {
+                                        CanonicalValue::Array(vec![
+                                            CanonicalValue::Unsigned(0),
+                                            CanonicalValue::Unsigned(verifier_proof_type_code(
+                                                value.ty,
+                                            )),
+                                            CanonicalValue::Bytes(value.value.as_bytes().to_vec()),
+                                        ])
+                                    }
+                                    GraphPatternArgument::Parameter(index) => {
+                                        CanonicalValue::Array(vec![
+                                            CanonicalValue::Unsigned(1),
+                                            CanonicalValue::Unsigned(u64::from(*index)),
+                                        ])
+                                    }
+                                })
+                                .collect(),
+                        ),
+                    ])
+                })
+                .collect(),
+        ),
+        CanonicalValue::Array(
+            episodes
+                .iter()
+                .map(|episode| CanonicalValue::Bytes(episode.as_bytes().to_vec()))
+                .collect(),
+        ),
+        CanonicalValue::Unsigned(uncompressed),
+        CanonicalValue::Unsigned(compressed),
+    ]);
+    value
+        .encode_canonical()
+        .map(|bytes| Hash32::digest(&bytes))
+        .map_err(|_| InternalCompressionVerifyError::IdentityMismatch)
+}
+
+fn verifier_internal_input_value(input: InternalPatternInput) -> CanonicalValue {
+    match input {
+        InternalPatternInput::Internal(index) => CanonicalValue::Array(vec![
+            CanonicalValue::Unsigned(0),
+            CanonicalValue::Unsigned(u64::from(index)),
+        ]),
+        InternalPatternInput::Boundary(index) => CanonicalValue::Array(vec![
+            CanonicalValue::Unsigned(1),
+            CanonicalValue::Unsigned(u64::from(index)),
+        ]),
+    }
+}
+
+const fn verifier_proof_type_code(value: ProofValueType) -> u64 {
+    match value {
+        ProofValueType::Boolean => 0,
+        ProofValueType::Integer => 1,
+        ProofValueType::Atom => 2,
+        ProofValueType::Entity => 3,
+        ProofValueType::EntitySet => 4,
+        ProofValueType::Relation => 5,
+        ProofValueType::Action => 6,
+        ProofValueType::Effect => 7,
+        ProofValueType::Mechanism => 8,
+    }
 }
 
 fn verifier_ancestral_subgraph(
