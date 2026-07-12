@@ -13,6 +13,7 @@ cairn-consolidator = { path = "../cairn-consolidator" }
 cairn-core = { path = "../cairn-core" }
 cairn-curriculum = { path = "../cairn-curriculum" }
 cairn-distill = { path = "../cairn-distill" }
+cairn-field = { path = "../cairn-field" }
 cairn-gridworld = { path = "../../adapters/cairn-gridworld" }
 cairn-invent = { path = "../cairn-invent" }
 cairn-mechanism = { path = "../cairn-mechanism" }
@@ -21,6 +22,7 @@ cairn-rkl = { path = "../cairn-rkl" }
 cairn-runtime = { path = "../cairn-runtime" }
 cairn-sequence = { path = "../../adapters/cairn-sequence" }
 cairn-skill = { path = "../cairn-skill" }
+cairn-theory = { path = "../cairn-theory" }
 cairn-vector = { path = "../../adapters/cairn-vector" }
 cairn-verifier = { path = "../cairn-verifier" }
 cairn-world = { path = "../cairn-world" }

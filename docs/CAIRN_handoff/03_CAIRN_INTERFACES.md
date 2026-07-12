@@ -1014,3 +1014,31 @@ refuted.
 hash, preventing cross-schema attribution ambiguity. Sequence and vector
 frontends expose adapter-only transition lowering into `LatentEpisode`; core
 cognition contains no modality checks.
+
+## 28. Relational layer mechanism contracts
+
+`cairn-theory` exposes `CoordinateLayer`, `LayerScene`, `LayerSetExpression`,
+`LayerRenderFrame`, `LayerMechanism`, `LayerLearningExample`, and
+`LayerMechanismLearner`. The canonical mechanism marker is
+`cairn.layer-mechanism.v1`; semantic identity excludes source modality and
+example content. `LayerLearningLimits` bounds candidate and point work, and
+ambiguous cardinality roles fail closed.
+
+`cairn-verifier::LayerMechanismVerifier` is the separately implemented exact
+reference path. Its opaque `VerifiedLayerMechanism` receipt commits to the
+mechanism and distinct experiences and exposes only replay measurements and
+support observations. It does not import the learner or runtime.
+
+`cairn-memory::LayerMechanismStore` requires two non-overlapping verifier
+cohorts before `Persistent`. `LayerSupportGeometry` accumulates observed
+dimensions, extents, layer cardinalities, background values, and rendered
+foreground values. `CognitionRuntime::propose_layer_renders_from_memory`
+returns untrusted proposals with mechanism identity; blank or inapplicable
+memory returns a typed `LayerMemoryRuntimeError`.
+
+`cairn-vector::VectorAdapter::learn_layer_mechanism` and
+`cairn-field::LayerFieldAdapter` are frontend bindings to the same theory. The
+finite-field adapter lowers non-background categorical values to disjoint
+coordinate layers and realizes an exact categorical output. It cannot represent
+overlapping source layers, so overlap-dependent mechanisms remain outside that
+adapter's support rather than being approximated.

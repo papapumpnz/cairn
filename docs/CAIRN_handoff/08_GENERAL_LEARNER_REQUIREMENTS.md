@@ -1004,3 +1004,28 @@ schemas are useful in interactive, sequence, and vector transition settings but
 are not currently applicable to the relational correspondence and rendering
 structures dominating ARC failures. No ARC observation changes the general
 core. General intelligence and 80% ARC remain unmet.
+
+## 41. Relational layer-construction checkpoint (pre-ARC freeze)
+
+The general core now learns bounded collection-valued mechanisms rather than
+only scalar value sets. From non-ARC vector scenes it independently induces
+input selection, union, intersection, or ordered difference over complete
+coordinate layers, categorical role binding, and preserve-source or
+tight-content rendering. No operation is named for ARC, raster grids, or a
+benchmark family.
+
+Two disjoint verified vector cohorts containing four experiences promote one
+union/preserve mechanism. Its support geometry records four changed extents,
+four foreground values, observed dimensions, point cardinalities, and
+backgrounds. The runtime reuses it on two held-out vector examples and the
+unchanged mechanism produces one exact categorical finite-field result. Blank
+memory proposes nothing; wrong rendering changes the output; and an independent
+verifier rejects altered truth. Intersection/tight rendering and ordered
+difference are learned in separate held-out tests; tied roles and work caps fail
+closed.
+
+This satisfies a narrow part of cross-domain representation and actual reuse.
+It does not establish broad relational correspondence, recursive/higher-order
+invention, raw entity perception, general intelligence, or an 80% ARC system.
+ARC accuracy remains an unmeasured hypothesis at this freeze and must be added
+only by the quarantined post-commit evaluation.

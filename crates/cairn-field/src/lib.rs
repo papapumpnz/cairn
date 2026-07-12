@@ -17,7 +17,8 @@ use cairn_reg::{
 };
 use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
 use cairn_theory::{
-    ContrastExample, ContrastPredicateInventor, LearnedEntitySelector,
+    ContrastExample, ContrastPredicateInventor, CoordinateLayer, LayerMechanism,
+    LayerMechanismLearner, LayerRender, LayerScene, LearnedEntitySelector,
     RelationalEntitySelectorInventor,
 };
 use std::cmp::Reverse;
@@ -820,6 +821,7 @@ pub enum LearnedStructuralFieldBinding {
     PartitionBroadcast(LearnedPartitionBroadcastBinding),
     PartitionExtraction(LearnedPartitionExtractionBinding),
     EntityFrameExtraction(LearnedEntityFrameExtractionBinding),
+    LayerMechanism(LayerMechanism),
 }
 
 impl LearnedStructuralFieldBinding {
@@ -837,8 +839,127 @@ impl LearnedStructuralFieldBinding {
             Self::EntityFrameExtraction(binding) => {
                 EntityFrameExtractionAdapter.predict(binding, input)
             }
+            Self::LayerMechanism(mechanism) => LayerFieldAdapter.predict(mechanism, input, 65_536),
         }
     }
+}
+
+/// Exact finite-field lowering and realization for modality-neutral learned
+/// coordinate-layer mechanisms.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct LayerFieldAdapter;
+
+impl LayerFieldAdapter {
+    /// Convert categorical non-background values into coordinate layers.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed or over-capacity fields and coordinate conversion.
+    pub fn lower(&self, input: &FiniteField) -> Result<LayerScene, FieldError> {
+        input.validate()?;
+        let background = modal_value(input);
+        let mut layers = BTreeMap::<i64, BTreeSet<Vec<i64>>>::new();
+        for (index, value) in input.values.iter().copied().enumerate() {
+            if value == background {
+                continue;
+            }
+            layers
+                .entry(value)
+                .or_default()
+                .insert(index_coordinates(index, &input.shape)?);
+        }
+        if layers.is_empty() {
+            return Err(FieldError::NoEntity);
+        }
+        Ok(LayerScene {
+            extents: input.shape.clone(),
+            background,
+            layers: layers
+                .into_iter()
+                .map(|(value, points)| CoordinateLayer { value, points })
+                .collect(),
+        })
+    }
+
+    /// Realize a verified coordinate render as an exact categorical field.
+    ///
+    /// # Errors
+    ///
+    /// Rejects invalid extents, out-of-bounds points, and cardinality overflow.
+    pub fn realize(&self, render: &LayerRender) -> Result<FiniteField, FieldError> {
+        let cardinality = render.extents.iter().try_fold(1_usize, |total, extent| {
+            total.checked_mul(usize::try_from(*extent).ok()?)
+        });
+        let mut values = vec![render.background; cardinality.ok_or(FieldError::Capacity)?];
+        for point in &render.points {
+            let index = coordinates_index(point, &render.extents)?;
+            let target = values.get_mut(index).ok_or(FieldError::OutOfBounds)?;
+            if *target != render.background && *target != render.foreground {
+                return Err(FieldError::ResidualConflict);
+            }
+            *target = render.foreground;
+        }
+        let field = FiniteField {
+            shape: render.extents.clone(),
+            values,
+        };
+        field.validate()?;
+        Ok(field)
+    }
+
+    /// Rebind and execute a learned layer mechanism on a current field.
+    ///
+    /// # Errors
+    ///
+    /// Rejects lowering, mechanism applicability, or realization failures.
+    pub fn predict(
+        &self,
+        mechanism: &LayerMechanism,
+        input: &FiniteField,
+        maximum_points: usize,
+    ) -> Result<FiniteField, FieldError> {
+        let scene = self.lower(input)?;
+        let render = LayerMechanismLearner
+            .execute(mechanism, &scene, maximum_points)
+            .map_err(|_| FieldError::Prediction)?;
+        self.realize(&render)
+    }
+}
+
+fn index_coordinates(mut index: usize, extents: &[u32]) -> Result<Vec<i64>, FieldError> {
+    let mut coordinates = vec![0_i64; extents.len()];
+    for axis in (0..extents.len()).rev() {
+        let extent = usize::try_from(extents[axis]).map_err(|_| FieldError::Capacity)?;
+        if extent == 0 {
+            return Err(FieldError::EmptyAxis);
+        }
+        coordinates[axis] = i64::try_from(index % extent).map_err(|_| FieldError::Capacity)?;
+        index /= extent;
+    }
+    if index != 0 {
+        return Err(FieldError::OutOfBounds);
+    }
+    Ok(coordinates)
+}
+
+fn coordinates_index(point: &[i64], extents: &[u32]) -> Result<usize, FieldError> {
+    if point.len() != extents.len() {
+        return Err(FieldError::Cardinality);
+    }
+    point
+        .iter()
+        .zip(extents)
+        .try_fold(0_usize, |index, (coordinate, extent)| {
+            let coordinate = usize::try_from(*coordinate).map_err(|_| FieldError::OutOfBounds)?;
+            let extent = usize::try_from(*extent).map_err(|_| FieldError::Capacity)?;
+            if coordinate >= extent {
+                return Err(FieldError::OutOfBounds);
+            }
+            index
+                .checked_mul(extent)
+                .and_then(|value| value.checked_add(coordinate))
+                .ok_or(FieldError::Capacity)
+        })
 }
 
 /// Exact frontend rebinding for selectors learned over generic relational

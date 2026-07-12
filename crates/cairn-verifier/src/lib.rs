@@ -1,5 +1,9 @@
 //! Independent promotion boundary combining replay provenance and learning gates.
 
+mod layer;
+
+pub use layer::*;
+
 use cairn_consolidator::{
     CompiledInternalMechanism, ConstructedInternalComposition, EpisodeBindings,
     FrontierNodeSelector, GraphCompressionProposal, GraphPatternArgument, GraphPatternNode,

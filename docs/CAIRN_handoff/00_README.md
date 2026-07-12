@@ -76,6 +76,15 @@ exact with zero incorrect. This is an honest flat result: the new world
 mechanisms transfer to sequence/vector observations but do not yet address
 ARC's dominant relational correspondence and rendering gaps.
 
+The next frozen core checkpoint learns coordinate-layer set construction and
+rendering from non-ARC vector-graphics examples. It represents complete entity
+collections, learns union, intersection, and ordered difference, binds roles by
+relational cardinality rather than literal values, and learns preserve-source
+versus tight-content rendering. A union mechanism promoted from two disjoint
+graphics cohorts transfers unchanged to categorical finite fields. This is a
+measured cross-domain mechanism-transfer result; its ARC effect is deliberately
+unknown until the committed evaluation gate is opened.
+
 The bounded developmental controller now persists only a canonical,
 content-free event journal. After process loss, a fresh controller must
 reproduce every choice and evidence transition before learned prerequisites,

@@ -5,8 +5,10 @@
 //! it can influence a prediction.
 
 mod latent_memory;
+mod layer_memory;
 
 pub use latent_memory::*;
+pub use layer_memory::*;
 
 use cairn_cas::{Cas, CasError, StoredArtifact};
 use cairn_consolidator::{

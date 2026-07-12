@@ -16,14 +16,16 @@ use cairn_core::{
 use cairn_invent::{InventionError, InventionProblem};
 use cairn_knowledge::KnowledgeBase;
 use cairn_memory::{
-    InternalMechanismStore, LatentMechanismStore, MechanismStore, MemoryAssistedInventor,
-    MemorySolveOutcome, ModuleStatus, ProceduralMechanismModule, ProceduralMechanismStore,
+    InternalMechanismStore, LatentMechanismStore, LayerMechanismStore, MechanismStore,
+    MemoryAssistedInventor, MemorySolveOutcome, ModuleStatus, ProceduralMechanismModule,
+    ProceduralMechanismStore,
 };
 use cairn_rkl::{
     ReferenceTheoryExecutor, RuntimeEnvironment, TheoryExecLimits, TheoryExecutionRequest, Type,
     TypeEnvironment, Value,
 };
 use cairn_skill::{Condition, Skill, SkillPlan, SkillPlanError, SkillPlanner};
+use cairn_theory::{LayerMechanismError, LayerMechanismLearner, LayerRender, LayerScene};
 use cairn_world::{
     ActionId, ActiveLatentInductionReport, ActiveLatentLimits, ActiveLatentWorldLearner,
     BeliefState, ExactPlanner, GoalObservation, GoalTheory, LatentEpisode, LatentError,
@@ -39,6 +41,7 @@ pub struct CognitionRuntime {
     procedures: ProceduralMechanismStore,
     internal_mechanisms: InternalMechanismStore,
     latent_mechanisms: LatentMechanismStore,
+    layer_mechanisms: LayerMechanismStore,
     knowledge: KnowledgeBase,
 }
 
@@ -191,6 +194,7 @@ pub enum CognitionError {
     Skill(SkillPlanError),
     InternalComposition(InternalCompositionRuntimeError),
     LatentMemory(LatentMemoryRuntimeError),
+    LayerMemory(LayerMemoryRuntimeError),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -212,6 +216,24 @@ pub struct LatentMemoryProposal {
     pub binding: LatentSchemaBinding,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum LayerMemoryRuntimeError {
+    NoVerifiedProposal,
+    Capacity,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LayerMemoryProposal {
+    pub mechanism: Hash32,
+    pub render: LayerRender,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LayerMemoryOutcome {
+    pub proposals: Vec<LayerMemoryProposal>,
+    pub persistent_mechanisms_attempted: u64,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum InternalCompositionRuntimeError {
     UnavailableMechanism(Hash32),
@@ -226,6 +248,7 @@ impl CognitionRuntime {
             procedures: ProceduralMechanismStore::new(),
             internal_mechanisms: InternalMechanismStore::new(),
             latent_mechanisms: LatentMechanismStore::new(),
+            layer_mechanisms: LayerMechanismStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -237,6 +260,7 @@ impl CognitionRuntime {
             procedures: ProceduralMechanismStore::new(),
             internal_mechanisms: InternalMechanismStore::new(),
             latent_mechanisms: LatentMechanismStore::new(),
+            layer_mechanisms: LayerMechanismStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -251,6 +275,7 @@ impl CognitionRuntime {
             procedures,
             internal_mechanisms: InternalMechanismStore::new(),
             latent_mechanisms: LatentMechanismStore::new(),
+            layer_mechanisms: LayerMechanismStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -264,6 +289,21 @@ impl CognitionRuntime {
             procedures: ProceduralMechanismStore::new(),
             internal_mechanisms: InternalMechanismStore::new(),
             latent_mechanisms,
+            layer_mechanisms: LayerMechanismStore::new(),
+            knowledge: KnowledgeBase::new(),
+        }
+    }
+
+    /// Construct a runtime with proof-gated graphics layer mechanisms and all
+    /// other memories empty.
+    #[must_use]
+    pub const fn with_layer_mechanism_memory(layer_mechanisms: LayerMechanismStore) -> Self {
+        Self {
+            memory: MechanismStore::new(),
+            procedures: ProceduralMechanismStore::new(),
+            internal_mechanisms: InternalMechanismStore::new(),
+            latent_mechanisms: LatentMechanismStore::new(),
+            layer_mechanisms,
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -302,6 +342,15 @@ impl CognitionRuntime {
 
     pub const fn latent_mechanism_memory_mut(&mut self) -> &mut LatentMechanismStore {
         &mut self.latent_mechanisms
+    }
+
+    #[must_use]
+    pub const fn layer_mechanism_memory(&self) -> &LayerMechanismStore {
+        &self.layer_mechanisms
+    }
+
+    pub const fn layer_mechanism_memory_mut(&mut self) -> &mut LayerMechanismStore {
+        &mut self.layer_mechanisms
     }
 
     #[must_use]
@@ -643,6 +692,60 @@ impl CognitionRuntime {
             bindings,
             proposals,
             persistent_schemas_attempted,
+        })
+    }
+
+    /// Execute every persistent coordinate-layer mechanism as a proposal on a
+    /// current exact scene. Acceptance still requires independent replay.
+    ///
+    /// # Errors
+    ///
+    /// Returns explicit absence or capacity failures. Inapplicable mechanisms
+    /// are rejected locally and cannot emit a render.
+    pub fn propose_layer_renders_from_memory(
+        &self,
+        scene: &LayerScene,
+        maximum_points: usize,
+    ) -> Result<LayerMemoryOutcome, CognitionError> {
+        if maximum_points == 0 {
+            return Err(CognitionError::LayerMemory(
+                LayerMemoryRuntimeError::Capacity,
+            ));
+        }
+        let mut persistent_mechanisms_attempted = 0_u64;
+        let mut proposals = Vec::new();
+        for mechanism in self.layer_mechanisms.persistent_mechanisms() {
+            persistent_mechanisms_attempted = persistent_mechanisms_attempted.saturating_add(1);
+            match LayerMechanismLearner.execute(mechanism, scene, maximum_points) {
+                Ok(render) => proposals.push(LayerMemoryProposal {
+                    mechanism: mechanism.semantic_hash().map_err(|_| {
+                        CognitionError::LayerMemory(LayerMemoryRuntimeError::Capacity)
+                    })?,
+                    render,
+                }),
+                Err(
+                    LayerMechanismError::AmbiguousRole
+                    | LayerMechanismError::EmptyConstruction
+                    | LayerMechanismError::InvalidScene
+                    | LayerMechanismError::DimensionMismatch
+                    | LayerMechanismError::PointOutOfBounds
+                    | LayerMechanismError::DuplicateLayerValue,
+                ) => {}
+                Err(_) => {
+                    return Err(CognitionError::LayerMemory(
+                        LayerMemoryRuntimeError::Capacity,
+                    ));
+                }
+            }
+        }
+        if proposals.is_empty() {
+            return Err(CognitionError::LayerMemory(
+                LayerMemoryRuntimeError::NoVerifiedProposal,
+            ));
+        }
+        Ok(LayerMemoryOutcome {
+            proposals,
+            persistent_mechanisms_attempted,
         })
     }
 

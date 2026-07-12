@@ -14,6 +14,7 @@ cairn-core = { path = "../cairn-core" }
 cairn-invent = { path = "../cairn-invent" }
 cairn-mechanism = { path = "../cairn-mechanism" }
 cairn-rkl = { path = "../cairn-rkl" }
+cairn-theory = { path = "../cairn-theory" }
 cairn-verifier = { path = "../cairn-verifier" }
 cairn-world = { path = "../cairn-world" }
 

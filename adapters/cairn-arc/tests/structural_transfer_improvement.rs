@@ -5,8 +5,15 @@ use cairn_arc::{
 use cairn_distill::{DistillationVerifier, TeacherPacketCompiler};
 use cairn_field::{FiniteField, LearnedStructuralFieldBinding, PartitionBroadcastLearner};
 use cairn_invent::{InventionError, InventionLimits};
+use cairn_memory::LayerMechanismStore;
 use cairn_rkl::ExecLimits;
 use cairn_runtime::CognitionRuntime;
+use cairn_theory::{
+    CoordinateLayer, LayerLearningExample, LayerLearningLimits, LayerRender, LayerScene,
+};
+use cairn_vector::VectorAdapter;
+use cairn_verifier::LayerMechanismVerifier;
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
@@ -186,6 +193,29 @@ fn complete_arc400_structural_transfer_ablation() {
     assert_eq!(report.incorrect_tasks, 0);
 }
 
+#[test]
+#[ignore = "frozen first-40 all-structural-mechanism ablation; run explicitly"]
+fn frozen_arc40_all_structural_mechanisms() {
+    let corpus =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../datasets/arc-agi-1-v1.0.2/training");
+    let report = run_training_batch_with_runtime_and_structural_bindings(
+        &corpus,
+        40,
+        limits(),
+        ExecLimits::default(),
+        &CognitionRuntime::new(),
+        &structural_bindings(),
+    )
+    .expect("frozen ARC-40 structural transfer");
+    fs::write(
+        "/tmp/cairn_arc40_layer_structural_20260713.json",
+        serde_json::to_string_pretty(&report).expect("report JSON"),
+    )
+    .expect("write report");
+    assert!(report.exact_tasks >= 18);
+    assert_eq!(report.incorrect_tasks, 0);
+}
+
 use cairn_field::FieldError;
 
 fn non_arc_binding() -> cairn_field::LearnedPartitionBroadcastBinding {
@@ -233,7 +263,93 @@ fn structural_bindings() -> Vec<LearnedStructuralFieldBinding> {
         LearnedStructuralFieldBinding::PartitionBroadcast(non_arc_binding()),
         LearnedStructuralFieldBinding::PartitionExtraction(non_arc_extraction_binding()),
         LearnedStructuralFieldBinding::EntityFrameExtraction(non_arc_entity_frame_binding()),
+        LearnedStructuralFieldBinding::LayerMechanism(non_arc_layer_mechanism()),
     ]
+}
+
+fn non_arc_layer_mechanism() -> cairn_theory::LayerMechanism {
+    let first = [
+        graphics_union_example(9, 2, 11, 30),
+        graphics_union_example(13, 4, 17, 50),
+    ];
+    let second = [
+        graphics_union_example(16, 6, 23, 70),
+        graphics_union_example(20, 8, 31, 90),
+    ];
+    let mechanism = VectorAdapter
+        .learn_layer_mechanism(&first, LayerLearningLimits::default())
+        .expect("non-ARC layer curriculum");
+    assert_eq!(
+        VectorAdapter
+            .learn_layer_mechanism(&second, LayerLearningLimits::default())
+            .expect("independent non-ARC layer curriculum"),
+        mechanism
+    );
+    let mut store = LayerMechanismStore::new();
+    for examples in [&first[..], &second[..]] {
+        let receipt = LayerMechanismVerifier
+            .verify(&mechanism, examples, 65_536)
+            .expect("independent graphics verification");
+        store
+            .record_verified_cohort(&mechanism, receipt)
+            .expect("graphics promotion evidence");
+    }
+    let persistent = store
+        .persistent_mechanisms()
+        .next()
+        .expect("persistent graphics mechanism")
+        .clone();
+    persistent
+}
+
+fn graphics_union_example(
+    extent: u32,
+    shift: i64,
+    minimum_value: i64,
+    maximum_value: i64,
+) -> LayerLearningExample {
+    let minimum = coordinate_points(&[
+        (shift, shift),
+        (shift + 1, shift + 1),
+        (shift + 2, shift + 2),
+    ]);
+    let maximum = coordinate_points(&[
+        (shift - 1, shift),
+        (shift, shift),
+        (shift + 1, shift + 1),
+        (shift + 3, shift + 1),
+        (shift + 4, shift + 2),
+    ]);
+    let union = minimum.union(&maximum).cloned().collect();
+    LayerLearningExample {
+        scene: LayerScene {
+            extents: vec![extent, extent],
+            background: -1,
+            layers: vec![
+                CoordinateLayer {
+                    value: maximum_value,
+                    points: maximum,
+                },
+                CoordinateLayer {
+                    value: minimum_value,
+                    points: minimum,
+                },
+            ],
+        },
+        expected: LayerRender {
+            extents: vec![extent, extent],
+            background: -1,
+            foreground: maximum_value,
+            points: union,
+        },
+    }
+}
+
+fn coordinate_points(values: &[(i64, i64)]) -> BTreeSet<Vec<i64>> {
+    values
+        .iter()
+        .map(|(row, column)| vec![*row, *column])
+        .collect()
 }
 
 fn dashboard(

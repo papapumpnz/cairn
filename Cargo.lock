@@ -42,6 +42,9 @@ dependencies = [
  "cairn-rkl",
  "cairn-runtime",
  "cairn-teacher-spool",
+ "cairn-theory",
+ "cairn-vector",
+ "cairn-verifier",
  "serde",
  "serde_json",
 ]
@@ -55,6 +58,7 @@ dependencies = [
  "cairn-core",
  "cairn-curriculum",
  "cairn-distill",
+ "cairn-field",
  "cairn-gridworld",
  "cairn-invent",
  "cairn-mechanism",
@@ -63,6 +67,7 @@ dependencies = [
  "cairn-runtime",
  "cairn-sequence",
  "cairn-skill",
+ "cairn-theory",
  "cairn-vector",
  "cairn-verifier",
  "cairn-world",
@@ -227,6 +232,7 @@ dependencies = [
  "cairn-invent",
  "cairn-mechanism",
  "cairn-rkl",
+ "cairn-theory",
  "cairn-verifier",
  "cairn-world",
 ]
@@ -264,6 +270,7 @@ dependencies = [
  "cairn-memory",
  "cairn-rkl",
  "cairn-skill",
+ "cairn-theory",
  "cairn-world",
 ]
 
@@ -315,6 +322,7 @@ dependencies = [
  "cairn-core",
  "cairn-invent",
  "cairn-rkl",
+ "cairn-theory",
  "cairn-world",
 ]
 
@@ -328,6 +336,7 @@ dependencies = [
  "cairn-mechanism",
  "cairn-proof",
  "cairn-rkl",
+ "cairn-theory",
  "cairn-world",
 ]
 

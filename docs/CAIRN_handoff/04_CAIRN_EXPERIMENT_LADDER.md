@@ -698,3 +698,24 @@ demonstration, reduce candidate executions or improve exact solves, and cause
 no false acceptance. Complete ARC pairs, identifiers, and structurally identical
 teacher puzzles are forbidden. Run the same ablation with transferred artifacts
 removed to establish causal contribution.
+
+## G5-LAYER: frozen relational construction and renderer transfer
+
+Freeze four non-ARC vector-graphics learning examples in two independently
+verified cohorts before opening the ARC gate. Vary extents, positions,
+categorical values, and point cardinalities. Require the learner to recover the
+same set expression, role bindings, foreground binding, and render frame in
+both cohorts without a named graphics or grid operation.
+
+Acceptance requires: provisional status after one cohort; persistence after
+two disjoint cohorts; exact changed-vector replay; exact transfer through a
+finite-field frontend; explicit support geometry; no blank-memory proposal; and
+failure under wrong-renderer and changed-expected ablations. Separately require
+the same learner to induce intersection/tight-content and ordered difference,
+and reject tied roles and capacity exhaustion.
+
+After implementation, tests, documentation, and the ARC harness are committed,
+run first-40 and complete-400 ARC training ablations once. Compare to the frozen
+18/40 and 36/400 baselines. Do not change the grammar, bindings, or thresholds
+in response to the result. Preserve every per-case terminal state and report a
+flat or negative result as evidence about applicability.

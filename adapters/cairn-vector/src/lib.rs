@@ -3,6 +3,10 @@
 use cairn_core::{CollectionDemonstration, CollectionProcedureProblem};
 use cairn_invent::{BindingExample, InventionLimits, InventionProblem};
 use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
+use cairn_theory::{
+    LayerLearningExample, LayerLearningLimits, LayerMechanism, LayerMechanismError,
+    LayerMechanismLearner,
+};
 use cairn_world::{ActionId, LatentEpisode, TransitionObservation, WorldState};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -32,6 +36,20 @@ pub struct VectorPointTransition {
 pub struct VectorAdapter;
 
 impl VectorAdapter {
+    /// Learn a modality-neutral coordinate-layer construction and renderer from
+    /// exact vector-scene examples. The adapter supplies no expression label.
+    ///
+    /// # Errors
+    ///
+    /// Returns exact scene, capacity, ambiguity, or unrealizability failures.
+    pub fn learn_layer_mechanism(
+        &self,
+        examples: &[LayerLearningExample],
+        limits: LayerLearningLimits,
+    ) -> Result<LayerMechanism, LayerMechanismError> {
+        LayerMechanismLearner.learn(examples, limits)
+    }
+
     /// Lower a vector point trace into the common visible transition protocol.
     #[must_use]
     pub fn lower_transition_episode(&self, transitions: &[VectorPointTransition]) -> LatentEpisode {

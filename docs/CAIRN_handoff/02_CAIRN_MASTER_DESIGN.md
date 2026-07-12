@@ -2277,3 +2277,30 @@ same cognition contracts on finite-field, interactive, and vector-graphics
 domains. ARC remains an adapter and quarantined benchmark. Coordinate work
 through proof-carrying artifacts while enforcing CPU-only execution,
 deterministic replay, source-linked knowledge, and independent acceptance.
+
+## 26. Learned relational layer construction and rendering
+
+The first implementation of persistent correspondence/rendering learning uses
+the modality-neutral `LayerScene` and `LayerMechanism` contracts. A scene is an
+N-dimensional extent, background value, and a bounded collection of categorical
+coordinate layers. The learned mechanism contains a role-bound set expression,
+a foreground role, and an explicit render frame. The initial bounded reference
+grammar is input selection, union, intersection, and ordered difference over
+unique minimum/maximum-cardinality roles; render frames are preserve-source and
+tight-content. These are universal finite-set and coordinate semantics, not ARC
+operations.
+
+The producer enumerates the finite grammar deterministically and accepts only a
+unique exact mechanism over every learning example. The independent verifier
+reimplements role selection, set algebra, coordinate bounds, normalization,
+and replay. Persistent promotion requires two disjoint independently verified
+cohorts and records dimensions, extents, layer cardinalities, backgrounds, and
+foregrounds as empirical support—not universal claims. Runtime memory only
+proposes rendered candidates; it cannot verify them or emit accepted answers.
+
+The frozen non-ARC experiment learns all three set constructions, rejects role
+ties and resource caps, promotes union/preserve from four vector experiences,
+replays two changed vector cases, and transfers it unchanged to a finite-field
+frontend. Blank-memory, wrong-renderer, and changed-expected ablations fail as
+required. Recursive correspondence, overlapping categorical field layers,
+geometric transforms, and learned object perception remain unresolved.

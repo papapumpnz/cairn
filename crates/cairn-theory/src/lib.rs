@@ -1,5 +1,9 @@
 //! Environment-neutral induction of theory components from binding evidence.
 
+mod layer;
+
+pub use layer::*;
+
 use cairn_invent::{
     BindingExample, DefinitionInventor, InventionError, InventionLimits, InventionOutcome,
     InventionProblem,

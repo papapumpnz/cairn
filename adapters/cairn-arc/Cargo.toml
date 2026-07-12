@@ -33,6 +33,9 @@ serde_json = { version = "=1.0.133", default-features = false, features = ["std"
 cairn-curriculum = { path = "../../crates/cairn-curriculum" }
 cairn-distill = { path = "../../crates/cairn-distill" }
 cairn-teacher-spool = { path = "../../crates/cairn-teacher-spool" }
+cairn-theory = { path = "../../crates/cairn-theory" }
+cairn-vector = { path = "../cairn-vector" }
+cairn-verifier = { path = "../../crates/cairn-verifier" }
 cairn-memory = { path = "../../crates/cairn-memory" }
 cairn-mechanism = { path = "../../crates/cairn-mechanism" }
 
