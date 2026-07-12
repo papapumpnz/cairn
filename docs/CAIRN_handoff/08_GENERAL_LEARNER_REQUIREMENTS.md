@@ -397,7 +397,7 @@ then constructs and consolidates successively deeper mechanisms by verified
 composition. Under a bound that prevents fresh synthesis, capability rises
 from 1/3 to 2/3 to 3/3 while the available library grows from three to five
 mechanisms and executable composition depth rises from one to four. Marginal
-candidate work per acquisition falls from 24 to 20, demonstrations from ten to
+candidate work per acquisition falls from 24 to 16, demonstrations from ten to
 six, and observed same-task median CPU time from 2.284 seconds to 0.916
 milliseconds. Previously learned behavior remains 3/3 exact; an unrelated
 nonlinear law falls back to fresh search with zero measured negative transfer.
@@ -767,3 +767,25 @@ by making measured reuse survive process loss without serialized authority. It
 does not establish sustained long-curriculum improvement, arbitrary mechanism
 invention, RKL world execution, or the remaining G0-G6/general-intelligence
 requirements.
+
+## 30. Autonomous multi-mechanism curriculum checkpoint
+
+The curriculum runtime now maintains learned prerequisite roles and chooses the
+highest-valued eligible support gap rather than consuming a scripted stage
+order. In the frozen non-ARC integration, it selects four different hidden-law
+families, learns four canonical mechanisms, crosses two CAS restarts, and then
+unlocks a composition objective whose first two prerequisites were learned.
+
+Every family uses identical source and held-out geometry and independently
+reduces candidate windows 18 to nine, examples four to one, and proof units 28
+to four. Aggregate prior-task retention is 6/6 and unrelated negative transfer
+is 0/10. Separate same-task G6 composition evidence remains the basis for the
+marginal 24-to-16 candidate and ten-to-six example reduction; differing task
+sizes are not used to claim marginal improvement.
+
+Counterexample policy is executable: one distinct verified counterexample
+quarantines and a second deprecates; duplicate or unverified evidence is
+rejected. The finite objective set is still authored by a generator, composition
+is only selected rather than executed in this new integration, and deprecation
+status is not restart persistent. This advances G6 without completing open-ended
+curriculum generation or broad general intelligence.

@@ -825,3 +825,21 @@ Metrics add teacher packets accepted/rejected, claims and procedures verified,
 mechanisms anti-unified, teacher-independent cases, cross-agent and cross-domain
 reuse, duplicate work avoided, propagation latency, revocations, and negative
 transfer. Origin is permanent metadata.
+
+## 24. Autonomous developmental curriculum contracts
+
+`AutonomousCurriculum` owns only content-free developmental state. Each
+`DevelopmentalObjective` declares an opaque ID, learning axis, produced
+mechanism role, prerequisite roles, hypothesis count, transfer estimate, action
+cost, and risk. `select_next` uses deterministic score and ID tie-breaking and
+returns explicit complete, capacity, blocked-prerequisite, and outstanding-work
+states.
+
+`DevelopmentalOutcome` contains verifier status, mechanism evidence identity,
+held-out count, memory-off/on candidate and example work, retention, and
+negative transfer. It contains no observation or answer. Only verified,
+transfer-tested, reducing outcomes update active support. One distinct verified
+counterexample quarantines; two deprecate. `SustainedLearningGate` requires at
+least three growing phases, strict within-phase candidate/sample/proof
+reduction, capability non-regression, complete retention, negative transfer
+below 2%, and restart evidence.

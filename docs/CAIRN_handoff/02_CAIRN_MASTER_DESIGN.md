@@ -67,6 +67,15 @@ remining, recompilation, independent replay, and a newly issued certificate.
 Arbitrary graph-edit anti-unification, RKL lowering for operations with explicit
 semantics, and optimized compiled-module snapshots remain open.
 
+The developmental controller is now stateful rather than a benchmark-scripted
+loop. It selects eligible support gaps by information, transfer, underuse, cost,
+and risk; learned prerequisites unlock composition objectives; verified
+counterexamples quarantine and deprecate mechanisms. A frozen non-ARC run grows
+four distinct mechanisms across two CAS restarts with repeated memory-off
+reductions, complete retention, and zero unrelated transfer. The finite
+objective set remains generator-authored, so this is bounded autonomy rather
+than open-ended self-generated experience.
+
 The architecture deliberately avoids two failed patterns:
 
 ```text

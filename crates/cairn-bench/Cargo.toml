@@ -8,6 +8,8 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+cairn-cas = { path = "../cairn-cas" }
+cairn-consolidator = { path = "../cairn-consolidator" }
 cairn-core = { path = "../cairn-core" }
 cairn-curriculum = { path = "../cairn-curriculum" }
 cairn-distill = { path = "../cairn-distill" }

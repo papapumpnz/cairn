@@ -30,11 +30,12 @@ negative transfer.
     available mechanisms:                 3 -> 4 -> 5
     executable composition depth:         1 -> 2 -> 4
     base candidates per mechanism:                 24
-    final composition candidates:                  20
+    depth-two composition candidates:              18
+    final composition candidates:                  16
     base examples per mechanism:                   10
     final composition examples:                     6
-    observed fresh CPU median:          2,283,765,571 ns
-    observed composition CPU median:          915,116 ns
+    observed fresh CPU median:          3,800,016,599 ns
+    observed composition CPU median:        1,183,829 ns
     retained base behavior:                       3/3
     unrelated negative transfers:                   0
     primitive skill traces:                         2

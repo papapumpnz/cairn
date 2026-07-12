@@ -358,6 +358,12 @@ reloaded, the proposal and mechanism are reconstructed identically, both uses
 are independently remeasured, and the second receipt gives a fresh store a new
 promotion certificate. See
 [PERSISTED_INTERNAL_MECHANISM_LEARNING.md](docs/experiments/PERSISTED_INTERNAL_MECHANISM_LEARNING.md).
+Developmental order is no longer purely scripted by the G6 test. A stateful
+content-free controller autonomously selects four hidden-law families, learns
+four mechanisms across two CAS restarts with repeated fixed memory-off gains,
+retains every prior task, rejects unrelated transfer, and then unlocks a
+composition objective from learned prerequisites. See
+[G6_AUTONOMOUS_RESTART_CURRICULUM.md](docs/experiments/G6_AUTONOMOUS_RESTART_CURRICULUM.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding,
 arbitrary non-contiguous internal-subgraph mining and RKL lowering,

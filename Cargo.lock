@@ -50,6 +50,8 @@ dependencies = [
 name = "cairn-bench"
 version = "0.1.0"
 dependencies = [
+ "cairn-cas",
+ "cairn-consolidator",
  "cairn-core",
  "cairn-curriculum",
  "cairn-distill",
