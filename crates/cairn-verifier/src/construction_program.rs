@@ -15,6 +15,11 @@ pub struct VerifiedEntityConstructionProgram {
     experiences: BTreeSet<Hash32>,
     replayed_entities: u64,
     replayed_points: u64,
+    observed_dimensions: BTreeSet<usize>,
+    observed_extents: BTreeSet<Vec<u32>>,
+    observed_entity_counts: BTreeSet<usize>,
+    observed_point_cardinalities: BTreeSet<Vec<usize>>,
+    observed_values: BTreeSet<i64>,
 }
 
 impl VerifiedEntityConstructionProgram {
@@ -33,6 +38,26 @@ impl VerifiedEntityConstructionProgram {
     #[must_use]
     pub const fn replayed_points(&self) -> u64 {
         self.replayed_points
+    }
+    #[must_use]
+    pub const fn observed_dimensions(&self) -> &BTreeSet<usize> {
+        &self.observed_dimensions
+    }
+    #[must_use]
+    pub const fn observed_extents(&self) -> &BTreeSet<Vec<u32>> {
+        &self.observed_extents
+    }
+    #[must_use]
+    pub const fn observed_entity_counts(&self) -> &BTreeSet<usize> {
+        &self.observed_entity_counts
+    }
+    #[must_use]
+    pub const fn observed_point_cardinalities(&self) -> &BTreeSet<Vec<usize>> {
+        &self.observed_point_cardinalities
+    }
+    #[must_use]
+    pub const fn observed_values(&self) -> &BTreeSet<i64> {
+        &self.observed_values
     }
 }
 
@@ -77,6 +102,11 @@ impl EntityConstructionProgramVerifier {
             experiences: BTreeSet::new(),
             replayed_entities: 0,
             replayed_points: 0,
+            observed_dimensions: BTreeSet::new(),
+            observed_extents: BTreeSet::new(),
+            observed_entity_counts: BTreeSet::new(),
+            observed_point_cardinalities: BTreeSet::new(),
+            observed_values: BTreeSet::new(),
         };
         for example in examples {
             if !receipt.experiences.insert(experience_hash(example)?) {
@@ -107,6 +137,26 @@ impl EntityConstructionProgramVerifier {
                     .map_err(|_| EntityConstructionProgramVerifyError::Capacity)?,
                 )
                 .ok_or(EntityConstructionProgramVerifyError::Capacity)?;
+            receipt
+                .observed_dimensions
+                .insert(example.source.extents.len());
+            receipt
+                .observed_extents
+                .insert(example.source.extents.clone());
+            receipt
+                .observed_entity_counts
+                .insert(example.source.entities.len());
+            receipt.observed_point_cardinalities.insert(
+                example
+                    .source
+                    .entities
+                    .iter()
+                    .map(|entity| entity.points.len())
+                    .collect(),
+            );
+            receipt
+                .observed_values
+                .extend(example.source.entities.iter().map(|entity| entity.value));
         }
         Ok(receipt)
     }

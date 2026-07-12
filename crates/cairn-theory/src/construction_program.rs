@@ -1,11 +1,11 @@
 use crate::{
-    EntityConstruction, EntityConstructionProvenance, EntityGeometryRender, EntityGeometryScene,
-    PointConstructionProvenance, RenderedEntity,
+    EntityConstruction, EntityConstructionProvenance, EntityCorrespondenceExample,
+    EntityGeometryRender, EntityGeometryScene, PointConstructionProvenance, RenderedEntity,
 };
 use cairn_core::{CanonicalEncode, CanonicalValue, Hash32};
 use cairn_invent::{
     BindingExample, DefinitionInventor, DefinitionProposal, InventionError, InventionLimits,
-    InventionProblem,
+    InventionProblem, UnorderedMappingEpisode, UnorderedMappingProblem,
 };
 use cairn_rkl::{Binder, ExecLimits, IntRange, RuntimeEnvironment, Type, Value, VarName};
 use std::collections::{BTreeMap, BTreeSet};
@@ -86,6 +86,133 @@ pub enum EntityConstructionProgramError {
 pub struct EntityConstructionProgramSynthesizer;
 
 impl EntityConstructionProgramSynthesizer {
+    /// Invent directly from unordered source/output entity-point sets. Entity
+    /// values establish only the generic preserved-attribute relation; no point
+    /// correspondence or v1 mechanism is supplied.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed/ambiguous entities, bounded invention failure, and any
+    /// jointly reconstructed render mismatch.
+    #[allow(clippy::too_many_lines)] // Keeps the bounded reference pipeline explicit.
+    pub fn synthesize_unordered(
+        &self,
+        examples: &[EntityCorrespondenceExample],
+        limits: InventionLimits,
+    ) -> Result<EntityConstructionProgramReport, EntityConstructionProgramError> {
+        if examples.is_empty() {
+            return Err(EntityConstructionProgramError::EmptyTraces);
+        }
+        let dimensions = examples[0].source.extents.len();
+        if dimensions == 0
+            || examples.iter().any(|example| {
+                example.source.extents.len() != dimensions
+                    || example.expected.extents.len() != dimensions
+            })
+        {
+            return Err(EntityConstructionProgramError::UnsupportedDimensions);
+        }
+        for example in examples {
+            validate_unordered_example(example)?;
+        }
+        let extent_parameters = extent_parameters(dimensions);
+        let mut output_extents = Vec::with_capacity(dimensions);
+        let mut candidates_evaluated = 0_u64;
+        for axis in 0..dimensions {
+            let demonstrations = examples
+                .iter()
+                .map(|example| {
+                    Ok(BindingExample {
+                        inputs: scene_environment(&example.source, false)?,
+                        output: Value::Int(i64::from(example.expected.extents[axis])),
+                    })
+                })
+                .collect::<Result<Vec<_>, EntityConstructionProgramError>>()?;
+            let outcome = DefinitionInventor
+                .invent(&InventionProblem {
+                    definition_name: format!("invented_output_extent_{axis}"),
+                    parameters: extent_parameters.clone(),
+                    return_type: scalar_type(),
+                    literals: vec![Value::Int(0), Value::Int(1)],
+                    demonstrations,
+                    limits,
+                })
+                .map_err(EntityConstructionProgramError::Invention)?;
+            candidates_evaluated = candidates_evaluated
+                .checked_add(outcome.proposal.candidates_evaluated)
+                .ok_or(EntityConstructionProgramError::Capacity)?;
+            output_extents.push(outcome.proposal);
+        }
+        let mut output_coordinates = Vec::with_capacity(dimensions);
+        let mut point_examples = 0_usize;
+        for axis in 0..dimensions {
+            let mut episodes = Vec::new();
+            for example in examples {
+                let expected = example
+                    .expected
+                    .entities
+                    .iter()
+                    .map(|entity| (entity.value, entity))
+                    .collect::<BTreeMap<_, _>>();
+                for entity in &example.source.entities {
+                    let target = expected
+                        .get(&entity.value)
+                        .ok_or(EntityConstructionProgramError::InvalidTrace)?;
+                    if axis == 0 {
+                        point_examples = point_examples
+                            .checked_add(entity.points.len())
+                            .ok_or(EntityConstructionProgramError::Capacity)?;
+                    }
+                    episodes.push(UnorderedMappingEpisode {
+                        inputs: entity
+                            .points
+                            .iter()
+                            .map(|point| point_environment(&example.source, point))
+                            .collect::<Result<Vec<_>, _>>()?,
+                        expected_outputs: target
+                            .points
+                            .iter()
+                            .map(|point| Value::Int(point[axis]))
+                            .collect(),
+                    });
+                }
+            }
+            let outcome = DefinitionInventor
+                .invent_unordered_mapping(&UnorderedMappingProblem {
+                    definition_name: format!("invented_output_coordinate_{axis}"),
+                    parameters: point_parameters(dimensions),
+                    return_type: scalar_type(),
+                    literals: vec![Value::Int(0), Value::Int(1)],
+                    episodes,
+                    limits,
+                })
+                .map_err(EntityConstructionProgramError::Invention)?;
+            candidates_evaluated = candidates_evaluated
+                .checked_add(outcome.proposal.candidates_evaluated)
+                .ok_or(EntityConstructionProgramError::Capacity)?;
+            output_coordinates.push(outcome.proposal);
+        }
+        let report = EntityConstructionProgramReport {
+            program: EntityConstructionProgram {
+                output_extents,
+                output_coordinates,
+            },
+            candidates_evaluated,
+            trace_count: examples.len(),
+            point_examples,
+        };
+        for example in examples {
+            if self
+                .execute(&report.program, &example.source, ExecLimits::default())?
+                .render
+                != example.expected
+            {
+                return Err(EntityConstructionProgramError::Prediction);
+            }
+        }
+        Ok(report)
+    }
+
     /// Invent output extent and coordinate definitions from complete execution
     /// traces using only generic scalar RKL variables and arithmetic.
     ///
@@ -344,6 +471,51 @@ fn validate_trace(trace: &EntityConstructionTrace) -> Result<(), EntityConstruct
         {
             return Err(EntityConstructionProgramError::IncompleteProvenance);
         }
+    }
+    Ok(())
+}
+
+fn validate_unordered_example(
+    example: &EntityCorrespondenceExample,
+) -> Result<(), EntityConstructionProgramError> {
+    validate_source(&example.source)?;
+    if example.expected.extents.is_empty()
+        || example.expected.extents.contains(&0)
+        || example.expected.entities.len() != example.source.entities.len()
+    {
+        return Err(EntityConstructionProgramError::InvalidTrace);
+    }
+    let source_values = example
+        .source
+        .entities
+        .iter()
+        .map(|entity| entity.value)
+        .collect::<BTreeSet<_>>();
+    let expected_values = example
+        .expected
+        .entities
+        .iter()
+        .map(|entity| entity.value)
+        .collect::<BTreeSet<_>>();
+    if source_values.len() != example.source.entities.len()
+        || expected_values.len() != example.expected.entities.len()
+        || source_values != expected_values
+        || example.expected.entities.iter().any(|entity| {
+            entity.points.is_empty()
+                || entity.points.iter().any(|point| {
+                    point.len() != example.expected.extents.len()
+                        || point
+                            .iter()
+                            .zip(&example.expected.extents)
+                            .any(|(value, extent)| {
+                                *value < 0
+                                    || u64::try_from(*value)
+                                        .map_or(true, |value| value >= u64::from(*extent))
+                            })
+                })
+        })
+    {
+        return Err(EntityConstructionProgramError::InvalidTrace);
     }
     Ok(())
 }

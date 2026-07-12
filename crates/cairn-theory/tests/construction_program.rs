@@ -3,9 +3,9 @@ use cairn_invent::InventionLimits;
 use cairn_rkl::ExecLimits;
 use cairn_theory::{
     CorrespondenceFrame, EntityConstructionProgramError, EntityConstructionProgramSynthesizer,
-    EntityConstructionTrace, EntityCorrespondenceLearner, EntityCorrespondenceLimits,
-    EntityCorrespondenceMechanism, EntityGeometryRender, EntityGeometryScene, GeometricEntity,
-    RenderedEntity,
+    EntityConstructionTrace, EntityCorrespondenceExample, EntityCorrespondenceLearner,
+    EntityCorrespondenceLimits, EntityCorrespondenceMechanism, EntityGeometryRender,
+    EntityGeometryScene, GeometricEntity, RenderedEntity,
 };
 use std::collections::BTreeSet;
 
@@ -83,6 +83,33 @@ fn incomplete_provenance_is_not_training_data() {
         EntityConstructionProgramSynthesizer.synthesize(&[trace], invention_limits()),
         Err(EntityConstructionProgramError::IncompleteProvenance)
     );
+}
+
+#[test]
+fn invents_the_same_program_without_point_correspondence_or_v1() {
+    let training = [
+        family(12, 15, 2, 3),
+        family(16, 18, 4, 20),
+        family(19, 23, 3, 45),
+        family(24, 20, 6, 65),
+    ]
+    .map(|example| EntityCorrespondenceExample {
+        source: example.source,
+        expected: example.expected,
+    });
+    let report = EntityConstructionProgramSynthesizer
+        .synthesize_unordered(&training, invention_limits())
+        .expect("unordered program invention");
+    let held_out = family(27, 29, 8, 90);
+    assert_eq!(
+        EntityConstructionProgramSynthesizer
+            .execute(&report.program, &held_out.source, ExecLimits::default())
+            .expect("autonomous correspondence execution")
+            .render,
+        held_out.expected
+    );
+    assert_eq!(report.trace_count, 4);
+    assert!(report.point_examples > 0);
 }
 
 fn trace_from_teacher(

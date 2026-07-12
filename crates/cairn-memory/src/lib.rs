@@ -4,10 +4,12 @@
 //! and replayed against the complete current problem by `cairn-invent` before
 //! it can influence a prediction.
 
+mod construction_program_memory;
 mod correspondence_memory;
 mod latent_memory;
 mod layer_memory;
 
+pub use construction_program_memory::*;
 pub use correspondence_memory::*;
 pub use latent_memory::*;
 pub use layer_memory::*;

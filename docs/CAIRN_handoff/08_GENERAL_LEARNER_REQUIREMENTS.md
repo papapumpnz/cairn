@@ -1073,3 +1073,18 @@ An initial two-trace program overfit and failed held-out replay. Training grew t
 four varied traces without weakening held-outs. This is bounded structural
 learning, not autonomous trace discovery, persistent program learning,
 conditional/non-bijective construction, general intelligence, or ARC progress.
+
+## 44. Autonomous construction-program library
+
+CAIRN now discovers coordinate correspondence without a teacher mechanism or
+point pairing. Two independent four-example cohorts synthesize the same
+canonical program and independent receipts promote it after eight experiences.
+On larger held-outs, fresh learning requires 5,986 candidates/four examples;
+memory requires two attempts/zero examples. Outputs and field transfer are
+exact, blank memory is empty, and wrong-family acceptance is zero.
+
+This meets the narrow mechanical learning definition: executable rule structure
+is absent initially, synthesized from unordered observations, independently
+verified, promoted, rebound, and reduces future compute/sample cost. It is not
+general intelligence: preserved value matching and entities are supplied, and
+control remains bijective and unconditional. No ARC claim follows.

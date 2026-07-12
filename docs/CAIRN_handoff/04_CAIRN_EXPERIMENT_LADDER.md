@@ -764,3 +764,18 @@ overgeneralization failure.
 
 This gate does not authorize ARC. Next require equivalent programs from
 independent correspondence-discovery cohorts and promotion without v1 traces.
+
+## G2-PROGRAM: autonomous program-library learning
+
+Freeze two disjoint four-example cohorts containing unordered source/output
+entity sets and no point correspondences or v1 traces. Require canonical program
+agreement, independent receipts, and two-cohort promotion.
+
+On larger held-outs require exact program-only execution, at least 100x fewer
+attempts than fresh synthesis, zero new examples, blank-memory failure, field
+transfer, and zero accepted wrong-family cases. Reordering must preserve the
+definition; missing outputs and caps fail closed.
+
+Measured: eight experiences promote one program; 5,986 candidates become two
+attempts; examples fall from four to zero; two held-outs and one field transfer
+are exact; negative accepts are zero. ARC remains closed.

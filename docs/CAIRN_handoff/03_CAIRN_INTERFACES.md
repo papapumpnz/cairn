@@ -1084,3 +1084,16 @@ and executes through `TypeChecker` and `ReferenceExecutor`. Its receipt commits
 to program identity, experiences, and replay counts.
 `EntityConstructionProgramFieldAdapter` executes the same program after field
 lowering.
+
+## 31. Unordered invention and program-memory contracts
+
+`UnorderedMappingEpisode` carries multiple input environments and one output
+set. `UnorderedMappingProblem` otherwise uses ordinary binders, return type,
+literals, and limits. `invent_unordered_mapping` returns the normal admitted
+outcome after exact reference and optimized replay.
+
+`synthesize_unordered` groups entities by a unique preserved generic value,
+invents coordinate definitions from unordered point sets, and jointly replays
+the render. `ConstructionProgramStore` requires two disjoint verified cohorts.
+`propose_construction_programs_from_memory` executes persistent programs as
+untrusted proposals without v1 or expected output.

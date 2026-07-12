@@ -121,4 +121,11 @@ Retained executable rule structure is now synthesized rather than selected from
 a named transform representation. Autonomous trace discovery and program
 promotion remain open.
 
+That next gate now passes: unordered invention learns coordinate definitions
+without point-pair labels or v1 traces. Two independent cohorts synthesize the
+same canonical program, independent receipts promote it, and reuse solves two
+larger held-outs with two attempts and zero examples instead of 5,986 synthesis
+candidates. This is autonomous bounded program-library learning; conditional
+control, non-bijective construction, and raw perception remain open.
+
 The reference implementation is Rust with small, audited C/C++ solver dependencies when justified. The baseline machine is one commodity 8-core CPU with 16 GB RAM. The system must also support multi-process and multi-node CPU swarms through content-addressed, proof-carrying artifacts.

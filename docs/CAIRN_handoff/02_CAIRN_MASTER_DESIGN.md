@@ -2364,3 +2364,17 @@ This is structural program synthesis, not yet autonomous discovery: traces
 currently come from a previous learned mechanism. Next, infer correspondence
 directly from observations/residuals, promote equivalent programs from
 independent cohorts, and compose conditional/non-bijective programs.
+
+## 29. Unordered correspondence discovery and program promotion
+
+`UnorderedMappingProblem` removes point-pair supervision. Each episode supplies
+input environments and only an expected output set. Candidate RKL expressions
+map every input; acceptance compares resulting sets exactly. Enumeration,
+typing, cost, bounds, and reference/optimized admission remain shared.
+
+Two independent four-scene cohorts synthesize identical canonical programs
+without v1 traces. Independent receipts promote after eight experiences. On two
+larger held-outs, 5,986 fresh candidates become two memory attempts and zero
+examples. Exactness, field transfer, blank-memory failure, and zero wrong-family
+acceptance hold. Attribute discovery, conditional selection, split/merge, and
+raw entity hypotheses remain open.

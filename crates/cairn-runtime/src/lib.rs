@@ -16,19 +16,19 @@ use cairn_core::{
 use cairn_invent::{InventionError, InventionProblem};
 use cairn_knowledge::KnowledgeBase;
 use cairn_memory::{
-    EntityCorrespondenceStore, InternalMechanismStore, LatentMechanismStore, LayerMechanismStore,
-    MechanismStore, MemoryAssistedInventor, MemorySolveOutcome, ModuleStatus,
-    ProceduralMechanismModule, ProceduralMechanismStore,
+    ConstructionProgramStore, EntityCorrespondenceStore, InternalMechanismStore,
+    LatentMechanismStore, LayerMechanismStore, MechanismStore, MemoryAssistedInventor,
+    MemorySolveOutcome, ModuleStatus, ProceduralMechanismModule, ProceduralMechanismStore,
 };
 use cairn_rkl::{
-    ReferenceTheoryExecutor, RuntimeEnvironment, TheoryExecLimits, TheoryExecutionRequest, Type,
-    TypeEnvironment, Value,
+    ExecLimits, ReferenceTheoryExecutor, RuntimeEnvironment, TheoryExecLimits,
+    TheoryExecutionRequest, Type, TypeEnvironment, Value,
 };
 use cairn_skill::{Condition, Skill, SkillPlan, SkillPlanError, SkillPlanner};
 use cairn_theory::{
-    EntityConstruction, EntityCorrespondenceError, EntityCorrespondenceLearner,
-    EntityCorrespondenceLimits, EntityGeometryScene, LayerMechanismError, LayerMechanismLearner,
-    LayerRender, LayerScene,
+    EntityConstruction, EntityConstructionProgramError, EntityConstructionProgramSynthesizer,
+    EntityCorrespondenceError, EntityCorrespondenceLearner, EntityCorrespondenceLimits,
+    EntityGeometryScene, LayerMechanismError, LayerMechanismLearner, LayerRender, LayerScene,
 };
 use cairn_world::{
     ActionId, ActiveLatentInductionReport, ActiveLatentLimits, ActiveLatentWorldLearner,
@@ -47,6 +47,7 @@ pub struct CognitionRuntime {
     latent_mechanisms: LatentMechanismStore,
     layer_mechanisms: LayerMechanismStore,
     entity_correspondences: EntityCorrespondenceStore,
+    construction_programs: ConstructionProgramStore,
     knowledge: KnowledgeBase,
 }
 
@@ -201,6 +202,7 @@ pub enum CognitionError {
     LatentMemory(LatentMemoryRuntimeError),
     LayerMemory(LayerMemoryRuntimeError),
     EntityCorrespondenceMemory(EntityCorrespondenceMemoryRuntimeError),
+    ConstructionProgramMemory(ConstructionProgramMemoryRuntimeError),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -258,6 +260,24 @@ pub struct EntityCorrespondenceMemoryOutcome {
     pub persistent_mechanisms_attempted: u64,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ConstructionProgramMemoryRuntimeError {
+    NoVerifiedProposal,
+    Capacity,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ConstructionProgramMemoryProposal {
+    pub program: Hash32,
+    pub construction: EntityConstruction,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ConstructionProgramMemoryOutcome {
+    pub proposals: Vec<ConstructionProgramMemoryProposal>,
+    pub persistent_programs_attempted: u64,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum InternalCompositionRuntimeError {
     UnavailableMechanism(Hash32),
@@ -274,6 +294,7 @@ impl CognitionRuntime {
             latent_mechanisms: LatentMechanismStore::new(),
             layer_mechanisms: LayerMechanismStore::new(),
             entity_correspondences: EntityCorrespondenceStore::new(),
+            construction_programs: ConstructionProgramStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -287,6 +308,7 @@ impl CognitionRuntime {
             latent_mechanisms: LatentMechanismStore::new(),
             layer_mechanisms: LayerMechanismStore::new(),
             entity_correspondences: EntityCorrespondenceStore::new(),
+            construction_programs: ConstructionProgramStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -303,6 +325,7 @@ impl CognitionRuntime {
             latent_mechanisms: LatentMechanismStore::new(),
             layer_mechanisms: LayerMechanismStore::new(),
             entity_correspondences: EntityCorrespondenceStore::new(),
+            construction_programs: ConstructionProgramStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -318,6 +341,7 @@ impl CognitionRuntime {
             latent_mechanisms,
             layer_mechanisms: LayerMechanismStore::new(),
             entity_correspondences: EntityCorrespondenceStore::new(),
+            construction_programs: ConstructionProgramStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -333,6 +357,7 @@ impl CognitionRuntime {
             latent_mechanisms: LatentMechanismStore::new(),
             layer_mechanisms,
             entity_correspondences: EntityCorrespondenceStore::new(),
+            construction_programs: ConstructionProgramStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -349,6 +374,24 @@ impl CognitionRuntime {
             latent_mechanisms: LatentMechanismStore::new(),
             layer_mechanisms: LayerMechanismStore::new(),
             entity_correspondences,
+            construction_programs: ConstructionProgramStore::new(),
+            knowledge: KnowledgeBase::new(),
+        }
+    }
+
+    /// Construct a runtime with proof-gated synthesized program memory.
+    #[must_use]
+    pub const fn with_construction_program_memory(
+        construction_programs: ConstructionProgramStore,
+    ) -> Self {
+        Self {
+            memory: MechanismStore::new(),
+            procedures: ProceduralMechanismStore::new(),
+            internal_mechanisms: InternalMechanismStore::new(),
+            latent_mechanisms: LatentMechanismStore::new(),
+            layer_mechanisms: LayerMechanismStore::new(),
+            entity_correspondences: EntityCorrespondenceStore::new(),
+            construction_programs,
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -405,6 +448,15 @@ impl CognitionRuntime {
 
     pub const fn entity_correspondence_memory_mut(&mut self) -> &mut EntityCorrespondenceStore {
         &mut self.entity_correspondences
+    }
+
+    #[must_use]
+    pub const fn construction_program_memory(&self) -> &ConstructionProgramStore {
+        &self.construction_programs
+    }
+
+    pub const fn construction_program_memory_mut(&mut self) -> &mut ConstructionProgramStore {
+        &mut self.construction_programs
     }
 
     #[must_use]
@@ -854,6 +906,55 @@ impl CognitionRuntime {
         Ok(EntityCorrespondenceMemoryOutcome {
             proposals,
             persistent_mechanisms_attempted,
+        })
+    }
+
+    /// Execute every persistent synthesized program on a current scene as an
+    /// untrusted proposal. No v1 correspondence or expected output is used.
+    ///
+    /// # Errors
+    ///
+    /// Returns typed absence/capacity failures; independent replay still owns
+    /// acceptance.
+    pub fn propose_construction_programs_from_memory(
+        &self,
+        scene: &EntityGeometryScene,
+        limits: ExecLimits,
+    ) -> Result<ConstructionProgramMemoryOutcome, CognitionError> {
+        let mut persistent_programs_attempted = 0_u64;
+        let mut proposals = Vec::new();
+        for program in self.construction_programs.persistent_programs() {
+            persistent_programs_attempted = persistent_programs_attempted.saturating_add(1);
+            match EntityConstructionProgramSynthesizer.execute(program, scene, limits) {
+                Ok(construction) => proposals.push(ConstructionProgramMemoryProposal {
+                    program: program.semantic_hash().map_err(|_| {
+                        CognitionError::ConstructionProgramMemory(
+                            ConstructionProgramMemoryRuntimeError::Capacity,
+                        )
+                    })?,
+                    construction,
+                }),
+                Err(
+                    EntityConstructionProgramError::InvalidTrace
+                    | EntityConstructionProgramError::UnsupportedDimensions
+                    | EntityConstructionProgramError::ConstructionConflict
+                    | EntityConstructionProgramError::OutOfBounds,
+                ) => {}
+                Err(_) => {
+                    return Err(CognitionError::ConstructionProgramMemory(
+                        ConstructionProgramMemoryRuntimeError::Capacity,
+                    ));
+                }
+            }
+        }
+        if proposals.is_empty() {
+            return Err(CognitionError::ConstructionProgramMemory(
+                ConstructionProgramMemoryRuntimeError::NoVerifiedProposal,
+            ));
+        }
+        Ok(ConstructionProgramMemoryOutcome {
+            proposals,
+            persistent_programs_attempted,
         })
     }
 

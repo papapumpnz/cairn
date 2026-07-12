@@ -51,6 +51,25 @@ pub struct InventionProblem {
     pub limits: InventionLimits,
 }
 
+/// One unordered observation episode. Candidate expressions map every input
+/// environment to one value; only the resulting value set is observed.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UnorderedMappingEpisode {
+    pub inputs: Vec<RuntimeEnvironment>,
+    pub expected_outputs: BTreeSet<Value>,
+}
+
+/// Domain-neutral expression invention without supplied input/output pairing.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UnorderedMappingProblem {
+    pub definition_name: String,
+    pub parameters: Vec<Binder>,
+    pub return_type: Type,
+    pub literals: Vec<Value>,
+    pub episodes: Vec<UnorderedMappingEpisode>,
+    pub limits: InventionLimits,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct DefinitionProposal {
     pub definition: Definition,
@@ -141,19 +160,109 @@ impl DefinitionInventor {
         for literal in &problem.literals {
             bases.push(literal_expression(literal)?);
         }
+        let matches = |outputs: &[Value]| outputs == expected;
         for expression in bases {
-            if let Some(proposal) = search.consider(expression, 1, &expected)? {
+            if let Some(proposal) = search.consider(expression, 1, &matches)? {
                 return admit(problem, proposal);
             }
         }
 
         for cost in 2..=problem.limits.maximum_cost {
-            if let Some(proposal) = search.generate_cost(cost, &expected)? {
+            if let Some(proposal) = search.generate_cost(cost, &matches)? {
                 return admit(problem, proposal);
             }
         }
         Err(InventionError::NoDefinition {
             maximum_cost: problem.limits.maximum_cost,
+        })
+    }
+
+    /// Invent one exact expression from per-episode unordered output sets.
+    /// No expected value is assigned to a particular input environment.
+    ///
+    /// # Errors
+    ///
+    /// Returns validation, capacity, exhaustion, exact execution, or
+    /// cross-implementation disagreement failures.
+    pub fn invent_unordered_mapping(
+        &self,
+        problem: &UnorderedMappingProblem,
+    ) -> Result<InventionOutcome, InventionError> {
+        validate_unordered_problem(problem)?;
+        let placeholder = problem
+            .episodes
+            .first()
+            .and_then(|episode| episode.expected_outputs.first())
+            .cloned()
+            .ok_or(InventionError::EmptyDemonstrations)?;
+        let ordered = InventionProblem {
+            definition_name: problem.definition_name.clone(),
+            parameters: problem.parameters.clone(),
+            return_type: problem.return_type.clone(),
+            literals: problem.literals.clone(),
+            demonstrations: problem
+                .episodes
+                .iter()
+                .flat_map(|episode| {
+                    episode.inputs.iter().cloned().map(|inputs| BindingExample {
+                        inputs,
+                        output: placeholder.clone(),
+                    })
+                })
+                .collect(),
+            limits: problem.limits,
+        };
+        let environment = type_environment(&ordered.parameters);
+        let checker = TypeChecker::new(ordered.limits.maximum_expression_nodes);
+        let episode_lengths = problem
+            .episodes
+            .iter()
+            .map(|episode| episode.inputs.len())
+            .collect::<Vec<_>>();
+        let matches = |outputs: &[Value]| {
+            let mut offset = 0_usize;
+            for (episode, length) in problem.episodes.iter().zip(&episode_lengths) {
+                let Some(end) = offset.checked_add(*length) else {
+                    return false;
+                };
+                let Some(values) = outputs.get(offset..end) else {
+                    return false;
+                };
+                if values.iter().cloned().collect::<BTreeSet<_>>() != episode.expected_outputs {
+                    return false;
+                }
+                offset = end;
+            }
+            offset == outputs.len()
+        };
+        let mut search = Search {
+            problem: &ordered,
+            checker: &checker,
+            environment: &environment,
+            by_cost: vec![Vec::new(); usize::from(ordered.limits.maximum_cost) + 1],
+            behaviors: BTreeSet::new(),
+            candidates_evaluated: 0,
+        };
+        let mut bases = ordered
+            .parameters
+            .iter()
+            .map(|parameter| Expr::Var(parameter.name.clone()))
+            .collect::<Vec<_>>();
+        for literal in &ordered.literals {
+            bases.push(literal_expression(literal)?);
+        }
+        for expression in bases {
+            if let Some(proposal) = search.consider(expression, 1, &matches)? {
+                return admit_unordered(problem, proposal);
+            }
+        }
+        for cost in 2..=ordered.limits.maximum_cost {
+            if let Some(proposal) = search.generate_cost(cost, &matches)? {
+                return admit_unordered(problem, proposal);
+            }
+        }
+        Err(InventionError::NoDefinition {
+            maximum_cost: ordered.limits.maximum_cost,
         })
     }
 
@@ -249,10 +358,10 @@ impl Search<'_> {
     fn generate_cost(
         &mut self,
         cost: u16,
-        expected: &[Value],
+        matches: &dyn Fn(&[Value]) -> bool,
     ) -> Result<Option<DefinitionProposal>, InventionError> {
         for expression in self.tuple_expressions(cost) {
-            if let Some(proposal) = self.consider(expression, cost, expected)? {
+            if let Some(proposal) = self.consider(expression, cost, matches)? {
                 return Ok(Some(proposal));
             }
         }
@@ -275,7 +384,7 @@ impl Search<'_> {
                 _ => Vec::new(),
             };
             for expression in expressions {
-                if let Some(proposal) = self.consider(expression, cost, expected)? {
+                if let Some(proposal) = self.consider(expression, cost, matches)? {
                     return Ok(Some(proposal));
                 }
             }
@@ -299,7 +408,7 @@ impl Search<'_> {
                             left: Box::new(left.clone()),
                             right: Box::new(right.clone()),
                         };
-                        if let Some(proposal) = self.consider(expression, cost, expected)? {
+                        if let Some(proposal) = self.consider(expression, cost, matches)? {
                             return Ok(Some(proposal));
                         }
                     }
@@ -334,7 +443,7 @@ impl Search<'_> {
                                     then_branch: Box::new(then_branch.clone()),
                                     else_branch: Box::new(else_branch.clone()),
                                 };
-                                if let Some(proposal) = self.consider(expression, cost, expected)? {
+                                if let Some(proposal) = self.consider(expression, cost, matches)? {
                                     return Ok(Some(proposal));
                                 }
                             }
@@ -405,7 +514,7 @@ impl Search<'_> {
         &mut self,
         expression: Expr,
         cost: u16,
-        expected: &[Value],
+        matches: &dyn Fn(&[Value]) -> bool,
     ) -> Result<Option<DefinitionProposal>, InventionError> {
         self.candidates_evaluated = self.candidates_evaluated.saturating_add(1);
         if self.candidates_evaluated > self.problem.limits.maximum_candidates {
@@ -426,7 +535,7 @@ impl Search<'_> {
         if !self.behaviors.insert(key) {
             return Ok(None);
         }
-        if type_compatible(&self.problem.return_type, typed.ty()) && outputs == expected {
+        if type_compatible(&self.problem.return_type, typed.ty()) && matches(&outputs) {
             let definition = Definition {
                 name: self.problem.definition_name.clone(),
                 parameters: self.problem.parameters.clone(),
@@ -535,6 +644,97 @@ fn admit(
             totality: TotalityStatus::Checked,
         },
     })
+}
+
+fn admit_unordered(
+    problem: &UnorderedMappingProblem,
+    proposal: DefinitionProposal,
+) -> Result<InventionOutcome, InventionError> {
+    let checker = TypeChecker::new(problem.limits.maximum_expression_nodes);
+    let typed = checker
+        .check_definition(&proposal.definition)
+        .map_err(|_| InventionError::InternalCheck)?;
+    let program = BytecodeCompiler::new(CompileLimits::default())
+        .compile(&typed)
+        .map_err(|_| InventionError::OptimizedCompilation)?;
+    let reference =
+        ReferenceExecutor::without_definitions(problem.limits.execution, TraceLevel::Full);
+    let optimized = FastExecutor::new(problem.limits.execution, TraceLevel::Full);
+    let mut replayed = 0_usize;
+    for episode in &problem.episodes {
+        let mut outputs = BTreeSet::new();
+        for inputs in &episode.inputs {
+            let reference_trace = reference
+                .execute(&typed, inputs)
+                .map_err(|_| InventionError::InternalExecution)?;
+            let optimized_trace = optimized
+                .execute(&program, inputs)
+                .map_err(|_| InventionError::InternalExecution)?;
+            if reference_trace != optimized_trace {
+                return Err(InventionError::VerificationMismatch);
+            }
+            outputs.insert(reference_trace.result);
+            replayed = replayed.saturating_add(1);
+        }
+        if outputs != episode.expected_outputs {
+            return Err(InventionError::VerificationMismatch);
+        }
+    }
+    Ok(InventionOutcome {
+        proposal,
+        admission: AdmissionReport {
+            training_examples: replayed,
+            exact_reference_replays: replayed,
+            exact_cross_implementation_replays: replayed,
+            totality: TotalityStatus::Checked,
+        },
+    })
+}
+
+fn validate_unordered_problem(problem: &UnorderedMappingProblem) -> Result<(), InventionError> {
+    if problem.episodes.is_empty()
+        || problem
+            .episodes
+            .iter()
+            .any(|episode| episode.inputs.is_empty() || episode.expected_outputs.is_empty())
+    {
+        return Err(InventionError::EmptyDemonstrations);
+    }
+    if problem.limits.maximum_cost == 0
+        || problem.limits.maximum_candidates == 0
+        || problem.limits.maximum_expression_nodes == 0
+    {
+        return Err(InventionError::EmptyBound);
+    }
+    let mut names = BTreeSet::new();
+    for parameter in &problem.parameters {
+        if !names.insert(parameter.name.clone()) {
+            return Err(InventionError::DuplicateParameter(parameter.name.0.clone()));
+        }
+    }
+    for episode in &problem.episodes {
+        if episode
+            .expected_outputs
+            .iter()
+            .any(|output| !output.conforms_to(&problem.return_type))
+        {
+            return Err(InventionError::OutputTypeMismatch);
+        }
+        for inputs in &episode.inputs {
+            for parameter in &problem.parameters {
+                let value = inputs
+                    .get(&parameter.name)
+                    .ok_or_else(|| InventionError::MissingInput(parameter.name.0.clone()))?;
+                if !value.conforms_to(&parameter.ty) {
+                    return Err(InventionError::InputTypeMismatch(parameter.name.0.clone()));
+                }
+            }
+        }
+    }
+    for literal in &problem.literals {
+        literal_expression(literal)?;
+    }
+    Ok(())
 }
 
 fn validate_problem(problem: &InventionProblem) -> Result<(), InventionError> {

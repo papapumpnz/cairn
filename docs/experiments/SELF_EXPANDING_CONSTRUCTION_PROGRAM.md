@@ -71,3 +71,8 @@ Maintain competing entity/point correspondences, synthesize programs under
 those alternatives, resolve them with held-out replay, promote equivalent
 programs from independent cohorts, and execute from program memory without v1
 trace generation.
+
+Completed in the subsequent autonomous-program-library checkpoint: unordered
+set-level invention removes point pairings and v1 traces, and two independent
+cohorts promote one canonical program. See
+`AUTONOMOUS_CONSTRUCTION_PROGRAM_LIBRARY.md`.
