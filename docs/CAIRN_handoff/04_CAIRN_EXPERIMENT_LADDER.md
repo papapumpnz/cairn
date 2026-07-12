@@ -719,3 +719,10 @@ run first-40 and complete-400 ARC training ablations once. Compare to the frozen
 18/40 and 36/400 baselines. Do not change the grammar, bindings, or thresholds
 in response to the result. Preserve every per-case terminal state and report a
 flat or negative result as evidence about applicability.
+
+Measured result: non-ARC G5-LAYER passes, but the ARC contribution gate fails.
+All structural memory produces 36/400 exact and zero incorrect; layer-only and
+blank memory both produce 17/40. Preserve the disabled failing causal-ablation
+test and evidence hashes in the experiment report. Per ADR-0024, stop
+ARC-directed growth of this grammar and require the next correspondence learner
+to beat blank memory under an otherwise identical frozen evaluation.

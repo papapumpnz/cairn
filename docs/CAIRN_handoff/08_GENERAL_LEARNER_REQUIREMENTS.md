@@ -1005,7 +1005,7 @@ are not currently applicable to the relational correspondence and rendering
 structures dominating ARC failures. No ARC observation changes the general
 core. General intelligence and 80% ARC remain unmet.
 
-## 41. Relational layer-construction checkpoint (pre-ARC freeze)
+## 41. Relational layer-construction checkpoint
 
 The general core now learns bounded collection-valued mechanisms rather than
 only scalar value sets. From non-ARC vector scenes it independently induces
@@ -1027,5 +1027,9 @@ closed.
 This satisfies a narrow part of cross-domain representation and actual reuse.
 It does not establish broad relational correspondence, recursive/higher-order
 invention, raw entity perception, general intelligence, or an 80% ARC system.
-ARC accuracy remains an unmeasured hypothesis at this freeze and must be added
-only by the quarantined post-commit evaluation.
+The post-commit hypothesis failed. All structural memory scores 36/400 exact,
+zero incorrect, and 364 limited, unchanged from v0.9. In a direct first-40
+causal ablation, blank and layer-only memory both score 17 exact, zero
+incorrect, and 23 limited. Therefore this mechanism has no demonstrated ARC
+accuracy contribution even though its vector-to-field transfer is valid. The
+path is stopped under ADR-0024. General intelligence and 80% ARC remain unmet.

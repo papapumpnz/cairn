@@ -82,8 +82,10 @@ collections, learns union, intersection, and ordered difference, binds roles by
 relational cardinality rather than literal values, and learns preserve-source
 versus tight-content rendering. A union mechanism promoted from two disjoint
 graphics cohorts transfers unchanged to categorical finite fields. This is a
-measured cross-domain mechanism-transfer result; its ARC effect is deliberately
-unknown until the committed evaluation gate is opened.
+measured cross-domain mechanism-transfer result. Its frozen ARC evaluation is
+negative: combined accuracy remains 36/400, and layer-only memory ties blank
+memory at 17/40. The cardinality/set path is stopped for ARC-directed expansion;
+general correspondence and rendering learning remain open.
 
 The bounded developmental controller now persists only a canonical,
 content-free event journal. After process loss, a fresh controller must

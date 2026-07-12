@@ -216,6 +216,41 @@ fn frozen_arc40_all_structural_mechanisms() {
     assert_eq!(report.incorrect_tasks, 0);
 }
 
+#[test]
+#[ignore = "post-result causal ablation; compares blank and layer-only first-40"]
+fn posthoc_arc40_layer_memory_causal_ablation() {
+    let corpus =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../datasets/arc-agi-1-v1.0.2/training");
+    let runtime = CognitionRuntime::new();
+    let blank = run_training_batch_with_runtime_and_structural_bindings(
+        &corpus,
+        40,
+        limits(),
+        ExecLimits::default(),
+        &runtime,
+        &[],
+    )
+    .expect("blank ARC-40 ablation");
+    let layer = run_training_batch_with_runtime_and_structural_bindings(
+        &corpus,
+        40,
+        limits(),
+        ExecLimits::default(),
+        &runtime,
+        &[LearnedStructuralFieldBinding::LayerMechanism(
+            non_arc_layer_mechanism(),
+        )],
+    )
+    .expect("layer-only ARC-40 ablation");
+    fs::write(
+        "/tmp/cairn_arc40_layer_causal_ablation_20260713.json",
+        serde_json::to_string_pretty(&(blank.clone(), layer.clone())).expect("report JSON"),
+    )
+    .expect("write report");
+    assert!(layer.exact_tasks > blank.exact_tasks);
+    assert_eq!(layer.incorrect_tasks, 0);
+}
+
 use cairn_field::FieldError;
 
 fn non_arc_binding() -> cairn_field::LearnedPartitionBroadcastBinding {

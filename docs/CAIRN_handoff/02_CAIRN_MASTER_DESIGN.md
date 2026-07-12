@@ -2304,3 +2304,11 @@ replays two changed vector cases, and transfers it unchanged to a finite-field
 frontend. Blank-memory, wrong-renderer, and changed-expected ablations fail as
 required. Recursive correspondence, overlapping categorical field layers,
 geometric transforms, and learned object perception remain unresolved.
+
+The quarantined evaluation at frozen revision `64e7a1e` found no net accuracy
+gain: all structural memory remains 36/400 exact with zero incorrect, and a
+layer-only causal ablation ties blank memory at 17/40. The implementation is
+retained as verified general set/renderer capability, but its bounded
+cardinality-role grammar is not to be expanded for ARC coverage. The next
+research path must learn richer correspondence from non-ARC evidence and pass a
+causal memory ablation before benchmark integration.
