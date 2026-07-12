@@ -20,6 +20,10 @@ use cairn_rkl::{
     CheckedTheory, ReferenceTheoryExecutor, RuntimeEnvironment, TheoryExecLimits,
     TheoryExecutionRequest, Type, TypeEnvironment, Value,
 };
+use cairn_world::{
+    ActionId, LatentActionRole, LatentEpisode, LatentMechanismSchema, LatentSchemaBinding,
+    LatentSchemaRule, LatentTransitionTheory, StateSpace, WorldState,
+};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -2890,4 +2894,489 @@ fn compressed_units(
         .and_then(|value| value.checked_add(parameters))
         .and_then(|value| value.checked_add(parameters.checked_mul(episodes)?))
         .ok_or(CompressionVerifyError::Capacity)
+}
+
+/// Opaque proof that an independently reconstructed canonical hidden-world
+/// schema equals the learner's proposal.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedLatentSchemaCompilation {
+    schema: Hash32,
+    evidence: Hash32,
+    replayed_rules: u64,
+}
+
+impl VerifiedLatentSchemaCompilation {
+    #[must_use]
+    pub const fn schema(&self) -> Hash32 {
+        self.schema
+    }
+
+    #[must_use]
+    pub const fn evidence(&self) -> Hash32 {
+        self.evidence
+    }
+
+    #[must_use]
+    pub const fn replayed_rules(&self) -> u64 {
+        self.replayed_rules
+    }
+}
+
+/// Opaque proof that a schema was rebound and replayed against a current,
+/// source-independent visible experience.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedLatentSchemaTransfer {
+    schema: Hash32,
+    experience: Hash32,
+    action_roles: BTreeMap<ActionId, u16>,
+    replayed_transitions: u64,
+}
+
+impl VerifiedLatentSchemaTransfer {
+    #[must_use]
+    pub const fn schema(&self) -> Hash32 {
+        self.schema
+    }
+
+    #[must_use]
+    pub const fn experience(&self) -> Hash32 {
+        self.experience
+    }
+
+    #[must_use]
+    pub const fn action_roles(&self) -> &BTreeMap<ActionId, u16> {
+        &self.action_roles
+    }
+
+    #[must_use]
+    pub const fn replayed_transitions(&self) -> u64 {
+        self.replayed_transitions
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum LatentSchemaVerifyError {
+    EmptyTheory,
+    IncompleteTheory,
+    UnresolvedTheory,
+    DimensionMismatch,
+    SchemaMismatch,
+    InvalidBinding,
+    ReplayMismatch,
+    Canonicalization,
+    Capacity,
+}
+
+/// Separate reference implementation for hidden-world schema compilation and
+/// current-experience transfer. It does not call the producer compiler.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct LatentSchemaVerifier;
+
+impl LatentSchemaVerifier {
+    /// Independently alpha-normalize a complete theory and compare every
+    /// canonical schema field and semantic hash.
+    ///
+    /// # Errors
+    ///
+    /// Rejects incomplete or unresolved theories, canonicalization capacity,
+    /// and any difference from the proposed schema.
+    pub fn verify_compilation(
+        &self,
+        theory: &LatentTransitionTheory,
+        proposed: &LatentMechanismSchema,
+        evidence: Hash32,
+        maximum_permutations: u64,
+    ) -> Result<VerifiedLatentSchemaCompilation, LatentSchemaVerifyError> {
+        let latent_states = theory.latent_states();
+        let source_rules = theory.rules().cloned().collect::<Vec<_>>();
+        if latent_states == 0 || source_rules.is_empty() {
+            return Err(LatentSchemaVerifyError::EmptyTheory);
+        }
+        if theory.unresolved_successors() != 0 {
+            return Err(LatentSchemaVerifyError::UnresolvedTheory);
+        }
+        let actions = source_rules
+            .iter()
+            .map(|rule| rule.action)
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect::<Vec<_>>();
+        if source_rules.len()
+            != usize::from(latent_states)
+                .checked_mul(actions.len())
+                .ok_or(LatentSchemaVerifyError::Capacity)?
+        {
+            return Err(LatentSchemaVerifyError::IncompleteTheory);
+        }
+        let by_key = source_rules
+            .iter()
+            .map(|rule| ((rule.latent, rule.action), rule))
+            .collect::<BTreeMap<_, _>>();
+        let dimensions = u16::try_from(theory.space().dimensions())
+            .map_err(|_| LatentSchemaVerifyError::Capacity)?;
+        let mut best: Option<(Vec<u8>, Vec<LatentActionRole>)> = None;
+        for relabeling in verifier_latent_permutations(latent_states, maximum_permutations)? {
+            let mut canonical_roles = Vec::with_capacity(actions.len());
+            let mut new_to_old = vec![0_u8; usize::from(latent_states)];
+            for (old, new) in relabeling.iter().copied().enumerate() {
+                new_to_old[usize::from(new)] =
+                    u8::try_from(old).map_err(|_| LatentSchemaVerifyError::Capacity)?;
+            }
+            for action in &actions {
+                let role_rules = new_to_old
+                    .iter()
+                    .map(|old| {
+                        let rule = by_key
+                            .get(&(*old, *action))
+                            .ok_or(LatentSchemaVerifyError::IncompleteTheory)?;
+                        Ok(LatentSchemaRule {
+                            next_latent: *relabeling
+                                .get(usize::from(rule.next_latent))
+                                .ok_or(LatentSchemaVerifyError::IncompleteTheory)?,
+                            delta: rule.delta.clone(),
+                        })
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                canonical_roles.push(LatentActionRole { rules: role_rules });
+            }
+            canonical_roles.sort_unstable();
+            let bytes = verifier_schema_value(dimensions, latent_states, &canonical_roles)
+                .encode_canonical()
+                .map_err(|_| LatentSchemaVerifyError::Canonicalization)?;
+            if best.as_ref().is_none_or(|(current, _)| bytes < *current) {
+                best = Some((bytes, canonical_roles));
+            }
+        }
+        let (bytes, canonical_roles) = best.ok_or(LatentSchemaVerifyError::Capacity)?;
+        if proposed.dimensions() != dimensions
+            || proposed.latent_states() != latent_states
+            || proposed.roles() != canonical_roles
+            || proposed.semantic_hash() != Hash32::digest(&bytes)
+        {
+            return Err(LatentSchemaVerifyError::SchemaMismatch);
+        }
+        Ok(VerifiedLatentSchemaCompilation {
+            schema: proposed.semantic_hash(),
+            evidence,
+            replayed_rules: u64::try_from(source_rules.len())
+                .map_err(|_| LatentSchemaVerifyError::Capacity)?,
+        })
+    }
+
+    /// Independently execute a claimed action-role binding against every
+    /// visible transition and verify the constructed theory's full rule set.
+    ///
+    /// # Errors
+    ///
+    /// Rejects incompatible dimensions, non-bijections, malformed traces,
+    /// arithmetic overflow, or any replay/theory mismatch.
+    #[allow(clippy::too_many_lines)] // One linear reference replay keeps the trust path auditable.
+    pub fn verify_transfer(
+        &self,
+        schema: &LatentMechanismSchema,
+        space: &StateSpace,
+        actions: &[ActionId],
+        episodes: &[LatentEpisode],
+        binding: &LatentSchemaBinding,
+    ) -> Result<VerifiedLatentSchemaTransfer, LatentSchemaVerifyError> {
+        if usize::from(schema.dimensions()) != space.dimensions() {
+            return Err(LatentSchemaVerifyError::DimensionMismatch);
+        }
+        let action_set = actions.iter().copied().collect::<BTreeSet<_>>();
+        let role_set = binding
+            .action_roles
+            .values()
+            .copied()
+            .collect::<BTreeSet<_>>();
+        if action_set.len() != actions.len()
+            || binding
+                .action_roles
+                .keys()
+                .copied()
+                .collect::<BTreeSet<_>>()
+                != action_set
+            || role_set.len() != schema.roles().len()
+            || role_set
+                .iter()
+                .copied()
+                .ne(0..u16::try_from(schema.roles().len())
+                    .map_err(|_| LatentSchemaVerifyError::Capacity)?)
+        {
+            return Err(LatentSchemaVerifyError::InvalidBinding);
+        }
+        let mut support = BTreeMap::<(u8, ActionId), u32>::new();
+        let mut replayed = 0_u64;
+        for episode in episodes {
+            let mut latent = 0_u8;
+            let mut prior: Option<&WorldState> = None;
+            for transition in &episode.transitions {
+                if !space.contains(&transition.before)
+                    || !space.contains(&transition.after)
+                    || prior.is_some_and(|after| after != &transition.before)
+                {
+                    return Err(LatentSchemaVerifyError::ReplayMismatch);
+                }
+                let action_schema = binding
+                    .action_roles
+                    .get(&transition.action)
+                    .and_then(|role| schema.roles().get(usize::from(*role)))
+                    .ok_or(LatentSchemaVerifyError::InvalidBinding)?;
+                let transition_rule = action_schema
+                    .rules
+                    .get(usize::from(latent))
+                    .ok_or(LatentSchemaVerifyError::InvalidBinding)?;
+                if verifier_apply_delta(space, &transition.before, &transition_rule.delta)?
+                    != transition.after
+                {
+                    return Err(LatentSchemaVerifyError::ReplayMismatch);
+                }
+                let entry = support.entry((latent, transition.action)).or_default();
+                *entry = entry
+                    .checked_add(1)
+                    .ok_or(LatentSchemaVerifyError::Capacity)?;
+                latent = transition_rule.next_latent;
+                prior = Some(&transition.after);
+                replayed = replayed
+                    .checked_add(1)
+                    .ok_or(LatentSchemaVerifyError::Capacity)?;
+            }
+        }
+        if replayed != binding.replayed_transitions
+            || binding.theory.space() != space
+            || binding.theory.latent_states() != schema.latent_states()
+            || binding.theory.unresolved_successors() != 0
+        {
+            return Err(LatentSchemaVerifyError::ReplayMismatch);
+        }
+        let actual = binding
+            .theory
+            .rules()
+            .map(|rule| {
+                (
+                    (rule.latent, rule.action),
+                    (rule.next_latent, rule.delta.clone(), rule.support),
+                )
+            })
+            .collect::<BTreeMap<_, _>>();
+        let expected = binding
+            .action_roles
+            .iter()
+            .flat_map(|(action, role)| {
+                schema.roles()[usize::from(*role)]
+                    .rules
+                    .iter()
+                    .enumerate()
+                    .map(move |(latent, rule)| (*action, latent, rule))
+            })
+            .map(|(action, latent, rule)| {
+                let latent = u8::try_from(latent).map_err(|_| LatentSchemaVerifyError::Capacity)?;
+                Ok((
+                    (latent, action),
+                    (
+                        rule.next_latent,
+                        rule.delta.clone(),
+                        support.get(&(latent, action)).copied().unwrap_or_default(),
+                    ),
+                ))
+            })
+            .collect::<Result<BTreeMap<_, _>, LatentSchemaVerifyError>>()?;
+        if actual != expected {
+            return Err(LatentSchemaVerifyError::ReplayMismatch);
+        }
+        let experience = verifier_experience_value(space, actions, episodes)
+            .encode_canonical()
+            .map_err(|_| LatentSchemaVerifyError::Canonicalization)?;
+        Ok(VerifiedLatentSchemaTransfer {
+            schema: schema.semantic_hash(),
+            experience: Hash32::digest(&experience),
+            action_roles: binding.action_roles.clone(),
+            replayed_transitions: replayed,
+        })
+    }
+}
+
+fn verifier_latent_permutations(
+    latent_states: u8,
+    maximum: u64,
+) -> Result<Vec<Vec<u8>>, LatentSchemaVerifyError> {
+    fn extend(
+        remaining: &mut Vec<usize>,
+        prefix: &mut Vec<usize>,
+        output: &mut Vec<Vec<usize>>,
+        maximum: u64,
+    ) -> Result<(), LatentSchemaVerifyError> {
+        if remaining.is_empty() {
+            if u64::try_from(output.len()).map_err(|_| LatentSchemaVerifyError::Capacity)?
+                >= maximum
+            {
+                return Err(LatentSchemaVerifyError::Capacity);
+            }
+            output.push(prefix.clone());
+            return Ok(());
+        }
+        for index in 0..remaining.len() {
+            let value = remaining.remove(index);
+            prefix.push(value);
+            extend(remaining, prefix, output, maximum)?;
+            prefix.pop();
+            remaining.insert(index, value);
+        }
+        Ok(())
+    }
+    if maximum == 0 {
+        return Err(LatentSchemaVerifyError::Capacity);
+    }
+    let mut raw = Vec::new();
+    extend(
+        &mut (1..latent_states).map(usize::from).collect(),
+        &mut Vec::new(),
+        &mut raw,
+        maximum,
+    )?;
+    raw.into_iter()
+        .map(|order| {
+            let mut map = vec![0_u8; usize::from(latent_states)];
+            for (new, old) in order.into_iter().enumerate() {
+                map[old] = u8::try_from(new + 1).map_err(|_| LatentSchemaVerifyError::Capacity)?;
+            }
+            Ok(map)
+        })
+        .collect()
+}
+
+fn verifier_schema_value(
+    dimensions: u16,
+    latent_states: u8,
+    roles: &[LatentActionRole],
+) -> CanonicalValue {
+    CanonicalValue::Array(vec![
+        CanonicalValue::Text("cairn.latent-mechanism-schema.v1".to_owned()),
+        CanonicalValue::Unsigned(u64::from(dimensions)),
+        CanonicalValue::Unsigned(u64::from(latent_states)),
+        CanonicalValue::Array(
+            roles
+                .iter()
+                .map(|role| {
+                    CanonicalValue::Array(
+                        role.rules
+                            .iter()
+                            .map(|rule| {
+                                CanonicalValue::Array(vec![
+                                    CanonicalValue::Unsigned(u64::from(rule.next_latent)),
+                                    CanonicalValue::Array(
+                                        rule.delta
+                                            .iter()
+                                            .map(|value| {
+                                                if *value >= 0 {
+                                                    CanonicalValue::Unsigned(value.unsigned_abs())
+                                                } else {
+                                                    CanonicalValue::Negative(*value)
+                                                }
+                                            })
+                                            .collect(),
+                                    ),
+                                ])
+                            })
+                            .collect(),
+                    )
+                })
+                .collect(),
+        ),
+    ])
+}
+
+fn verifier_apply_delta(
+    space: &StateSpace,
+    before: &WorldState,
+    delta: &[i64],
+) -> Result<WorldState, LatentSchemaVerifyError> {
+    if before.0.len() != delta.len() {
+        return Err(LatentSchemaVerifyError::ReplayMismatch);
+    }
+    before
+        .0
+        .iter()
+        .zip(delta)
+        .zip(space.lower().iter().zip(space.upper()))
+        .map(|((value, delta), (lower, upper))| {
+            value
+                .checked_add(*delta)
+                .map(|next| next.clamp(*lower, *upper))
+                .ok_or(LatentSchemaVerifyError::Capacity)
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .map(WorldState)
+}
+
+fn verifier_experience_value(
+    space: &StateSpace,
+    actions: &[ActionId],
+    episodes: &[LatentEpisode],
+) -> CanonicalValue {
+    let ordered_actions = actions.iter().copied().collect::<BTreeSet<_>>();
+    CanonicalValue::Array(vec![
+        CanonicalValue::Text("cairn.latent-schema-experience.v1".to_owned()),
+        CanonicalValue::Array(
+            space
+                .lower()
+                .iter()
+                .map(|value| verifier_integer(*value))
+                .collect(),
+        ),
+        CanonicalValue::Array(
+            space
+                .upper()
+                .iter()
+                .map(|value| verifier_integer(*value))
+                .collect(),
+        ),
+        CanonicalValue::Array(
+            ordered_actions
+                .iter()
+                .map(|action| CanonicalValue::Unsigned(u64::from(action.0)))
+                .collect(),
+        ),
+        CanonicalValue::Array(
+            episodes
+                .iter()
+                .map(|episode| {
+                    CanonicalValue::Array(
+                        episode
+                            .transitions
+                            .iter()
+                            .map(|transition| {
+                                CanonicalValue::Array(vec![
+                                    CanonicalValue::Array(
+                                        transition
+                                            .before
+                                            .0
+                                            .iter()
+                                            .map(|value| verifier_integer(*value))
+                                            .collect(),
+                                    ),
+                                    CanonicalValue::Unsigned(u64::from(transition.action.0)),
+                                    CanonicalValue::Array(
+                                        transition
+                                            .after
+                                            .0
+                                            .iter()
+                                            .map(|value| verifier_integer(*value))
+                                            .collect(),
+                                    ),
+                                ])
+                            })
+                            .collect(),
+                    )
+                })
+                .collect(),
+        ),
+    ])
+}
+
+fn verifier_integer(value: i64) -> CanonicalValue {
+    if value >= 0 {
+        CanonicalValue::Unsigned(value.unsigned_abs())
+    } else {
+        CanonicalValue::Negative(value)
+    }
 }

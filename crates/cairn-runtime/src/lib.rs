@@ -12,8 +12,8 @@ use cairn_core::{
 use cairn_invent::{InventionError, InventionProblem};
 use cairn_knowledge::KnowledgeBase;
 use cairn_memory::{
-    InternalMechanismStore, MechanismStore, MemoryAssistedInventor, MemorySolveOutcome,
-    ModuleStatus, ProceduralMechanismModule, ProceduralMechanismStore,
+    InternalMechanismStore, LatentMechanismStore, MechanismStore, MemoryAssistedInventor,
+    MemorySolveOutcome, ModuleStatus, ProceduralMechanismModule, ProceduralMechanismStore,
 };
 use cairn_rkl::{
     ReferenceTheoryExecutor, RuntimeEnvironment, TheoryExecLimits, TheoryExecutionRequest, Type,
@@ -23,8 +23,9 @@ use cairn_skill::{Condition, Skill, SkillPlan, SkillPlanError, SkillPlanner};
 use cairn_world::{
     ActionId, ActiveLatentInductionReport, ActiveLatentLimits, ActiveLatentWorldLearner,
     BeliefState, ExactPlanner, GoalObservation, GoalTheory, LatentEpisode, LatentError,
-    LatentExperiment, LatentPlan, LatentPlanner, LatentTransitionTheory, Plan, PlanLimits,
-    StateSpace, TransitionObservation, TransitionTheory, WorldError, WorldLearner, WorldState,
+    LatentExperiment, LatentPlan, LatentPlanner, LatentSchemaBinding, LatentSchemaCompiler,
+    LatentSchemaError, LatentSchemaLimits, LatentTransitionTheory, Plan, PlanLimits, StateSpace,
+    TransitionObservation, TransitionTheory, WorldError, WorldLearner, WorldState,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -33,6 +34,7 @@ pub struct CognitionRuntime {
     memory: MechanismStore,
     procedures: ProceduralMechanismStore,
     internal_mechanisms: InternalMechanismStore,
+    latent_mechanisms: LatentMechanismStore,
     knowledge: KnowledgeBase,
 }
 
@@ -184,6 +186,19 @@ pub enum CognitionError {
     LatentWorld(LatentError),
     Skill(SkillPlanError),
     InternalComposition(InternalCompositionRuntimeError),
+    LatentMemory(LatentMemoryRuntimeError),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum LatentMemoryRuntimeError {
+    Schema(LatentSchemaError),
+    NoVerifiedProposal,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LatentMemoryOutcome {
+    pub bindings: Vec<LatentSchemaBinding>,
+    pub persistent_schemas_attempted: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -199,6 +214,7 @@ impl CognitionRuntime {
             memory: MechanismStore::new(),
             procedures: ProceduralMechanismStore::new(),
             internal_mechanisms: InternalMechanismStore::new(),
+            latent_mechanisms: LatentMechanismStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -209,6 +225,7 @@ impl CognitionRuntime {
             memory,
             procedures: ProceduralMechanismStore::new(),
             internal_mechanisms: InternalMechanismStore::new(),
+            latent_mechanisms: LatentMechanismStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -222,6 +239,20 @@ impl CognitionRuntime {
             memory,
             procedures,
             internal_mechanisms: InternalMechanismStore::new(),
+            latent_mechanisms: LatentMechanismStore::new(),
+            knowledge: KnowledgeBase::new(),
+        }
+    }
+
+    /// Construct a runtime with an already proof-gated latent mechanism
+    /// library. All other memories begin empty.
+    #[must_use]
+    pub const fn with_latent_mechanism_memory(latent_mechanisms: LatentMechanismStore) -> Self {
+        Self {
+            memory: MechanismStore::new(),
+            procedures: ProceduralMechanismStore::new(),
+            internal_mechanisms: InternalMechanismStore::new(),
+            latent_mechanisms,
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -251,6 +282,15 @@ impl CognitionRuntime {
 
     pub const fn internal_mechanism_memory_mut(&mut self) -> &mut InternalMechanismStore {
         &mut self.internal_mechanisms
+    }
+
+    #[must_use]
+    pub const fn latent_mechanism_memory(&self) -> &LatentMechanismStore {
+        &self.latent_mechanisms
+    }
+
+    pub const fn latent_mechanism_memory_mut(&mut self) -> &mut LatentMechanismStore {
+        &mut self.latent_mechanisms
     }
 
     #[must_use]
@@ -541,6 +581,46 @@ impl CognitionRuntime {
         ActiveLatentWorldLearner
             .induce(space, actions, episodes, limits, experiment)
             .map_err(CognitionError::LatentWorld)
+    }
+
+    /// Rebind persistent source-independent world mechanisms to current
+    /// actions and retain only proposals that exactly replay current episodes.
+    /// The returned theories remain proposals until independent verification.
+    ///
+    /// # Errors
+    ///
+    /// Returns bounded schema failures when no persistent mechanism can be
+    /// rebound and replayed under the declared limits.
+    pub fn propose_latent_world_from_memory(
+        &self,
+        space: &StateSpace,
+        actions: &[ActionId],
+        episodes: &[LatentEpisode],
+        limits: LatentSchemaLimits,
+    ) -> Result<LatentMemoryOutcome, CognitionError> {
+        let mut persistent_schemas_attempted = 0_u64;
+        let mut bindings = Vec::new();
+        for schema in self.latent_mechanisms.persistent_schemas() {
+            persistent_schemas_attempted = persistent_schemas_attempted.saturating_add(1);
+            match LatentSchemaCompiler.bind(schema, space, actions, episodes, limits) {
+                Ok(mut rebound) => bindings.append(&mut rebound),
+                Err(LatentSchemaError::NoBinding | LatentSchemaError::DimensionMismatch) => {}
+                Err(error) => {
+                    return Err(CognitionError::LatentMemory(
+                        LatentMemoryRuntimeError::Schema(error),
+                    ));
+                }
+            }
+        }
+        if bindings.is_empty() {
+            return Err(CognitionError::LatentMemory(
+                LatentMemoryRuntimeError::NoVerifiedProposal,
+            ));
+        }
+        Ok(LatentMemoryOutcome {
+            bindings,
+            persistent_schemas_attempted,
+        })
     }
 
     /// Infer a visible goal and plan over a previously learned joint

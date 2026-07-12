@@ -228,6 +228,7 @@ dependencies = [
  "cairn-mechanism",
  "cairn-rkl",
  "cairn-verifier",
+ "cairn-world",
 ]
 
 [[package]]
@@ -325,6 +326,7 @@ dependencies = [
  "cairn-mechanism",
  "cairn-proof",
  "cairn-rkl",
+ "cairn-world",
 ]
 
 [[package]]

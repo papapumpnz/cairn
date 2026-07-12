@@ -13,6 +13,7 @@ cairn-core = { path = "../cairn-core" }
 cairn-mechanism = { path = "../cairn-mechanism" }
 cairn-proof = { path = "../cairn-proof" }
 cairn-rkl = { path = "../cairn-rkl" }
+cairn-world = { path = "../cairn-world" }
 
 [dev-dependencies]
 cairn-cas = { path = "../cairn-cas" }

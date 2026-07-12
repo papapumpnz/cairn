@@ -70,6 +70,16 @@ one-step deterministic experiments; raw perception, noisy beliefs, persistent
 world-model transfer, open-ended development, and general intelligence remain
 unmet. ARC remains quarantined at 36/400.
 
+The persistent latent-mechanism checkpoint runs the active learner in two
+independent worlds with different action IDs, bounds, and visible positions.
+Both exact theories compile to the same source-free schema; separate verifier
+receipts cause automatic promotion only after the second world. On an identical
+frozen third-world comparison, fresh learning selects one intervention while
+persistent memory selects none, with both paths exact on 510/510 held-out joint
+transitions. Duplicate evidence and blank memory fail closed. This passes one
+bounded G2/G4 coupling, not sustained scaling or general intelligence. ARC is
+unchanged at 36/400.
+
 ## 0. Dataset policy
 
 ### Development partitions

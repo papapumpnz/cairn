@@ -968,3 +968,24 @@ underlying search failures are distinct terminals. `CognitionRuntime` exposes
 this loop through `learn_latent_world_actively` and exposes exact goal/latent
 planning through `infer_goal_and_plan_latent_world`; it contains no environment
 truth or adapter logic.
+
+## 27. Persistent latent-mechanism contracts
+
+ADR-0021 adds `LatentMechanismSchema`, a canonical finite hidden-state
+mechanism containing only visible dimensionality, canonical latent-state count,
+and sorted action-role rule tables. Source action IDs, state bounds, episodes,
+support counts, and latent label choices are non-semantic. Compilation is
+bounded by `LatentSchemaLimits`.
+
+`LatentSchemaCompiler::bind` enumerates bounded action-role bijections and
+retains only theories that exactly replay complete current visible episodes.
+It returns all surviving semantic bindings rather than selecting silently.
+`LatentSchemaVerifier` separately reconstructs alpha-normalization and current
+transition replay and emits opaque compilation and transfer receipts.
+
+`LatentMechanismStore::record_verified_world` accepts only matching receipt
+pairs. One world is provisional; two distinct experience hashes promote the
+schema automatically. Duplicate evidence cannot satisfy the threshold.
+`CognitionRuntime::propose_latent_world_from_memory` retrieves only persistent
+schemas and performs bounded current rebinding. Returned theories remain
+proposals and require independent transfer verification before acceptance.

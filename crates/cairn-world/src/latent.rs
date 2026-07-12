@@ -42,10 +42,10 @@ pub struct LatentTransitionRule {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LatentTransitionTheory {
-    space: StateSpace,
-    latent_states: u8,
-    rules: BTreeMap<(u8, ActionId), LatentTransitionRule>,
-    unresolved_successors: std::collections::BTreeSet<(u8, ActionId)>,
+    pub(crate) space: StateSpace,
+    pub(crate) latent_states: u8,
+    pub(crate) rules: BTreeMap<(u8, ActionId), LatentTransitionRule>,
+    pub(crate) unresolved_successors: std::collections::BTreeSet<(u8, ActionId)>,
 }
 
 impl LatentTransitionTheory {

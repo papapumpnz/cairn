@@ -4,6 +4,10 @@
 //! and replayed against the complete current problem by `cairn-invent` before
 //! it can influence a prediction.
 
+mod latent_memory;
+
+pub use latent_memory::*;
+
 use cairn_cas::{Cas, CasError, StoredArtifact};
 use cairn_consolidator::{
     CompiledInternalMechanism, GraphCompressionProposal, InternalEpisodeBindings,

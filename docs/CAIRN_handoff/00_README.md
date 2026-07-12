@@ -55,6 +55,13 @@ The deployed answer path remains transformer-free and CPU-only. Verified
 non-ARC knowledge may be retrieved during ARC evaluation, but must be rebound
 and replayed on current demonstrations and may never encode benchmark answers.
 
+The current interactive checkpoint also learns across worlds: two independently
+verified hidden-state theories alpha-normalize to one action-ID-free mechanism,
+which is automatically promoted and rebound in a third changed world. Exact
+current replay preserves 510/510 held-out predictions while reducing selected
+interventions from one to zero. This is bounded continual causal learning, not
+a general-intelligence or ARC-score claim.
+
 The bounded developmental controller now persists only a canonical,
 content-free event journal. After process loss, a fresh controller must
 reproduce every choice and evidence transition before learned prerequisites,

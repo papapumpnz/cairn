@@ -935,3 +935,27 @@ deterministic output and resettable episode continuation. It does not search
 long conditional experiments, maintain noisy posterior belief, consolidate the
 world model across environments, induce entities from sensors, establish broad
 G0-G6, or meet general intelligence. ARC remains 36/400.
+
+## 37. Persistent latent-world mechanism checkpoint
+
+ADR-0021 removes source action identities, coordinate bounds, support counts,
+episode content, and latent-state label permutations from complete learned
+world theories. Independent verifier code reconstructs the canonical schema
+and exact action-role replay. Memory cannot self-promote: it requires matching
+opaque compilation and transfer receipts from two distinct experience hashes.
+
+Two active-learning source worlds with changed actions, layouts, and initial
+positions produce the same six-rule/two-state mechanism. The first receipt
+leaves it provisional; the second promotes it. On a third renamed and
+resituated world, the frozen memory-disabled path requires one discriminating
+intervention. The memory-enabled runtime rebinds the mechanism from the same
+initial visible evidence with zero interventions, and independent replay plus
+510/510 held-out predictions preserve correctness. Duplicate source evidence
+cannot fake promotion and blank memory returns no proposal.
+
+This is direct evidence that prior verified experience can reduce future
+interactive sample cost. It remains one small deterministic mechanism with
+known episode resets, one-dimensional visible state, immediate effects, and no
+sensor-level entity induction. It does not satisfy G2's sustained curriculum
+threshold, broad G4, the complete G0-G6 suite, general intelligence, or the 80%
+ARC target. ARC was not run or modified and remains 36/400.

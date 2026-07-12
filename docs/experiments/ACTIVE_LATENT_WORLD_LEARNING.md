@@ -76,3 +76,7 @@ and no persistent world-model consolidation is demonstrated. This does not
 establish open-ended exploration, noisy belief-state inference, general
 intelligence, or the 80% ARC target. ARC remains 36/400 and was not executed or
 modified by this experiment.
+
+The subsequent source-independent consolidation and third-world reuse result is
+reported separately in `PERSISTENT_LATENT_MECHANISM_MEMORY.md`; it does not
+retroactively broaden this experiment's claim.

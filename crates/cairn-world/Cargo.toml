@@ -7,8 +7,10 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
-[dev-dependencies]
+[dependencies]
 cairn-core = { path = "../cairn-core" }
+
+[dev-dependencies]
 cairn-curriculum = { path = "../cairn-curriculum" }
 cairn-runtime = { path = "../cairn-runtime" }
 

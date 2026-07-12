@@ -50,6 +50,16 @@ two actions to an inferred goal, and transfers learned mode-conditioned rules
 through the relational constructor. Longer experiments and noisy belief remain
 open.
 
+Persistent-world checkpoint (2026-07-13): complete hidden-state theories now
+compile to canonical mechanisms that exclude action IDs, coordinate bounds,
+source traces, support counts, and latent-label permutations. A separately
+implemented verifier reconstructs compilation and current replay. Memory alone
+promotes after two distinct verified worlds. On a third world with renamed
+actions and changed bounds/positions, runtime rebinding preserves 510/510 exact
+predictions while reducing interventions from one to zero. This establishes a
+small experience-dependent reduction; it does not establish broad unknown-world
+competence, open-ended learning, or general intelligence.
+
 ## 0. Executive decision
 
 CAIRN is a CPU-only, transformer-free self-compressing causal theory learner.
