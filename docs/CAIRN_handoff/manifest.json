@@ -2,14 +2,14 @@
   "schema_version": "1.0",
   "bundle": "CAIRN_ARCHITECTURE_HANDOFF",
   "architecture": "CAIRN — Causal Analogical Induction over Relational Networks",
-  "generated_utc": "2026-07-11T23:32:12Z",
+  "generated_utc": "2026-07-12T04:46:49Z",
   "hash_algorithm": "SHA-256",
   "manifest_excludes": [
     "manifest.json",
     "manifest.sha256"
   ],
   "file_count": 63,
-  "total_bytes": 438333,
+  "total_bytes": 440581,
   "source_archives": [
     {
       "name": "mosasic_experiments.zip",
@@ -42,8 +42,8 @@
     },
     {
       "path": "03_CAIRN_INTERFACES.md",
-      "bytes": 22742,
-      "sha256": "fea6e1b24d38d3aaa495c42528e965f05ae5ef3ead0b4445b1d80ec2ce936082"
+      "bytes": 23479,
+      "sha256": "817c4070356da0a1d7358b7dd3caeb026846e288451bd9c08828527a3cb1a9cc"
     },
     {
       "path": "04_CAIRN_EXPERIMENT_LADDER.md",
@@ -67,8 +67,8 @@
     },
     {
       "path": "08_GENERAL_LEARNER_REQUIREMENTS.md",
-      "bytes": 37176,
-      "sha256": "04490fd6efcb9d8aee9d0d27e44dade524f1006fefe648fb0c3c35b9903a60b1"
+      "bytes": 38118,
+      "sha256": "44d637208fbb03187b935da49f60453cb7ff317da1d06b2fd1db16a2740c13bc"
     },
     {
       "path": "BIBLIOGRAPHY.md",
@@ -277,8 +277,8 @@
     },
     {
       "path": "work_packages/WP23.md",
-      "bytes": 5847,
-      "sha256": "770fd18f384f2f47bdead1677540f86aff8cd3c0beb233ee32d7603e8debd3f3"
+      "bytes": 6416,
+      "sha256": "63a28014dbd2baa3ec6ce09e3bd2119d18b290c70b719649a5ae9672c99be182"
     },
     {
       "path": "work_packages/WP24.md",
