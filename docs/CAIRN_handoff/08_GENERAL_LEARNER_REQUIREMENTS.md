@@ -721,8 +721,32 @@ Whole-graph compression rejects the same cohort. A fifth changed host rebinds
 the learned pattern exactly, while operation, fixed-value, boundary, episode,
 source-content, and capacity negatives fail closed.
 
-This is the first measured internal helper-discovery result, but it covers only
-bounded contiguous topological windows. The proposal is not yet compiled to an
-executable RKL mechanism or promoted from measured runtime reuse. It therefore
-advances proof-subgraph compression without satisfying G0-G6, autonomous
-curriculum growth, general intelligence, or the ARC target.
+This was the first measured internal helper-discovery result and covers only
+bounded contiguous topological windows. At this checkpoint the proposal was
+not compiled or promoted from measured runtime reuse; section 28 records the
+subsequent executable proof-schema and promotion result. RKL lowering remains
+open. This checkpoint alone does not satisfy G0-G6, autonomous curriculum
+growth, general intelligence, or the ARC target.
+
+## 28. Source-independent mechanism and automatic-promotion checkpoint
+
+Two disjoint four-episode cohorts now produce different evidence proposal
+identities but identical canonical compiled mechanism bytes and hash. The
+compiled typed proof schema rebinds and exactly expands on changed hosts, while
+the independent verifier reconstructs its identity and every source/current
+invocation. This establishes that the reusable object is the causal structure,
+not the original examples.
+
+Verifier-derived reuse receipts measure fresh mining against compiled matching:
+candidate windows fall from 18 to nine and five, examples from four to one, and
+proof units from 28 to four. One receipt remains provisional. The second
+independent receipt automatically invokes the separate consolidator, whose
+certificate promotes the module. Mixed proposal lineage and duplicate
+experiences fail closed unless an equivalent proposal has independently
+compiled to the same mechanism and been registered. Two registered disjoint
+cohorts can contribute to one certificate.
+
+This advances the explanatory-compression and actual-reuse portions of G0-G2.
+The distribution is still small, mining is contiguous, the schema is not an RKL
+world theory, and accepted compiled modules are not yet restart durable. It does
+not satisfy broad G0-G6, general intelligence, or the ARC objective.

@@ -4,8 +4,8 @@ use cairn_core::{CollectionProcedureProblem, Hash32, LearningProblem, Observatio
 use cairn_invent::{InventionError, InventionProblem};
 use cairn_knowledge::KnowledgeBase;
 use cairn_memory::{
-    MechanismStore, MemoryAssistedInventor, MemorySolveOutcome, ProceduralMechanismModule,
-    ProceduralMechanismStore,
+    InternalMechanismStore, MechanismStore, MemoryAssistedInventor, MemorySolveOutcome,
+    ProceduralMechanismModule, ProceduralMechanismStore,
 };
 use cairn_rkl::{
     ReferenceTheoryExecutor, RuntimeEnvironment, TheoryExecLimits, TheoryExecutionRequest, Type,
@@ -22,6 +22,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub struct CognitionRuntime {
     memory: MechanismStore,
     procedures: ProceduralMechanismStore,
+    internal_mechanisms: InternalMechanismStore,
     knowledge: KnowledgeBase,
 }
 
@@ -173,6 +174,7 @@ impl CognitionRuntime {
         Self {
             memory: MechanismStore::new(),
             procedures: ProceduralMechanismStore::new(),
+            internal_mechanisms: InternalMechanismStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -182,6 +184,7 @@ impl CognitionRuntime {
         Self {
             memory,
             procedures: ProceduralMechanismStore::new(),
+            internal_mechanisms: InternalMechanismStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -194,6 +197,7 @@ impl CognitionRuntime {
         Self {
             memory,
             procedures,
+            internal_mechanisms: InternalMechanismStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -214,6 +218,15 @@ impl CognitionRuntime {
 
     pub const fn procedural_memory_mut(&mut self) -> &mut ProceduralMechanismStore {
         &mut self.procedures
+    }
+
+    #[must_use]
+    pub const fn internal_mechanism_memory(&self) -> &InternalMechanismStore {
+        &self.internal_mechanisms
+    }
+
+    pub const fn internal_mechanism_memory_mut(&mut self) -> &mut InternalMechanismStore {
+        &mut self.internal_mechanisms
     }
 
     #[must_use]

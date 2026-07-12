@@ -1,9 +1,10 @@
 //! Independent promotion boundary combining replay provenance and learning gates.
 
 use cairn_consolidator::{
-    EpisodeBindings, GraphCompressionProposal, GraphPatternArgument, GraphPatternNode,
-    InternalEpisodeBindings, InternalGraphCompressionProposal, InternalGraphPatternNode,
-    InternalPatternInput, ProofDatum, ProofGraph, ProofNode, ProofValueType,
+    CompiledInternalMechanism, EpisodeBindings, GraphCompressionProposal, GraphPatternArgument,
+    GraphPatternNode, InternalEpisodeBindings, InternalGraphCompressionProposal,
+    InternalGraphPatternNode, InternalPatternInput, ProofDatum, ProofGraph, ProofNode,
+    ProofValueType,
 };
 use cairn_core::{CanonicalEncode, CanonicalValue, CollectionProcedureProblem, Hash32};
 use cairn_mechanism::{
@@ -189,8 +190,412 @@ pub enum InternalCompressionVerifyError {
     ReplayMismatch,
     CostMismatch,
     IdentityMismatch,
+    CompiledLineageMismatch,
+    CompiledSchemaMismatch,
+    InsufficientReuseEvidence,
+    NoLearningReduction,
     NoCompression,
     Capacity,
+}
+
+/// Opaque evidence that a source-independent internal mechanism was derived
+/// from an independently replayed compression proposal.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedInternalMechanism {
+    mechanism: Hash32,
+    source_proposal: Hash32,
+    replayed_sources: u64,
+}
+
+impl VerifiedInternalMechanism {
+    #[must_use]
+    pub const fn mechanism(&self) -> Hash32 {
+        self.mechanism
+    }
+
+    #[must_use]
+    pub const fn source_proposal(&self) -> Hash32 {
+        self.source_proposal
+    }
+
+    #[must_use]
+    pub const fn replayed_sources(&self) -> u64 {
+        self.replayed_sources
+    }
+}
+
+/// Opaque evidence that one compiled mechanism invocation exactly expands to
+/// the selected occurrence in a current host proof.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedInternalInvocation {
+    mechanism: Hash32,
+    episode: Hash32,
+    selected_nodes: Vec<u32>,
+}
+
+impl VerifiedInternalInvocation {
+    #[must_use]
+    pub const fn mechanism(&self) -> Hash32 {
+        self.mechanism
+    }
+
+    #[must_use]
+    pub const fn episode(&self) -> Hash32 {
+        self.episode
+    }
+
+    #[must_use]
+    pub fn selected_nodes(&self) -> &[u32] {
+        &self.selected_nodes
+    }
+}
+
+/// Deterministic fixed-work comparison between fresh internal-mechanism
+/// invention and reuse of an already compiled mechanism.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct InternalReuseMetrics {
+    pub candidate_windows_without: u64,
+    pub candidate_windows_with: u64,
+    pub examples_without: u32,
+    pub examples_with: u32,
+    pub proof_units_without: u64,
+    pub proof_units_with: u64,
+}
+
+/// Opaque verifier receipt for one necessary invocation on a new experience.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedInternalReuse {
+    mechanism: Hash32,
+    source_proposal: Hash32,
+    experience: Hash32,
+    verified_cases: u64,
+    metrics: InternalReuseMetrics,
+}
+
+impl VerifiedInternalReuse {
+    #[must_use]
+    pub const fn mechanism(&self) -> Hash32 {
+        self.mechanism
+    }
+
+    #[must_use]
+    pub const fn source_proposal(&self) -> Hash32 {
+        self.source_proposal
+    }
+
+    #[must_use]
+    pub const fn experience(&self) -> Hash32 {
+        self.experience
+    }
+
+    #[must_use]
+    pub const fn verified_cases(&self) -> u64 {
+        self.verified_cases
+    }
+
+    #[must_use]
+    pub const fn metrics(&self) -> InternalReuseMetrics {
+        self.metrics
+    }
+}
+
+/// Consolidator-issued certificate aggregating multiple independent runtime
+/// reuse receipts for the same compiled internal mechanism.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedInternalPromotion {
+    mechanism: Hash32,
+    source_proposals: BTreeSet<Hash32>,
+    experiences: BTreeSet<Hash32>,
+    verified_cases: u64,
+}
+
+impl VerifiedInternalPromotion {
+    #[must_use]
+    pub const fn mechanism(&self) -> Hash32 {
+        self.mechanism
+    }
+
+    #[must_use]
+    pub const fn source_proposals(&self) -> &BTreeSet<Hash32> {
+        &self.source_proposals
+    }
+
+    #[must_use]
+    pub const fn experiences(&self) -> &BTreeSet<Hash32> {
+        &self.experiences
+    }
+
+    #[must_use]
+    pub const fn verified_cases(&self) -> u64 {
+        self.verified_cases
+    }
+}
+
+/// Independent compiler and invocation trust boundary for learned internal
+/// proof mechanisms.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct InternalMechanismVerifier;
+
+impl InternalMechanismVerifier {
+    /// Verify that compilation removed evidence identity without changing the
+    /// typed executable schema, then replay all mining sources independently.
+    ///
+    /// # Errors
+    ///
+    /// Rejects invalid source compression, changed lineage/schema/identity,
+    /// inconsistent parameter types, or any failed source occurrence replay.
+    pub fn verify_compilation(
+        &self,
+        proposal: &InternalGraphCompressionProposal,
+        mechanism: &CompiledInternalMechanism,
+        sources: &[ProofGraph],
+    ) -> Result<VerifiedInternalMechanism, InternalCompressionVerifyError> {
+        let compression = InternalCompressionVerifier.verify(proposal, sources)?;
+        if mechanism.source_proposal() != proposal.semantic_hash() {
+            return Err(InternalCompressionVerifyError::CompiledLineageMismatch);
+        }
+        let parameter_types = proposal
+            .bindings()
+            .first()
+            .ok_or(InternalCompressionVerifyError::MissingBinding)?
+            .values
+            .iter()
+            .map(|value| value.ty)
+            .collect::<Vec<_>>();
+        if proposal.bindings().iter().any(|binding| {
+            binding.values.len() != parameter_types.len()
+                || binding
+                    .values
+                    .iter()
+                    .zip(&parameter_types)
+                    .any(|(value, ty)| value.ty != *ty)
+        }) || mechanism.pattern() != proposal.pattern()
+            || mechanism.boundary_types() != proposal.boundary_types()
+            || mechanism.parameter_types() != parameter_types
+            || mechanism.output() != proposal.output()
+        {
+            return Err(InternalCompressionVerifyError::CompiledSchemaMismatch);
+        }
+        let identity = verifier_internal_mechanism_identity(
+            mechanism.pattern(),
+            mechanism.boundary_types(),
+            mechanism.parameter_types(),
+            mechanism.output(),
+        )?;
+        if identity != mechanism.semantic_hash() {
+            return Err(InternalCompressionVerifyError::IdentityMismatch);
+        }
+        for source in sources {
+            let binding = proposal
+                .bindings()
+                .iter()
+                .find(|binding| binding.episode == source.episode)
+                .ok_or(InternalCompressionVerifyError::MissingBinding)?;
+            self.verify_invocation(mechanism, source, binding)?;
+        }
+        Ok(VerifiedInternalMechanism {
+            mechanism: identity,
+            source_proposal: compression.proposal(),
+            replayed_sources: compression.replayed_sources(),
+        })
+    }
+
+    /// Independently verify one current-host binding and exact pattern
+    /// expansion without invoking producer matching or expansion code.
+    ///
+    /// # Errors
+    ///
+    /// Rejects changed mechanism identity, host, selection, boundary, type,
+    /// fixed value, or shared parameter binding.
+    pub fn verify_invocation(
+        &self,
+        mechanism: &CompiledInternalMechanism,
+        host: &ProofGraph,
+        binding: &InternalEpisodeBindings,
+    ) -> Result<VerifiedInternalInvocation, InternalCompressionVerifyError> {
+        verifier_validate_graph(host)?;
+        if binding.episode != host.episode {
+            return Err(InternalCompressionVerifyError::SourceMismatch);
+        }
+        let identity = verifier_internal_mechanism_identity(
+            mechanism.pattern(),
+            mechanism.boundary_types(),
+            mechanism.parameter_types(),
+            mechanism.output(),
+        )?;
+        if identity != mechanism.semantic_hash() {
+            return Err(InternalCompressionVerifyError::IdentityMismatch);
+        }
+        if binding.values.len() != mechanism.parameter_types().len()
+            || binding
+                .values
+                .iter()
+                .zip(mechanism.parameter_types())
+                .any(|(value, ty)| value.ty != *ty)
+        {
+            return Err(InternalCompressionVerifyError::MissingBinding);
+        }
+        let occurrence = verifier_internal_occurrence(host, binding, mechanism.pattern())?;
+        if occurrence.boundary_types != mechanism.boundary_types() {
+            return Err(InternalCompressionVerifyError::BoundaryMismatch);
+        }
+        let expanded = verifier_instantiate_internal(mechanism.pattern(), binding)?;
+        if occurrence.nodes != expanded {
+            return Err(InternalCompressionVerifyError::ReplayMismatch);
+        }
+        Ok(VerifiedInternalInvocation {
+            mechanism: identity,
+            episode: host.episode,
+            selected_nodes: binding.selected_nodes.clone(),
+        })
+    }
+
+    /// Derive a fixed-work reuse receipt by independently replaying the source
+    /// compilation and current invocation, then counting the exact windows and
+    /// evidence required by fresh mining versus compiled matching.
+    ///
+    /// # Errors
+    ///
+    /// Rejects changed compilation lineage, repeated source/held-out episodes,
+    /// failed invocation replay, or absent candidate, sample,
+    /// and proof-size reductions.
+    #[allow(clippy::too_many_arguments)] // Keep each independently checked evidence boundary explicit.
+    pub fn verify_reuse(
+        &self,
+        proposal: &InternalGraphCompressionProposal,
+        mechanism: &CompiledInternalMechanism,
+        compilation: &VerifiedInternalMechanism,
+        sources: &[ProofGraph],
+        held_out: &ProofGraph,
+        binding: &InternalEpisodeBindings,
+        maximum_match_windows: usize,
+    ) -> Result<VerifiedInternalReuse, InternalCompressionVerifyError> {
+        let replayed = self.verify_compilation(proposal, mechanism, sources)?;
+        if &replayed != compilation
+            || compilation.mechanism != mechanism.semantic_hash()
+            || compilation.source_proposal != proposal.semantic_hash()
+            || sources
+                .iter()
+                .any(|source| source.episode == held_out.episode)
+            || sources.len() < 2
+            || maximum_match_windows == 0
+        {
+            return Err(InternalCompressionVerifyError::CompiledLineageMismatch);
+        }
+        self.verify_invocation(mechanism, held_out, binding)?;
+        let width = mechanism.pattern().len();
+        let candidate_windows_without = verifier_fresh_window_work(sources, width)?;
+        if width > held_out.nodes.len() {
+            return Err(InternalCompressionVerifyError::ReplayMismatch);
+        }
+        let candidate_windows_with = u64::try_from(held_out.nodes.len() - width + 1)
+            .map_err(|_| InternalCompressionVerifyError::Capacity)?;
+        if candidate_windows_with
+            > u64::try_from(maximum_match_windows)
+                .map_err(|_| InternalCompressionVerifyError::Capacity)?
+        {
+            return Err(InternalCompressionVerifyError::Capacity);
+        }
+        let examples_without =
+            u32::try_from(sources.len()).map_err(|_| InternalCompressionVerifyError::Capacity)?;
+        let proof_units_with = 1_u64
+            .checked_add(
+                u64::try_from(mechanism.parameter_types().len())
+                    .map_err(|_| InternalCompressionVerifyError::Capacity)?,
+            )
+            .and_then(|value| {
+                value.checked_add(u64::try_from(mechanism.boundary_types().len()).ok()?)
+            })
+            .ok_or(InternalCompressionVerifyError::Capacity)?;
+        let metrics = InternalReuseMetrics {
+            candidate_windows_without,
+            candidate_windows_with,
+            examples_without,
+            examples_with: 1,
+            proof_units_without: proposal.uncompressed_nodes(),
+            proof_units_with,
+        };
+        if metrics.candidate_windows_with >= metrics.candidate_windows_without
+            || metrics.examples_with >= metrics.examples_without
+            || metrics.proof_units_with >= metrics.proof_units_without
+        {
+            return Err(InternalCompressionVerifyError::NoLearningReduction);
+        }
+        Ok(VerifiedInternalReuse {
+            mechanism: mechanism.semantic_hash(),
+            source_proposal: proposal.semantic_hash(),
+            experience: held_out.episode,
+            verified_cases: compilation
+                .replayed_sources
+                .checked_add(1)
+                .ok_or(InternalCompressionVerifyError::Capacity)?,
+            metrics,
+        })
+    }
+}
+
+/// Separate consolidation authority for runtime evidence about compiled
+/// internal mechanisms.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct InternalPromotionConsolidator;
+
+impl InternalPromotionConsolidator {
+    /// Aggregate at least two independent verifier receipts into a promotion
+    /// certificate bound to mechanism and source-proposal identity.
+    ///
+    /// # Errors
+    ///
+    /// Rejects duplicate/mixed experiences, changed compilation lineage, or
+    /// any receipt without strict candidate, sample, and proof-size reduction.
+    pub fn consolidate(
+        &self,
+        mechanism: &CompiledInternalMechanism,
+        compilations: &[VerifiedInternalMechanism],
+        receipts: &[VerifiedInternalReuse],
+    ) -> Result<VerifiedInternalPromotion, InternalCompressionVerifyError> {
+        let experiences = receipts
+            .iter()
+            .map(VerifiedInternalReuse::experience)
+            .collect::<BTreeSet<_>>();
+        if receipts.len() < 2 || experiences.len() != receipts.len() {
+            return Err(InternalCompressionVerifyError::InsufficientReuseEvidence);
+        }
+        let source_proposals = compilations
+            .iter()
+            .map(VerifiedInternalMechanism::source_proposal)
+            .collect::<BTreeSet<_>>();
+        if compilations.is_empty()
+            || source_proposals.len() != compilations.len()
+            || compilations
+                .iter()
+                .any(|compilation| compilation.mechanism != mechanism.semantic_hash())
+            || receipts.iter().any(|receipt| {
+                receipt.mechanism != mechanism.semantic_hash()
+                    || !source_proposals.contains(&receipt.source_proposal)
+            })
+        {
+            return Err(InternalCompressionVerifyError::CompiledLineageMismatch);
+        }
+        if receipts.iter().any(|receipt| {
+            let metrics = receipt.metrics;
+            metrics.candidate_windows_with >= metrics.candidate_windows_without
+                || metrics.examples_with >= metrics.examples_without
+                || metrics.proof_units_with >= metrics.proof_units_without
+        }) {
+            return Err(InternalCompressionVerifyError::NoLearningReduction);
+        }
+        let verified_cases = receipts.iter().try_fold(0_u64, |total, receipt| {
+            total
+                .checked_add(receipt.verified_cases)
+                .ok_or(InternalCompressionVerifyError::Capacity)
+        })?;
+        Ok(VerifiedInternalPromotion {
+            mechanism: mechanism.semantic_hash(),
+            source_proposals,
+            experiences,
+            verified_cases,
+        })
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -663,6 +1068,29 @@ fn verifier_validate_graph(graph: &ProofGraph) -> Result<(), InternalCompression
     Ok(())
 }
 
+fn verifier_fresh_window_work(
+    sources: &[ProofGraph],
+    width: usize,
+) -> Result<u64, InternalCompressionVerifyError> {
+    const MAXIMUM_FRESH_WINDOWS: u64 = 10_000;
+    let mut total = 0_u64;
+    for source in sources {
+        verifier_validate_graph(source)?;
+        if width == 0 || width > source.nodes.len() {
+            return Err(InternalCompressionVerifyError::ReplayMismatch);
+        }
+        let episode = u64::try_from(source.nodes.len() - width + 1)
+            .map_err(|_| InternalCompressionVerifyError::Capacity)?;
+        if episode > MAXIMUM_FRESH_WINDOWS {
+            return Err(InternalCompressionVerifyError::Capacity);
+        }
+        total = total
+            .checked_add(episode)
+            .ok_or(InternalCompressionVerifyError::Capacity)?;
+    }
+    Ok(total)
+}
+
 #[allow(clippy::too_many_lines)] // Keep independent boundary reconstruction explicit.
 fn verifier_internal_occurrence(
     graph: &ProofGraph,
@@ -927,6 +1355,74 @@ fn verifier_internal_identity(
         ),
         CanonicalValue::Unsigned(uncompressed),
         CanonicalValue::Unsigned(compressed),
+    ]);
+    value
+        .encode_canonical()
+        .map(|bytes| Hash32::digest(&bytes))
+        .map_err(|_| InternalCompressionVerifyError::IdentityMismatch)
+}
+
+fn verifier_internal_mechanism_identity(
+    pattern: &[InternalGraphPatternNode],
+    boundary_types: &[ProofValueType],
+    parameter_types: &[ProofValueType],
+    output: u32,
+) -> Result<Hash32, InternalCompressionVerifyError> {
+    let value = CanonicalValue::Array(vec![
+        CanonicalValue::Text("cairn.consolidator.compiled-internal-mechanism.v1".to_owned()),
+        CanonicalValue::Array(
+            boundary_types
+                .iter()
+                .map(|ty| CanonicalValue::Unsigned(verifier_proof_type_code(*ty)))
+                .collect(),
+        ),
+        CanonicalValue::Array(
+            parameter_types
+                .iter()
+                .map(|ty| CanonicalValue::Unsigned(verifier_proof_type_code(*ty)))
+                .collect(),
+        ),
+        CanonicalValue::Unsigned(u64::from(output)),
+        CanonicalValue::Array(
+            pattern
+                .iter()
+                .map(|node| {
+                    CanonicalValue::Array(vec![
+                        CanonicalValue::Text(node.operation.clone()),
+                        CanonicalValue::Unsigned(verifier_proof_type_code(node.output_type)),
+                        CanonicalValue::Array(
+                            node.inputs
+                                .iter()
+                                .copied()
+                                .map(verifier_internal_input_value)
+                                .collect(),
+                        ),
+                        CanonicalValue::Array(
+                            node.arguments
+                                .iter()
+                                .map(|argument| match argument {
+                                    GraphPatternArgument::Fixed(value) => {
+                                        CanonicalValue::Array(vec![
+                                            CanonicalValue::Unsigned(0),
+                                            CanonicalValue::Unsigned(verifier_proof_type_code(
+                                                value.ty,
+                                            )),
+                                            CanonicalValue::Bytes(value.value.as_bytes().to_vec()),
+                                        ])
+                                    }
+                                    GraphPatternArgument::Parameter(index) => {
+                                        CanonicalValue::Array(vec![
+                                            CanonicalValue::Unsigned(1),
+                                            CanonicalValue::Unsigned(u64::from(*index)),
+                                        ])
+                                    }
+                                })
+                                .collect(),
+                        ),
+                    ])
+                })
+                .collect(),
+        ),
     ]);
     value
         .encode_canonical()

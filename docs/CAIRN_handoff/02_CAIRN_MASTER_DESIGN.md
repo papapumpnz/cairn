@@ -56,9 +56,14 @@ requires that proposal's source identities to equal the independently invented
 definition lineage. The cohort is compiled into a fresh alpha-normalized RKL
 definition with generalized observed type bounds, while a separately
 implemented verifier reconstructs source graphs and recalculates compression
-costs before issuing the token required by memory. This remains bounded: graph
-edit anti-unification and compilation of an arbitrary internal subgraph into a
-higher-order helper remain open.
+costs before issuing the token required by memory. The bounded internal miner
+also compiles contiguous typed proof fragments into canonical executable
+schemas whose identities exclude evidence episodes and costs. Independent
+runtime receipts measure fresh-window, example, and proof work; the second
+qualifying experience automatically asks a separate consolidator for the only
+certificate that may promote the schema. Arbitrary graph-edit anti-unification,
+RKL lowering for operations with explicit semantics, and durable compiled-module
+storage remain open.
 
 The architecture deliberately avoids two failed patterns:
 

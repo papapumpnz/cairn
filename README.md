@@ -342,11 +342,19 @@ different host prefixes and suffixes. External dependencies become explicit
 typed boundary parameters; an independent verifier reconstructs all four
 sources, recalculates the 28-to-20 proof-unit compression, and a fifth changed
 host rebinds exactly. This is bounded contiguous-window mining, not arbitrary
-graph mining or a compiled learned mechanism. See
+graph mining. See
 [INTERNAL_SUBGRAPH_MECHANISM_DISCOVERY.md](docs/experiments/INTERNAL_SUBGRAPH_MECHANISM_DISCOVERY.md).
+Two disjoint evidence cohorts now compile that structure into the same
+source-independent canonical mechanism. On two changed runtime hosts, verified
+reuse reduces candidate windows from 18 to nine/five, examples from four to
+one, and proof units from 28 to four; the second opaque receipt automatically
+causes the separate consolidator to issue a promotion certificate. The result
+is an executable typed proof schema, not yet an RKL world theory or durable
+module. See
+[COMPILED_INTERNAL_MECHANISM_REUSE.md](docs/experiments/COMPILED_INTERNAL_MECHANISM_REUSE.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding,
-arbitrary internal-subgraph compilation,
+arbitrary non-contiguous internal-subgraph mining and RKL lowering,
 richer ontology invention, broad
 cross-domain curricula, ARC evaluation beyond the development training split,
 and knowledge frontends

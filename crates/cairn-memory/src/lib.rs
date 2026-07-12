@@ -5,7 +5,7 @@
 //! it can influence a prediction.
 
 use cairn_cas::{Cas, CasError, StoredArtifact};
-use cairn_consolidator::GraphCompressionProposal;
+use cairn_consolidator::{CompiledInternalMechanism, GraphCompressionProposal};
 use cairn_core::{
     ArtifactEnvelope, ArtifactError, ArtifactId, ArtifactKind, BlobId, BudgetRecord,
     CanonicalEncode, CanonicalLimits, CanonicalValue, Hash32, ProducerRecord, SchemaDescriptor,
@@ -18,13 +18,14 @@ use cairn_mechanism::SupportGeometry as MechanismSupportGeometry;
 use cairn_rkl::CheckedTheory;
 use cairn_rkl::{BoundChecker, Definition, Expr, Type, TypeChecker, VarName};
 use cairn_verifier::{
-    CounterfactualReuseMetrics, PromotionVerifier, VerifiedCompression,
-    VerifiedProceduralPromotion, VerifiedProceduralReuse, VerifiedPromotion,
+    CounterfactualReuseMetrics, InternalCompressionVerifyError, InternalPromotionConsolidator,
+    PromotionVerifier, VerifiedCompression, VerifiedInternalMechanism, VerifiedInternalPromotion,
+    VerifiedInternalReuse, VerifiedProceduralPromotion, VerifiedProceduralReuse, VerifiedPromotion,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
-pub const MEMORY_SEMANTICS_VERSION: &str = "1.5.0";
+pub const MEMORY_SEMANTICS_VERSION: &str = "1.6.0";
 pub const REUSE_EVIDENCE_SCHEMA: &str = "cairn.memory.reuse-evidence";
 pub const REUSE_EVIDENCE_SCHEMA_VERSION: u32 = 1;
 const MAXIMUM_REBOUND_PROPOSALS: usize = 1_024;
@@ -81,6 +82,210 @@ pub struct CompiledMechanism {
     pub proposal: DefinitionProposal,
     pub compression: Hash32,
     pub exact_source_replays: u64,
+}
+
+/// One source-independent internal proof mechanism and its independently
+/// verified runtime-reuse ledger.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InternalMechanismModule {
+    mechanism: CompiledInternalMechanism,
+    compilations: BTreeMap<Hash32, VerifiedInternalMechanism>,
+    reuse: BTreeMap<Hash32, VerifiedInternalReuse>,
+    status: ModuleStatus,
+}
+
+impl InternalMechanismModule {
+    #[must_use]
+    pub const fn id(&self) -> Hash32 {
+        self.mechanism.semantic_hash()
+    }
+
+    #[must_use]
+    pub const fn mechanism(&self) -> &CompiledInternalMechanism {
+        &self.mechanism
+    }
+
+    #[must_use]
+    pub const fn status(&self) -> ModuleStatus {
+        self.status
+    }
+
+    #[must_use]
+    pub fn verified_reuses(&self) -> usize {
+        self.reuse.len()
+    }
+
+    #[must_use]
+    pub fn verified_compilations(&self) -> usize {
+        self.compilations.len()
+    }
+}
+
+/// Result of recording runtime reuse. The store automatically asks the
+/// separate consolidator for a certificate once enough evidence exists.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum InternalPromotionProgress {
+    Pending { verified_reuses: usize },
+    Promoted(VerifiedInternalPromotion),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum InternalStoreError {
+    CompilationMismatch,
+    DuplicateMechanism,
+    UnknownMechanism,
+    DuplicateExperience,
+    Unavailable,
+    Consolidation(InternalCompressionVerifyError),
+}
+
+/// Memory boundary for compiled internal mechanisms. Runtime code may submit
+/// only opaque verifier receipts; it cannot construct promotion certificates
+/// or set persistent status directly.
+#[derive(Clone, Debug, Default)]
+pub struct InternalMechanismStore {
+    modules: BTreeMap<Hash32, InternalMechanismModule>,
+}
+
+impl InternalMechanismStore {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            modules: BTreeMap::new(),
+        }
+    }
+
+    /// Insert an independently replayed compiled mechanism as provisional.
+    ///
+    /// # Errors
+    ///
+    /// Rejects changed mechanism/proposal identity, empty source replay, and
+    /// duplicate semantic mechanisms.
+    pub fn insert_provisional(
+        &mut self,
+        mechanism: CompiledInternalMechanism,
+        compilation: VerifiedInternalMechanism,
+    ) -> Result<Hash32, InternalStoreError> {
+        if compilation.mechanism() != mechanism.semantic_hash()
+            || compilation.source_proposal() != mechanism.source_proposal()
+            || compilation.replayed_sources() == 0
+        {
+            return Err(InternalStoreError::CompilationMismatch);
+        }
+        let id = mechanism.semantic_hash();
+        if self.modules.contains_key(&id) {
+            return Err(InternalStoreError::DuplicateMechanism);
+        }
+        self.modules.insert(
+            id,
+            InternalMechanismModule {
+                mechanism,
+                compilations: BTreeMap::from([(compilation.source_proposal(), compilation)]),
+                reuse: BTreeMap::new(),
+                status: ModuleStatus::Provisional,
+            },
+        );
+        Ok(id)
+    }
+
+    /// Attach another independently verified evidence proposal that compiled
+    /// to the same semantic mechanism. This permits later receipts from
+    /// disjoint cohorts to consolidate without weakening lineage checks.
+    ///
+    /// # Errors
+    ///
+    /// Rejects unknown mechanisms, changed mechanism identity, empty replay,
+    /// and duplicate proposal lineage.
+    pub fn register_compilation(
+        &mut self,
+        id: Hash32,
+        mechanism: &CompiledInternalMechanism,
+        compilation: VerifiedInternalMechanism,
+    ) -> Result<(), InternalStoreError> {
+        let module = self
+            .modules
+            .get_mut(&id)
+            .ok_or(InternalStoreError::UnknownMechanism)?;
+        if id != mechanism.semantic_hash()
+            || id != compilation.mechanism()
+            || mechanism.semantic_hash() != module.mechanism.semantic_hash()
+            || compilation.source_proposal() != mechanism.source_proposal()
+            || compilation.replayed_sources() == 0
+        {
+            return Err(InternalStoreError::CompilationMismatch);
+        }
+        if module
+            .compilations
+            .contains_key(&compilation.source_proposal())
+        {
+            return Err(InternalStoreError::DuplicateMechanism);
+        }
+        module
+            .compilations
+            .insert(compilation.source_proposal(), compilation);
+        Ok(())
+    }
+
+    /// Record one verifier-issued runtime receipt and automatically request a
+    /// consolidation certificate. The first independent receipt remains
+    /// pending; the second qualifying receipt promotes the module.
+    ///
+    /// # Errors
+    ///
+    /// Rejects unknown/unavailable mechanisms, mixed identities, duplicate
+    /// experiences, and consolidator refusal.
+    pub fn record_runtime_reuse(
+        &mut self,
+        id: Hash32,
+        receipt: VerifiedInternalReuse,
+    ) -> Result<InternalPromotionProgress, InternalStoreError> {
+        let module = self
+            .modules
+            .get_mut(&id)
+            .ok_or(InternalStoreError::UnknownMechanism)?;
+        if !matches!(
+            module.status,
+            ModuleStatus::Provisional | ModuleStatus::Persistent | ModuleStatus::Compiled
+        ) {
+            return Err(InternalStoreError::Unavailable);
+        }
+        if receipt.mechanism() != id
+            || !module.compilations.contains_key(&receipt.source_proposal())
+        {
+            return Err(InternalStoreError::CompilationMismatch);
+        }
+        if module.reuse.contains_key(&receipt.experience()) {
+            return Err(InternalStoreError::DuplicateExperience);
+        }
+        module.reuse.insert(receipt.experience(), receipt);
+        if module.reuse.len() < 2 {
+            return Ok(InternalPromotionProgress::Pending {
+                verified_reuses: module.reuse.len(),
+            });
+        }
+        let receipts = module.reuse.values().cloned().collect::<Vec<_>>();
+        let compilations = module.compilations.values().cloned().collect::<Vec<_>>();
+        let certificate = InternalPromotionConsolidator
+            .consolidate(&module.mechanism, &compilations, &receipts)
+            .map_err(InternalStoreError::Consolidation)?;
+        module.status = ModuleStatus::Persistent;
+        Ok(InternalPromotionProgress::Promoted(certificate))
+    }
+
+    #[must_use]
+    pub fn get(&self, id: Hash32) -> Option<&InternalMechanismModule> {
+        self.modules.get(&id)
+    }
+
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.modules.len()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.modules.is_empty()
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

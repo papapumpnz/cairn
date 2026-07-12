@@ -622,8 +622,21 @@ exactly reconstructs every source, and emits only positive-cost proposals.
 `match_internal_proof_subgraph` rebinds the pattern to an unseen host.
 `InternalCompressionVerifier` independently checks topology, selections,
 boundary edges and types, replay, costs, and semantic identity. This interface
-does not yet denote arbitrary non-contiguous subgraphs, an RKL definition, a
-persistent memory module, or a promotion certificate.
+does not denote arbitrary non-contiguous subgraphs or an RKL definition.
+
+Consolidator semantics 2.3.0 adds `CompiledInternalMechanism`. Its canonical
+identity excludes episodes, proposal costs, and occurrence bindings; those
+remain provenance. `InternalMechanismVerifier` independently verifies
+compilation and current-host expansion. `InternalReuseMetrics` are derived by
+the verifier from bounded fresh-mining and compiled-matching work rather than
+accepted from runtime. Under memory semantics 1.6.0,
+`InternalMechanismStore::record_runtime_reuse` retains opaque receipts and
+automatically calls `InternalPromotionConsolidator` after two independent
+experiences. Only the returned `VerifiedInternalPromotion` may change the
+module from provisional to persistent. `register_compilation` permits another
+independently verified proposal to support the same semantic mechanism, but a
+receipt from that lineage fails until registration. This status is not yet a
+durable CAS artifact.
 
 ## 19. Planner interfaces
 
