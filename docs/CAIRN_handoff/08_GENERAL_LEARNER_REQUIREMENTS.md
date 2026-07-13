@@ -1132,3 +1132,17 @@ transfers to four larger groups and missing-role ablation fails. Candidate
 relations remain supplied and the relation-bound composition is not yet one
 persistent artifact, so raw ontology learning and general intelligence remain
 open.
+
+## 49. Relation-bound continual-learning checkpoint
+
+The relation selected by executable explanatory adequacy now remains bound to
+the learned aggregate across the memory boundary. Two independently learned
+cross-domain cohorts produce one canonical mechanism; independent receipts and
+a separate consolidator promote it. Reuse needs one proposal attempt and zero
+examples instead of 187 candidates and four examples, while nine held-out
+groups replay exactly. Blank memory and altered relation identity fail closed.
+
+This is measured continual learning because retained structure reduces future
+compute and samples. It is not raw ontology invention: candidate relations are
+still frontend supplied. The store is not yet CAS-restartable, and the result
+does not establish open-ended learning, general intelligence, or ARC progress.

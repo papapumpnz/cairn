@@ -1,5 +1,5 @@
 use crate::{GroupMergeError, GroupMergeInventor, GroupMergeTrace, LearnedGroupMerge};
-use cairn_core::{Hash32, RelationRole};
+use cairn_core::{CanonicalEncode, CanonicalValue, Hash32, RelationRole};
 use cairn_invent::InventionLimits;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -15,6 +15,32 @@ pub struct LearnedGroupingMerge {
     pub relation: RelationRole,
     pub merge: LearnedGroupMerge,
     pub relations_evaluated: usize,
+}
+
+impl LearnedGroupingMerge {
+    /// Return the canonical identity of the relation-bound executable merge.
+    ///
+    /// The identity excludes source episodes and search telemetry, but includes
+    /// the selected environment-neutral relation role and exact RKL body.
+    ///
+    /// # Errors
+    ///
+    /// Returns canonical encoding failure.
+    pub fn semantic_hash(&self) -> Result<Hash32, cairn_core::CanonicalError> {
+        CanonicalValue::Array(vec![
+            CanonicalValue::Text("cairn.grouping-merge.v1".to_owned()),
+            CanonicalValue::Text(self.relation.0.clone()),
+            CanonicalValue::Bytes(
+                self.merge
+                    .constructor
+                    .proposal
+                    .definition
+                    .encode_canonical()?,
+            ),
+        ])
+        .encode_canonical()
+        .map(|bytes| Hash32::digest(&bytes))
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

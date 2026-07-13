@@ -9,6 +9,7 @@ mod construction_program_memory;
 mod correspondence_memory;
 mod expansion_memory;
 mod group_merge_memory;
+mod grouping_merge_memory;
 mod latent_memory;
 mod layer_memory;
 
@@ -17,6 +18,7 @@ pub use construction_program_memory::*;
 pub use correspondence_memory::*;
 pub use expansion_memory::*;
 pub use group_merge_memory::*;
+pub use grouping_merge_memory::*;
 pub use latent_memory::*;
 pub use layer_memory::*;
 

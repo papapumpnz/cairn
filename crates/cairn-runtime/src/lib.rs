@@ -10,16 +10,16 @@ use cairn_consolidator::{
     ObservationFrontierLimits, ProofFrontier, ProofGraph, RelationalConstructionPolicy,
 };
 use cairn_core::{
-    CollectionProcedureProblem, Hash32, LearningProblem, ObservationId, RelationalObservation,
-    TaskId,
+    CollectionProcedureProblem, Hash32, LearningProblem, ObservationId, RelationRole,
+    RelationalObservation, TaskId,
 };
 use cairn_invent::{InventionError, InventionProblem};
 use cairn_knowledge::KnowledgeBase;
 use cairn_memory::{
     ConditionalConstructionStore, ConstructionProgramStore, EntityCorrespondenceStore,
-    ExpansionStore, GroupMergeStore, InternalMechanismStore, LatentMechanismStore,
-    LayerMechanismStore, MechanismStore, MemoryAssistedInventor, MemorySolveOutcome, ModuleStatus,
-    ProceduralMechanismModule, ProceduralMechanismStore,
+    ExpansionStore, GroupMergeStore, GroupingMergeStore, InternalMechanismStore,
+    LatentMechanismStore, LayerMechanismStore, MechanismStore, MemoryAssistedInventor,
+    MemorySolveOutcome, ModuleStatus, ProceduralMechanismModule, ProceduralMechanismStore,
 };
 use cairn_rkl::{
     ExecLimits, ReferenceTheoryExecutor, RuntimeEnvironment, TheoryExecLimits,
@@ -31,7 +31,8 @@ use cairn_theory::{
     ConditionalConstructionSynthesizer, EntityConstruction, EntityConstructionProgramError,
     EntityConstructionProgramSynthesizer, EntityCorrespondenceError, EntityCorrespondenceLearner,
     EntityCorrespondenceLimits, EntityGeometryScene, GroupMergeError, GroupMergeInventor,
-    LayerMechanismError, LayerMechanismLearner, LayerRender, LayerScene, RelationalGeometryScene,
+    GroupingRelationInventor, GroupingSelectionError, LayerMechanismError, LayerMechanismLearner,
+    LayerRender, LayerScene, RelationalGeometryScene,
 };
 use cairn_world::{
     ActionId, ActiveLatentInductionReport, ActiveLatentLimits, ActiveLatentWorldLearner,
@@ -54,6 +55,7 @@ pub struct CognitionRuntime {
     conditional_constructions: ConditionalConstructionStore,
     expansions: ExpansionStore,
     group_merges: GroupMergeStore,
+    grouping_merges: GroupingMergeStore,
     knowledge: KnowledgeBase,
 }
 
@@ -212,6 +214,7 @@ pub enum CognitionError {
     ConditionalConstructionMemory(ConditionalConstructionMemoryRuntimeError),
     ExpansionMemory(ExpansionMemoryRuntimeError),
     GroupMergeMemory(GroupMergeMemoryRuntimeError),
+    GroupingMergeMemory(GroupingMergeMemoryRuntimeError),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -329,6 +332,18 @@ pub struct GroupMergeMemoryOutcome {
     pub persistent_mechanisms_attempted: u64,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum GroupingMergeMemoryRuntimeError {
+    NoVerifiedProposal,
+    Capacity,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct GroupingMergeMemoryOutcome {
+    pub proposals: Vec<BTreeSet<i64>>,
+    pub persistent_mechanisms_attempted: u64,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum InternalCompositionRuntimeError {
     UnavailableMechanism(Hash32),
@@ -349,6 +364,7 @@ impl CognitionRuntime {
             conditional_constructions: ConditionalConstructionStore::new(),
             expansions: ExpansionStore::new(),
             group_merges: GroupMergeStore::new(),
+            grouping_merges: GroupingMergeStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -366,6 +382,7 @@ impl CognitionRuntime {
             conditional_constructions: ConditionalConstructionStore::new(),
             expansions: ExpansionStore::new(),
             group_merges: GroupMergeStore::new(),
+            grouping_merges: GroupingMergeStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -386,6 +403,7 @@ impl CognitionRuntime {
             conditional_constructions: ConditionalConstructionStore::new(),
             expansions: ExpansionStore::new(),
             group_merges: GroupMergeStore::new(),
+            grouping_merges: GroupingMergeStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -405,6 +423,7 @@ impl CognitionRuntime {
             conditional_constructions: ConditionalConstructionStore::new(),
             expansions: ExpansionStore::new(),
             group_merges: GroupMergeStore::new(),
+            grouping_merges: GroupingMergeStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -424,6 +443,7 @@ impl CognitionRuntime {
             conditional_constructions: ConditionalConstructionStore::new(),
             expansions: ExpansionStore::new(),
             group_merges: GroupMergeStore::new(),
+            grouping_merges: GroupingMergeStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -444,6 +464,7 @@ impl CognitionRuntime {
             conditional_constructions: ConditionalConstructionStore::new(),
             expansions: ExpansionStore::new(),
             group_merges: GroupMergeStore::new(),
+            grouping_merges: GroupingMergeStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -464,6 +485,7 @@ impl CognitionRuntime {
             conditional_constructions: ConditionalConstructionStore::new(),
             expansions: ExpansionStore::new(),
             group_merges: GroupMergeStore::new(),
+            grouping_merges: GroupingMergeStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -484,6 +506,7 @@ impl CognitionRuntime {
             conditional_constructions,
             expansions: ExpansionStore::new(),
             group_merges: GroupMergeStore::new(),
+            grouping_merges: GroupingMergeStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -502,6 +525,7 @@ impl CognitionRuntime {
             conditional_constructions: ConditionalConstructionStore::new(),
             expansions,
             group_merges: GroupMergeStore::new(),
+            grouping_merges: GroupingMergeStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -520,6 +544,26 @@ impl CognitionRuntime {
             conditional_constructions: ConditionalConstructionStore::new(),
             expansions: ExpansionStore::new(),
             group_merges,
+            grouping_merges: GroupingMergeStore::new(),
+            knowledge: KnowledgeBase::new(),
+        }
+    }
+
+    /// Construct a runtime with a proof-gated relation-bound merge library.
+    #[must_use]
+    pub const fn with_grouping_merge_memory(grouping_merges: GroupingMergeStore) -> Self {
+        Self {
+            memory: MechanismStore::new(),
+            procedures: ProceduralMechanismStore::new(),
+            internal_mechanisms: InternalMechanismStore::new(),
+            latent_mechanisms: LatentMechanismStore::new(),
+            layer_mechanisms: LayerMechanismStore::new(),
+            entity_correspondences: EntityCorrespondenceStore::new(),
+            construction_programs: ConstructionProgramStore::new(),
+            conditional_constructions: ConditionalConstructionStore::new(),
+            expansions: ExpansionStore::new(),
+            group_merges: GroupMergeStore::new(),
+            grouping_merges,
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -613,6 +657,14 @@ impl CognitionRuntime {
     }
     pub const fn group_merge_memory_mut(&mut self) -> &mut GroupMergeStore {
         &mut self.group_merges
+    }
+
+    #[must_use]
+    pub const fn grouping_merge_memory(&self) -> &GroupingMergeStore {
+        &self.grouping_merges
+    }
+    pub const fn grouping_merge_memory_mut(&mut self) -> &mut GroupingMergeStore {
+        &mut self.grouping_merges
     }
 
     #[must_use]
@@ -1226,6 +1278,43 @@ impl CognitionRuntime {
             ));
         }
         Ok(GroupMergeMemoryOutcome {
+            proposals,
+            persistent_mechanisms_attempted,
+        })
+    }
+
+    /// Rebind persistent relation-bound merges as untrusted proposals.
+    ///
+    /// # Errors
+    ///
+    /// Returns typed absence or exact execution failure. Current-task evidence
+    /// must still be verified by a separate authority before acceptance.
+    pub fn propose_grouping_merges_from_memory(
+        &self,
+        candidates: &BTreeMap<RelationRole, Vec<BTreeSet<i64>>>,
+    ) -> Result<GroupingMergeMemoryOutcome, CognitionError> {
+        let mut persistent_mechanisms_attempted = 0_u64;
+        let mut proposals = Vec::new();
+        for mechanism in self.grouping_merges.persistent_mechanisms() {
+            persistent_mechanisms_attempted = persistent_mechanisms_attempted.saturating_add(1);
+            match GroupingRelationInventor.predict(mechanism, candidates) {
+                Ok(output) => proposals.push(output),
+                Err(GroupingSelectionError::Merge(
+                    GroupMergeError::Invention(_) | GroupMergeError::Capacity,
+                )) => {
+                    return Err(CognitionError::GroupingMergeMemory(
+                        GroupingMergeMemoryRuntimeError::Capacity,
+                    ));
+                }
+                Err(_) => {}
+            }
+        }
+        if proposals.is_empty() {
+            return Err(CognitionError::GroupingMergeMemory(
+                GroupingMergeMemoryRuntimeError::NoVerifiedProposal,
+            ));
+        }
+        Ok(GroupingMergeMemoryOutcome {
             proposals,
             persistent_mechanisms_attempted,
         })

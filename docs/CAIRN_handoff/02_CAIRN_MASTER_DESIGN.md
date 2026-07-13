@@ -2412,3 +2412,17 @@ retains a grouping only when one executable merge explains complete unordered
 outputs across episodes. Equal-cost alternatives remain ambiguous. Held-out
 execution rebinds the selected role. Candidate relation generation remains a
 frontend responsibility.
+
+## 34. Relation-bound grouping memory
+
+`LearnedGroupingMerge` now has one canonical identity over its selected generic
+relation role and executable RKL definition. Independent replay lowers that
+role from fresh candidate evidence and never invokes synthesis. A separate
+consolidator requires two disjoint verifier receipts with strict search
+reduction before `GroupingMergeStore` permits persistence.
+
+The shared runtime rebinds persistent compositions as proposals only. In the
+frozen experiment, two independently learned cross-domain cohorts agree;
+candidate executions fall from 187 to one and examples from four to zero; nine
+changed held-out groups replay exactly. Candidate relation generation and CAS
+restart remain open.

@@ -3,7 +3,9 @@ use cairn_rkl::{
     ExecLimits, ReferenceExecutor, RuntimeEnvironment, TraceLevel, TypeChecker, TypeEnvironment,
     Value, VarName,
 };
-use cairn_theory::{GroupMergeTrace, LearnedGroupMerge};
+use cairn_theory::{
+    GroupMergeTrace, GroupingHypothesisTrace, LearnedGroupMerge, LearnedGroupingMerge,
+};
 use std::collections::BTreeSet;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -143,5 +145,171 @@ impl GroupMergeVerifier {
             receipt.group_counts.insert(trace.groups.len());
         }
         Ok(receipt)
+    }
+}
+
+/// Opaque verifier evidence that one relation-bound merge replayed exactly.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedGroupingReuse {
+    mechanism: Hash32,
+    experiences: BTreeSet<Hash32>,
+    replayed_groups: u64,
+    candidate_executions_without: u64,
+    candidate_executions_with: u64,
+}
+
+impl VerifiedGroupingReuse {
+    #[must_use]
+    pub const fn mechanism(&self) -> Hash32 {
+        self.mechanism
+    }
+    #[must_use]
+    pub const fn experiences(&self) -> &BTreeSet<Hash32> {
+        &self.experiences
+    }
+    #[must_use]
+    pub const fn replayed_groups(&self) -> u64 {
+        self.replayed_groups
+    }
+    #[must_use]
+    pub const fn candidate_executions_without(&self) -> u64 {
+        self.candidate_executions_without
+    }
+    #[must_use]
+    pub const fn candidate_executions_with(&self) -> u64 {
+        self.candidate_executions_with
+    }
+}
+
+/// Consolidator-issued authority to promote one relation-bound mechanism.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedGroupingPromotion {
+    mechanism: Hash32,
+    experiences: BTreeSet<Hash32>,
+    verified_reuses: u32,
+}
+
+impl VerifiedGroupingPromotion {
+    #[must_use]
+    pub const fn mechanism(&self) -> Hash32 {
+        self.mechanism
+    }
+    #[must_use]
+    pub const fn experiences(&self) -> &BTreeSet<Hash32> {
+        &self.experiences
+    }
+    #[must_use]
+    pub const fn verified_reuses(&self) -> u32 {
+        self.verified_reuses
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum GroupingPromotionError {
+    Verification(GroupMergeVerifyError),
+    MissingRelation,
+    NoLearningReduction,
+    InsufficientIndependentEvidence,
+    MixedMechanism,
+    OverlappingExperience,
+    Capacity,
+    Canonicalization,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct GroupingMergeVerifier;
+
+impl GroupingMergeVerifier {
+    /// Independently lower the selected relation and replay its raw RKL body.
+    ///
+    /// # Errors
+    ///
+    /// Rejects missing relation evidence, non-positive counterfactual
+    /// reduction, malformed traces, or an exact replay mismatch.
+    pub fn verify_reuse(
+        &self,
+        learned: &LearnedGroupingMerge,
+        traces: &[GroupingHypothesisTrace],
+        candidate_executions_without: u64,
+        candidate_executions_with: u64,
+        limits: ExecLimits,
+    ) -> Result<VerifiedGroupingReuse, GroupingPromotionError> {
+        if candidate_executions_without == 0
+            || candidate_executions_with >= candidate_executions_without
+        {
+            return Err(GroupingPromotionError::NoLearningReduction);
+        }
+        let lowered = traces
+            .iter()
+            .map(|trace| {
+                let groups = trace
+                    .candidates
+                    .get(&learned.relation)
+                    .ok_or(GroupingPromotionError::MissingRelation)?;
+                Ok(GroupMergeTrace {
+                    episode: trace.episode,
+                    groups: groups.clone(),
+                    outputs: trace.outputs.clone(),
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let replay = GroupMergeVerifier
+            .verify(&learned.merge, &lowered, limits)
+            .map_err(GroupingPromotionError::Verification)?;
+        Ok(VerifiedGroupingReuse {
+            mechanism: learned
+                .semantic_hash()
+                .map_err(|_| GroupingPromotionError::Canonicalization)?,
+            experiences: replay.experiences().clone(),
+            replayed_groups: replay.replayed_groups(),
+            candidate_executions_without,
+            candidate_executions_with,
+        })
+    }
+}
+
+/// Separate consolidation authority for relation-bound reuse evidence.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct GroupingPromotionConsolidator;
+
+impl GroupingPromotionConsolidator {
+    /// Combine two or more disjoint verifier receipts into one promotion.
+    ///
+    /// # Errors
+    ///
+    /// Rejects mixed identities, overlapping evidence, insufficient receipts,
+    /// or any receipt lacking strict candidate-execution reduction.
+    pub fn consolidate(
+        &self,
+        learned: &LearnedGroupingMerge,
+        receipts: &[VerifiedGroupingReuse],
+    ) -> Result<VerifiedGroupingPromotion, GroupingPromotionError> {
+        if receipts.len() < 2 {
+            return Err(GroupingPromotionError::InsufficientIndependentEvidence);
+        }
+        let mechanism = learned
+            .semantic_hash()
+            .map_err(|_| GroupingPromotionError::Canonicalization)?;
+        let mut experiences = BTreeSet::new();
+        for receipt in receipts {
+            if receipt.mechanism != mechanism {
+                return Err(GroupingPromotionError::MixedMechanism);
+            }
+            if receipt.candidate_executions_without == 0
+                || receipt.candidate_executions_with >= receipt.candidate_executions_without
+            {
+                return Err(GroupingPromotionError::NoLearningReduction);
+            }
+            if !experiences.is_disjoint(&receipt.experiences) {
+                return Err(GroupingPromotionError::OverlappingExperience);
+            }
+            experiences.extend(&receipt.experiences);
+        }
+        Ok(VerifiedGroupingPromotion {
+            mechanism,
+            experiences,
+            verified_reuses: u32::try_from(receipts.len())
+                .map_err(|_| GroupingPromotionError::Capacity)?,
+        })
     }
 }

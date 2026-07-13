@@ -1131,3 +1131,18 @@ reconstructs output sets. `ExpansionStore` requires two disjoint cohorts;
 partitions and carries unordered outputs. `LearnedGroupingMerge` records the
 selected role, learned merge, and evaluated count. Missing roles and equal-cost
 explanations fail closed.
+
+## 36. Relation-bound promotion contracts
+
+`LearnedGroupingMerge::semantic_hash` uses marker
+`cairn.grouping-merge.v1`, `RelationRole`, and canonical RKL definition bytes.
+`GroupingMergeVerifier::verify_reuse` independently returns
+`VerifiedGroupingReuse`; callers cannot construct its fields.
+`GroupingPromotionConsolidator::consolidate` requires at least two disjoint
+same-mechanism receipts with strict candidate reduction and returns
+`VerifiedGroupingPromotion`.
+
+`GroupingMergeStore` admits task-local mechanisms provisionally, records opaque
+receipts, and applies only a certificate covering its complete ledger.
+`CognitionRuntime::propose_grouping_merges_from_memory` returns untrusted output
+sets and attempt counts. It has no answer-acceptance authority.

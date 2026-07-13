@@ -820,3 +820,16 @@ At least one hard alternative must be functionally inconsistent with unordered
 outputs. Require one cross-episode executable grouping/theory, exact held-out
 rebinding, and missing-role failure. Measured: two candidates, four held-out
 groups exact, distractor exact theories zero.
+
+## G2-RELATION-BOUND-GROUPING
+
+Independently learn the same grouping/aggregate composition in two disjoint
+non-ARC cohorts. Require identity agreement, independent raw-RKL replay, a
+consolidator-issued promotion certificate, zero-example held-out reuse, blank
+memory failure, duplicate-evidence rejection, and certificate failure after a
+relation change.
+
+Measured: two receipts promote one composition; fresh candidate work is 187
+versus one proposal attempt, examples are four versus zero, and nine changed
+held-out groups replay exactly. Blank and changed-relation acceptances are zero.
+Raw relation generation and durable restart are required next.

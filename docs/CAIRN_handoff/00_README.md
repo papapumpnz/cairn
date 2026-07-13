@@ -151,4 +151,10 @@ competing hypotheses. No selected grouping is supplied. Candidate relations
 remain frontend proposals, so this is joint ontology selection rather than raw
 perception.
 
+ADR-0034 retains that relation/merge composition through proof-gated continual
+memory. Two independent verifier cohorts and a separate consolidation
+certificate are mandatory; later use falls from 187 candidates and four
+examples to one proposal and zero examples over nine exact held-out groups.
+Candidate-relation generation and durable restart remain open.
+
 The reference implementation is Rust with small, audited C/C++ solver dependencies when justified. The baseline machine is one commodity 8-core CPU with 16 GB RAM. The system must also support multi-process and multi-node CPU swarms through content-addressed, proof-carrying artifacts.
