@@ -2426,3 +2426,17 @@ frozen experiment, two independently learned cross-domain cohorts agree;
 candidate executions fall from 187 to one and examples from four to zero; nine
 changed held-out groups replay exactly. Candidate relation generation and CAS
 restart remain open.
+
+## 35. Raw relation-edge grouping invention
+
+`RawRelationGroupingInventor` accepts opaque entity/value evidence and
+unselected generic relation edges. It deterministically constructs one complete
+connected-component partition per role, including isolated entities, then uses
+the unchanged joint theory selector. No partition or selected role is supplied.
+
+The verifier independently validates endpoints, duplicates, and caps before
+reconstructing only the selected relation components and executing raw RKL. Two
+source cohorts promote one mechanism; persistent raw-edge reuse reduces 187
+candidates/four examples to one attempt/zero examples and exactly replays 13
+held-out components. Primitive relation predicates and perception remain
+frontend evidence.

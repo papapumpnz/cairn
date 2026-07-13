@@ -833,3 +833,17 @@ Measured: two receipts promote one composition; fresh candidate work is 187
 versus one proposal attempt, examples are four versus zero, and nine changed
 held-out groups replay exactly. Blank and changed-relation acceptances are zero.
 Raw relation generation and durable restart are required next.
+
+## G0/G2-RAW-RELATION-GROUPING
+
+Supply opaque entities and at least two unselected relation-edge sets; supply no
+candidate partitions. Require deterministic complete component generation,
+joint executable relation selection, independent raw-edge replay, two-cohort
+promotion, larger-topology zero-example reuse, and blank-memory failure.
+Unknown endpoints, duplicate edges, caps, and edge-order changes must fail or
+remain invariant as specified.
+
+Measured: zero supplied partitions; two relation roles; 187 fresh candidates
+become one proposal and four examples become zero; 13 held-out components are
+exact. Malformed accepts and ordering changes are zero. Primitive predicate
+invention, durable restart, and adapter transfer are next gates.

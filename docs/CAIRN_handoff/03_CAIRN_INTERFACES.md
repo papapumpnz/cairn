@@ -1146,3 +1146,16 @@ same-mechanism receipts with strict candidate reduction and returns
 receipts, and applies only a certificate covering its complete ledger.
 `CognitionRuntime::propose_grouping_merges_from_memory` returns untrusted output
 sets and attempt counts. It has no answer-acceptance authority.
+
+## 37. Raw grouping-evidence contracts
+
+`RawGroupingEvidence` maps opaque `EntityId` values to scalar evidence and
+carries unselected `RelationRecord` edges. `RawGroupingTrace` adds episode and
+unordered expected outputs. `RawGroupingLimits` caps entities, edges, and roles.
+
+`RawRelationGroupingInventor::lower` constructs weak connected components per
+role with deterministic entity ordering and complete singleton coverage.
+`invent` delegates only the resulting generic hypotheses to joint theory
+selection. `GroupingMergeVerifier::verify_raw_reuse` separately reconstructs
+the selected components. `propose_raw_grouping_merges_from_memory` exposes
+proposal-only raw-edge reuse through the shared runtime.

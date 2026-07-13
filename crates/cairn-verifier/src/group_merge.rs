@@ -1,10 +1,11 @@
-use cairn_core::Hash32;
+use cairn_core::{EntityId, Hash32, RelationRole};
 use cairn_rkl::{
     ExecLimits, ReferenceExecutor, RuntimeEnvironment, TraceLevel, TypeChecker, TypeEnvironment,
     Value, VarName,
 };
 use cairn_theory::{
     GroupMergeTrace, GroupingHypothesisTrace, LearnedGroupMerge, LearnedGroupingMerge,
+    RawGroupingEvidence, RawGroupingLimits, RawGroupingTrace,
 };
 use std::collections::BTreeSet;
 
@@ -214,6 +215,7 @@ pub enum GroupingPromotionError {
     OverlappingExperience,
     Capacity,
     Canonicalization,
+    InvalidRawEvidence,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -255,6 +257,55 @@ impl GroupingMergeVerifier {
             .collect::<Result<Vec<_>, _>>()?;
         let replay = GroupMergeVerifier
             .verify(&learned.merge, &lowered, limits)
+            .map_err(GroupingPromotionError::Verification)?;
+        Ok(VerifiedGroupingReuse {
+            mechanism: learned
+                .semantic_hash()
+                .map_err(|_| GroupingPromotionError::Canonicalization)?,
+            experiences: replay.experiences().clone(),
+            replayed_groups: replay.replayed_groups(),
+            candidate_executions_without,
+            candidate_executions_with,
+        })
+    }
+
+    /// Independently construct selected connected components from raw edges
+    /// and replay the relation-bound RKL merge.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed/capped raw evidence, absent selected-role edges,
+    /// non-positive counterfactual reduction, or exact replay mismatch.
+    pub fn verify_raw_reuse(
+        &self,
+        learned: &LearnedGroupingMerge,
+        traces: &[RawGroupingTrace],
+        candidate_executions_without: u64,
+        candidate_executions_with: u64,
+        raw_limits: RawGroupingLimits,
+        execution_limits: ExecLimits,
+    ) -> Result<VerifiedGroupingReuse, GroupingPromotionError> {
+        if candidate_executions_without == 0
+            || candidate_executions_with >= candidate_executions_without
+        {
+            return Err(GroupingPromotionError::NoLearningReduction);
+        }
+        let lowered = traces
+            .iter()
+            .map(|trace| {
+                Ok(GroupMergeTrace {
+                    episode: trace.episode,
+                    groups: verifier_selected_groups(
+                        &trace.evidence,
+                        &learned.relation,
+                        raw_limits,
+                    )?,
+                    outputs: trace.outputs.clone(),
+                })
+            })
+            .collect::<Result<Vec<_>, GroupingPromotionError>>()?;
+        let replay = GroupMergeVerifier
+            .verify(&learned.merge, &lowered, execution_limits)
             .map_err(GroupingPromotionError::Verification)?;
         Ok(VerifiedGroupingReuse {
             mechanism: learned
@@ -312,4 +363,72 @@ impl GroupingPromotionConsolidator {
                 .map_err(|_| GroupingPromotionError::Capacity)?,
         })
     }
+}
+
+fn verifier_selected_groups(
+    evidence: &RawGroupingEvidence,
+    selected: &RelationRole,
+    limits: RawGroupingLimits,
+) -> Result<Vec<BTreeSet<i64>>, GroupingPromotionError> {
+    if evidence.entities.is_empty()
+        || evidence.relations.is_empty()
+        || evidence.entities.len() > limits.maximum_entities
+        || evidence.relations.len() > limits.maximum_relations
+    {
+        return Err(GroupingPromotionError::InvalidRawEvidence);
+    }
+    let mut roles = BTreeSet::new();
+    let mut unique = BTreeSet::new();
+    let mut adjacency = evidence
+        .entities
+        .keys()
+        .cloned()
+        .map(|entity| (entity, BTreeSet::new()))
+        .collect::<std::collections::BTreeMap<EntityId, BTreeSet<EntityId>>>();
+    for relation in &evidence.relations {
+        if !evidence.entities.contains_key(&relation.subject)
+            || !evidence.entities.contains_key(&relation.object)
+            || !unique.insert((
+                relation.role.clone(),
+                relation.subject.clone(),
+                relation.object.clone(),
+            ))
+        {
+            return Err(GroupingPromotionError::InvalidRawEvidence);
+        }
+        roles.insert(relation.role.clone());
+        if &relation.role == selected {
+            adjacency
+                .get_mut(&relation.subject)
+                .ok_or(GroupingPromotionError::InvalidRawEvidence)?
+                .insert(relation.object.clone());
+            adjacency
+                .get_mut(&relation.object)
+                .ok_or(GroupingPromotionError::InvalidRawEvidence)?
+                .insert(relation.subject.clone());
+        }
+    }
+    if roles.len() > limits.maximum_roles || !roles.contains(selected) {
+        return Err(GroupingPromotionError::InvalidRawEvidence);
+    }
+    let mut unseen = evidence.entities.keys().cloned().collect::<BTreeSet<_>>();
+    let mut groups = Vec::new();
+    while let Some(start) = unseen.first().cloned() {
+        let mut frontier = BTreeSet::from([start]);
+        let mut values = BTreeSet::new();
+        while let Some(entity) = frontier.pop_first() {
+            if !unseen.remove(&entity) {
+                continue;
+            }
+            values.insert(evidence.entities[&entity]);
+            frontier.extend(
+                adjacency[&entity]
+                    .iter()
+                    .filter(|neighbor| unseen.contains(*neighbor))
+                    .cloned(),
+            );
+        }
+        groups.push(values);
+    }
+    Ok(groups)
 }

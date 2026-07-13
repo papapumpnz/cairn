@@ -157,4 +157,11 @@ certificate are mandatory; later use falls from 187 candidates and four
 examples to one proposal and zero examples over nine exact held-out groups.
 Candidate-relation generation and durable restart remain open.
 
+ADR-0035 now constructs candidate collection partitions directly from opaque
+entities and unselected generic relation edges. Producer and verifier use
+separate component paths. Two cohorts promote the relation-bound mechanism;
+future raw-edge work falls from 187 candidates/four examples to one attempt/zero
+examples over 13 exact held-out components. Relation predicates themselves are
+still observed evidence rather than invented perception.
+
 The reference implementation is Rust with small, audited C/C++ solver dependencies when justified. The baseline machine is one commodity 8-core CPU with 16 GB RAM. The system must also support multi-process and multi-node CPU swarms through content-addressed, proof-carrying artifacts.

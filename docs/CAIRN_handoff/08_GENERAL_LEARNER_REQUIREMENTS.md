@@ -1146,3 +1146,18 @@ This is measured continual learning because retained structure reduces future
 compute and samples. It is not raw ontology invention: candidate relations are
 still frontend supplied. The store is not yet CAS-restartable, and the result
 does not establish open-ended learning, general intelligence, or ARC progress.
+
+## 50. Raw relation-to-collection learning checkpoint
+
+CAIRN now receives entity identities, scalar evidence, and unselected relation
+edges rather than precomputed groups. It constructs competing complete
+partitions, selects one only through executable explanatory adequacy, promotes
+the relation-bound mechanism from two independently verified cohorts, and
+reuses it on changed topology. Fresh work falls from 187 candidates/four
+examples to one attempt/zero examples; 13 held-out components replay exactly.
+
+The verifier independently reconstructs components and rejects malformed raw
+evidence. This is bounded relation-to-collection ontology learning, not raw
+perception or unrestricted relation invention: primitive relation predicates
+are still observed. CAS restart, cross-adapter use, open-ended ontology growth,
+general intelligence, and ARC improvement remain unmet.

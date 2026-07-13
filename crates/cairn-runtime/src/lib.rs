@@ -32,7 +32,8 @@ use cairn_theory::{
     EntityConstructionProgramSynthesizer, EntityCorrespondenceError, EntityCorrespondenceLearner,
     EntityCorrespondenceLimits, EntityGeometryScene, GroupMergeError, GroupMergeInventor,
     GroupingRelationInventor, GroupingSelectionError, LayerMechanismError, LayerMechanismLearner,
-    LayerRender, LayerScene, RelationalGeometryScene,
+    LayerRender, LayerScene, RawGroupingError, RawGroupingEvidence, RawGroupingLimits,
+    RawRelationGroupingInventor, RelationalGeometryScene,
 };
 use cairn_world::{
     ActionId, ActiveLatentInductionReport, ActiveLatentLimits, ActiveLatentWorldLearner,
@@ -1302,6 +1303,47 @@ impl CognitionRuntime {
                 Err(GroupingSelectionError::Merge(
                     GroupMergeError::Invention(_) | GroupMergeError::Capacity,
                 )) => {
+                    return Err(CognitionError::GroupingMergeMemory(
+                        GroupingMergeMemoryRuntimeError::Capacity,
+                    ));
+                }
+                Err(_) => {}
+            }
+        }
+        if proposals.is_empty() {
+            return Err(CognitionError::GroupingMergeMemory(
+                GroupingMergeMemoryRuntimeError::NoVerifiedProposal,
+            ));
+        }
+        Ok(GroupingMergeMemoryOutcome {
+            proposals,
+            persistent_mechanisms_attempted,
+        })
+    }
+
+    /// Construct relation partitions from raw edges and apply persistent
+    /// relation-bound merges as untrusted proposals.
+    ///
+    /// # Errors
+    ///
+    /// Returns typed absence or bounded/exact lowering failure.
+    pub fn propose_raw_grouping_merges_from_memory(
+        &self,
+        evidence: &RawGroupingEvidence,
+        limits: RawGroupingLimits,
+    ) -> Result<GroupingMergeMemoryOutcome, CognitionError> {
+        let mut persistent_mechanisms_attempted = 0_u64;
+        let mut proposals = Vec::new();
+        for mechanism in self.grouping_merges.persistent_mechanisms() {
+            persistent_mechanisms_attempted = persistent_mechanisms_attempted.saturating_add(1);
+            match RawRelationGroupingInventor.predict(mechanism, evidence, limits) {
+                Ok(output) => proposals.push(output),
+                Err(
+                    RawGroupingError::Capacity
+                    | RawGroupingError::Selection(GroupingSelectionError::Merge(
+                        GroupMergeError::Invention(_) | GroupMergeError::Capacity,
+                    )),
+                ) => {
                     return Err(CognitionError::GroupingMergeMemory(
                         GroupingMergeMemoryRuntimeError::Capacity,
                     ));

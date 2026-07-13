@@ -6,6 +6,7 @@ mod correspondence;
 mod group_merge;
 mod grouping_selection;
 mod layer;
+mod raw_grouping;
 
 pub use conditional_construction::*;
 pub use construction_program::*;
@@ -13,6 +14,7 @@ pub use correspondence::*;
 pub use group_merge::*;
 pub use grouping_selection::*;
 pub use layer::*;
+pub use raw_grouping::*;
 
 use cairn_invent::{
     BindingExample, DefinitionInventor, InventionError, InventionLimits, InventionOutcome,
