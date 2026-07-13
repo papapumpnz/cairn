@@ -855,6 +855,21 @@ construct complete proof hosts from raw observations, learn a new action law in
 the generated exercise, or demonstrate unbounded self-curriculum. General
 intelligence and the ARC target remain unmet.
 
+## 52. Primitive relation-invention checkpoint
+
+CAIRN now invents an executable pair relation from downstream explanatory
+adequacy rather than receiving pair labels or relation edges. It tries two
+anonymous feature relations, constructs their collections, and retains the only
+relation/aggregate theory explaining all unordered outputs. Two independent
+cohorts agree; learned execution reduces 187 candidates/four examples to one
+attempt/zero examples and independently replays 13 changed held-out components.
+
+This crosses a narrow primitive-relation invention boundary. The relation
+grammar currently contains corresponding-slot equality only, while feature
+extraction, conjunction/inequality/topology invention, persistence of this new
+composition, open-ended ontology growth, general intelligence, and ARC progress
+remain unmet.
+
 ## 34. Evidence-frontier construction and one-example transfer checkpoint
 
 The generated exercise no longer supplies a completed proof host. Its

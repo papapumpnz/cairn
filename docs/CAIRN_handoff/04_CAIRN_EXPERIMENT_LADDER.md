@@ -861,3 +861,16 @@ metadata must preserve artifact identity. Missing parent, wrong kind, changed
 scope/hash/schema/semantics, and capped replay fail closed. Measured: status
 restored directly zero; two cohorts re-invented; one mechanism re-promoted;
 187/4 fresh work becomes 1/0; six held-out components are exact.
+
+## G0-PREDICATE-GROUPING
+
+Supply attributed entities and unordered outputs but no pair labels, relation
+edges, partitions, selected feature, or named relation. Require joint executable
+pair-predicate and aggregate invention, two independent cohort agreement,
+separate verifier execution, changed-value/count/cardinality transfer,
+entity-order invariance, and feature/definition ablation.
+
+Measured: two anonymous feature candidates; 187 total fresh candidates versus
+one learned attempt; four examples versus zero; 13 held-out components exact;
+ordering changes and ablation acceptances zero. Next expand beyond equality,
+persist the composed predicate, and realize it through multiple adapters.

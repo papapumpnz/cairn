@@ -170,4 +170,10 @@ re-invents, independently replays, reconsolidates, and re-promotes the same
 mechanism. Stored status restored is zero, while the 187-to-one candidate and
 four-to-zero example reductions remain.
 
+ADR-0037 removes observed relation edges for one bounded family. Given only
+anonymous entity features and unordered outputs, CAIRN synthesizes the pairwise
+RKL equality predicate that forms useful collections, then learns their
+aggregate. Independent replay is exact over 13 changed held-out components;
+multi-feature and geometry-derived relations remain open.
+
 The reference implementation is Rust with small, audited C/C++ solver dependencies when justified. The baseline machine is one commodity 8-core CPU with 16 GB RAM. The system must also support multi-process and multi-node CPU swarms through content-addressed, proof-carrying artifacts.

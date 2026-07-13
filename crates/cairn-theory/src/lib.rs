@@ -6,6 +6,7 @@ mod correspondence;
 mod group_merge;
 mod grouping_selection;
 mod layer;
+mod predicate_grouping;
 mod raw_grouping;
 
 pub use conditional_construction::*;
@@ -14,6 +15,7 @@ pub use correspondence::*;
 pub use group_merge::*;
 pub use grouping_selection::*;
 pub use layer::*;
+pub use predicate_grouping::*;
 pub use raw_grouping::*;
 
 use cairn_invent::{

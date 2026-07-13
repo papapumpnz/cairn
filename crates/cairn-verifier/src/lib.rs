@@ -6,6 +6,7 @@ mod construction_program;
 mod correspondence;
 mod group_merge;
 mod layer;
+mod predicate_grouping;
 
 pub use collection_expansion::*;
 pub use conditional_construction::*;
@@ -13,6 +14,7 @@ pub use construction_program::*;
 pub use correspondence::*;
 pub use group_merge::*;
 pub use layer::*;
+pub use predicate_grouping::*;
 
 use cairn_consolidator::{
     CompiledInternalMechanism, ConstructedInternalComposition, EpisodeBindings,

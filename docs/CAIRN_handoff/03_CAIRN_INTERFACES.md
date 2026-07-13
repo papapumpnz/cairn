@@ -1172,3 +1172,16 @@ write. `load` validates schema, kind, semantics, bounds, hash, lineage, and
 scope but returns an untrusted artifact. `replay` re-invents and independently
 re-verifies it, returning `ReplayedGroupingCohort`. Callers must create a fresh
 store and consolidator certificate; no loaded field directly restores status.
+
+## 39. Predicate grouping contracts
+
+`AttributedGroupingEntity` carries opaque identity, scalar payload, and generic
+integer feature vector. `AttributedGroupingTrace` adds episode and unordered
+outputs. Neither type contains pair labels or relation edges.
+
+`PredicateGroupingInventor::invent` enumerates bounded executable pair
+definitions, constructs components, and induces an aggregate.
+`LearnedPredicateGroupingMerge` canonically binds relation and merge RKL under
+`cairn.predicate-grouping-merge.v1`. `PredicateGroupingVerifier` independently
+returns `VerifiedPredicateGrouping` only after raw definition execution,
+complete component reconstruction, and exact output replay.

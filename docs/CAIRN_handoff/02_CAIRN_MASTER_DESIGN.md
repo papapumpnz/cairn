@@ -2455,3 +2455,17 @@ replays its components, regenerates receipts, reconsolidates, and re-promotes a
 new provisional module. Two cohorts regain one mechanism; restored use retains
 the 187-to-one candidate and four-to-zero example reduction and solves six
 changed held-out components exactly.
+
+## 37. Output-driven primitive pair-relation invention
+
+`PredicateGroupingInventor` receives attributed entities and unordered outputs,
+with no pair labels, relation edges, partitions, or selected feature. It
+constructs executable RKL equality predicates inside a bounded pair-relation
+hole, forms their connected components, and jointly tests ordinary group-merge
+theories. Minimum-cost ties remain ambiguous.
+
+The verifier separately executes the relation body and reconstructs all
+components. Two independently named cohorts synthesize the same relation/merge;
+187 fresh candidates become one learned attempt and four examples become zero.
+Thirteen changed held-out components replay exactly. The current primitive
+grammar is equality-only and frontend features remain supplied.
