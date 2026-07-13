@@ -1114,3 +1114,11 @@ the ARC target.
 The post-freeze ARC regression is unchanged: 10/10 on the saturated first-ten
 conditional ablation and 17/20 on the official frozen first-20. No ARC progress
 is attributed to this checkpoint.
+
+## 47. Many-to-one aggregation checkpoint
+
+CAIRN now invents, verifies, promotes, and reuses a composed group aggregate
+from unordered outputs. Fresh work is 185 candidates; reuse is one attempt and
+zero examples; six larger held-out groups are exact. This closes a bounded
+merge mechanism but not grouping invention: member groups are supplied. It
+does not establish raw ontology learning, general intelligence, or ARC gain.

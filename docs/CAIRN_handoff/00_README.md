@@ -141,4 +141,9 @@ zero-example reuse gates. Relation roles/entities remain supplied, and merge,
 conditional multiplicity, raw perception, and broad general intelligence are
 still open.
 
+ADR-0032 adds learned relation-defined many-to-one aggregation. A composed RKL
+merge promotes from independent cohorts and reuses with zero examples. Group
+membership is still supplied, so joint grouping/entity discovery remains the
+next general-learning gate.
+
 The reference implementation is Rust with small, audited C/C++ solver dependencies when justified. The baseline machine is one commodity 8-core CPU with 16 GB RAM. The system must also support multi-process and multi-node CPU swarms through content-addressed, proof-carrying artifacts.

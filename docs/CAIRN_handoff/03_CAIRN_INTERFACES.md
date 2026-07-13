@@ -1116,3 +1116,11 @@ constructor, bounded multiplicity, checked nested-`ForEach` theory, source
 episodes, and observed cardinalities. `ExpansionMechanismVerifier` independently
 reconstructs output sets. `ExpansionStore` requires two disjoint cohorts;
 `propose_expansions_from_memory` returns untrusted sets only.
+
+## 34. Group merge contracts
+
+`GroupMergeTrace` contains finite groups and unordered outputs.
+`LearnedGroupMerge` stores admitted RKL and empirical support.
+`GroupMergeVerifier` independently recomputes aggregates and output sets.
+`GroupMergeStore` requires two disjoint cohorts, and
+`propose_group_merges_from_memory` returns untrusted proposals.

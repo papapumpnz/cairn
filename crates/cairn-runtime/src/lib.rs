@@ -17,8 +17,8 @@ use cairn_invent::{InventionError, InventionProblem};
 use cairn_knowledge::KnowledgeBase;
 use cairn_memory::{
     ConditionalConstructionStore, ConstructionProgramStore, EntityCorrespondenceStore,
-    ExpansionStore, InternalMechanismStore, LatentMechanismStore, LayerMechanismStore,
-    MechanismStore, MemoryAssistedInventor, MemorySolveOutcome, ModuleStatus,
+    ExpansionStore, GroupMergeStore, InternalMechanismStore, LatentMechanismStore,
+    LayerMechanismStore, MechanismStore, MemoryAssistedInventor, MemorySolveOutcome, ModuleStatus,
     ProceduralMechanismModule, ProceduralMechanismStore,
 };
 use cairn_rkl::{
@@ -30,8 +30,8 @@ use cairn_theory::{
     CollectionInventionError, CollectionMechanismInventor, ConditionalConstructionError,
     ConditionalConstructionSynthesizer, EntityConstruction, EntityConstructionProgramError,
     EntityConstructionProgramSynthesizer, EntityCorrespondenceError, EntityCorrespondenceLearner,
-    EntityCorrespondenceLimits, EntityGeometryScene, LayerMechanismError, LayerMechanismLearner,
-    LayerRender, LayerScene, RelationalGeometryScene,
+    EntityCorrespondenceLimits, EntityGeometryScene, GroupMergeError, GroupMergeInventor,
+    LayerMechanismError, LayerMechanismLearner, LayerRender, LayerScene, RelationalGeometryScene,
 };
 use cairn_world::{
     ActionId, ActiveLatentInductionReport, ActiveLatentLimits, ActiveLatentWorldLearner,
@@ -53,6 +53,7 @@ pub struct CognitionRuntime {
     construction_programs: ConstructionProgramStore,
     conditional_constructions: ConditionalConstructionStore,
     expansions: ExpansionStore,
+    group_merges: GroupMergeStore,
     knowledge: KnowledgeBase,
 }
 
@@ -210,6 +211,7 @@ pub enum CognitionError {
     ConstructionProgramMemory(ConstructionProgramMemoryRuntimeError),
     ConditionalConstructionMemory(ConditionalConstructionMemoryRuntimeError),
     ExpansionMemory(ExpansionMemoryRuntimeError),
+    GroupMergeMemory(GroupMergeMemoryRuntimeError),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -315,6 +317,18 @@ pub struct ExpansionMemoryOutcome {
     pub persistent_mechanisms_attempted: u64,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum GroupMergeMemoryRuntimeError {
+    NoVerifiedProposal,
+    Capacity,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct GroupMergeMemoryOutcome {
+    pub proposals: Vec<BTreeSet<i64>>,
+    pub persistent_mechanisms_attempted: u64,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum InternalCompositionRuntimeError {
     UnavailableMechanism(Hash32),
@@ -334,6 +348,7 @@ impl CognitionRuntime {
             construction_programs: ConstructionProgramStore::new(),
             conditional_constructions: ConditionalConstructionStore::new(),
             expansions: ExpansionStore::new(),
+            group_merges: GroupMergeStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -350,6 +365,7 @@ impl CognitionRuntime {
             construction_programs: ConstructionProgramStore::new(),
             conditional_constructions: ConditionalConstructionStore::new(),
             expansions: ExpansionStore::new(),
+            group_merges: GroupMergeStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -369,6 +385,7 @@ impl CognitionRuntime {
             construction_programs: ConstructionProgramStore::new(),
             conditional_constructions: ConditionalConstructionStore::new(),
             expansions: ExpansionStore::new(),
+            group_merges: GroupMergeStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -387,6 +404,7 @@ impl CognitionRuntime {
             construction_programs: ConstructionProgramStore::new(),
             conditional_constructions: ConditionalConstructionStore::new(),
             expansions: ExpansionStore::new(),
+            group_merges: GroupMergeStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -405,6 +423,7 @@ impl CognitionRuntime {
             construction_programs: ConstructionProgramStore::new(),
             conditional_constructions: ConditionalConstructionStore::new(),
             expansions: ExpansionStore::new(),
+            group_merges: GroupMergeStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -424,6 +443,7 @@ impl CognitionRuntime {
             construction_programs: ConstructionProgramStore::new(),
             conditional_constructions: ConditionalConstructionStore::new(),
             expansions: ExpansionStore::new(),
+            group_merges: GroupMergeStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -443,6 +463,7 @@ impl CognitionRuntime {
             construction_programs,
             conditional_constructions: ConditionalConstructionStore::new(),
             expansions: ExpansionStore::new(),
+            group_merges: GroupMergeStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -462,6 +483,7 @@ impl CognitionRuntime {
             construction_programs: ConstructionProgramStore::new(),
             conditional_constructions,
             expansions: ExpansionStore::new(),
+            group_merges: GroupMergeStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -479,6 +501,25 @@ impl CognitionRuntime {
             construction_programs: ConstructionProgramStore::new(),
             conditional_constructions: ConditionalConstructionStore::new(),
             expansions,
+            group_merges: GroupMergeStore::new(),
+            knowledge: KnowledgeBase::new(),
+        }
+    }
+
+    /// Construct a runtime with proof-gated many-to-one merge memory.
+    #[must_use]
+    pub const fn with_group_merge_memory(group_merges: GroupMergeStore) -> Self {
+        Self {
+            memory: MechanismStore::new(),
+            procedures: ProceduralMechanismStore::new(),
+            internal_mechanisms: InternalMechanismStore::new(),
+            latent_mechanisms: LatentMechanismStore::new(),
+            layer_mechanisms: LayerMechanismStore::new(),
+            entity_correspondences: EntityCorrespondenceStore::new(),
+            construction_programs: ConstructionProgramStore::new(),
+            conditional_constructions: ConditionalConstructionStore::new(),
+            expansions: ExpansionStore::new(),
+            group_merges,
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -564,6 +605,14 @@ impl CognitionRuntime {
 
     pub const fn expansion_memory_mut(&mut self) -> &mut ExpansionStore {
         &mut self.expansions
+    }
+
+    #[must_use]
+    pub const fn group_merge_memory(&self) -> &GroupMergeStore {
+        &self.group_merges
+    }
+    pub const fn group_merge_memory_mut(&mut self) -> &mut GroupMergeStore {
+        &mut self.group_merges
     }
 
     #[must_use]
@@ -1143,6 +1192,40 @@ impl CognitionRuntime {
             ));
         }
         Ok(ExpansionMemoryOutcome {
+            proposals,
+            persistent_mechanisms_attempted,
+        })
+    }
+
+    /// Execute persistent many-to-one mechanisms as untrusted proposals.
+    ///
+    /// # Errors
+    ///
+    /// Returns typed absence or exact execution failure.
+    pub fn propose_group_merges_from_memory(
+        &self,
+        groups: &[BTreeSet<i64>],
+    ) -> Result<GroupMergeMemoryOutcome, CognitionError> {
+        let mut persistent_mechanisms_attempted = 0_u64;
+        let mut proposals = Vec::new();
+        for mechanism in self.group_merges.persistent_mechanisms() {
+            persistent_mechanisms_attempted = persistent_mechanisms_attempted.saturating_add(1);
+            match GroupMergeInventor.merge(mechanism, groups) {
+                Ok(output) => proposals.push(output),
+                Err(GroupMergeError::Invention(_) | GroupMergeError::Capacity) => {
+                    return Err(CognitionError::GroupMergeMemory(
+                        GroupMergeMemoryRuntimeError::Capacity,
+                    ));
+                }
+                Err(_) => {}
+            }
+        }
+        if proposals.is_empty() {
+            return Err(CognitionError::GroupMergeMemory(
+                GroupMergeMemoryRuntimeError::NoVerifiedProposal,
+            ));
+        }
+        Ok(GroupMergeMemoryOutcome {
             proposals,
             persistent_mechanisms_attempted,
         })

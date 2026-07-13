@@ -2397,3 +2397,10 @@ separate expansion learner searches bounded multiplicity and tuple-free
 `(item, slot)` RKL constructors against complete unordered output sets. Both
 have independent replay, disjoint-cohort promotion, and proposal-only runtime
 reuse. This adds bounded split/create semantics, not merge or raw perception.
+
+## 32. Relation-defined many-to-one merge
+
+`GroupMergeInventor` receives finite evidence groups and unordered expected
+outputs, exposes exact count/sum/min/max evidence, and invents one RKL aggregate
+constructor. Independent replay, disjoint-cohort promotion, and proposal-only
+reuse match other mechanisms. Grouping remains an input hypothesis.

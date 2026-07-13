@@ -804,3 +804,11 @@ to one attempt; future examples are zero and negative accepts are zero.
 Post-freeze ARC regression: conditional first-ten remains 10/10 in both blank
 and memory conditions with zero incorrect; the official frozen first-20 remains
 17/20. This is a no-improvement result.
+
+## G2-GROUP-MERGE
+
+Require unordered many-to-one construction over supplied finite groups. The
+target must compose aggregates rather than copy one. Require two verified
+cohorts, larger held-outs, zero-example reuse, blank-memory failure, and
+wrong-family rejection. Measured: 185 fresh candidates become one memory
+attempt; six held-out groups are exact and wrong accepts are zero.
