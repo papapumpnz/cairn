@@ -1161,3 +1161,17 @@ evidence. This is bounded relation-to-collection ontology learning, not raw
 perception or unrestricted relation invention: primitive relation predicates
 are still observed. CAS restart, cross-adapter use, open-ended ontology growth,
 general intelligence, and ARC improvement remain unmet.
+
+## 51. Durable evidence/relearning checkpoint
+
+Raw relation grouping now survives process loss through evidence rather than
+trusted state. Two canonical parent-bound CAS cohorts are loaded into a blank
+process, re-invented, independently replayed, reconsolidated, and re-promoted.
+No stored status, verifier receipt, or promotion certificate is restored.
+Post-restart work remains one attempt/zero examples rather than 187 candidates
+and four examples, with six changed held-out components exact.
+
+This demonstrates durable continual learning for one bounded mechanism while
+preserving verifier authority. It does not invent primitive relation predicates,
+establish broad support geometry, or demonstrate adapter/ARC transfer. General
+intelligence and the ARC target remain unmet.

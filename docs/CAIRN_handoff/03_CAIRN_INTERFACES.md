@@ -1159,3 +1159,16 @@ role with deterministic entity ordering and complete singleton coverage.
 selection. `GroupingMergeVerifier::verify_raw_reuse` separately reconstructs
 the selected components. `propose_raw_grouping_merges_from_memory` exposes
 proposal-only raw-edge reuse through the shared runtime.
+
+## 38. Raw grouping cohort archive
+
+`RawGroupingCohortArtifact` is canonical schema
+`cairn.memory.raw-grouping-cohort` version 1, semantics 1.0.0. It contains
+sorted `RawGroupingTrace` evidence, claimed mechanism identity, replay count,
+and candidate measurements. Parent IDs and cohort task scope are mandatory.
+
+`RawGroupingCohortArchive::persist` checks learned/receipt identity before CAS
+write. `load` validates schema, kind, semantics, bounds, hash, lineage, and
+scope but returns an untrusted artifact. `replay` re-invents and independently
+re-verifies it, returning `ReplayedGroupingCohort`. Callers must create a fresh
+store and consolidator certificate; no loaded field directly restores status.

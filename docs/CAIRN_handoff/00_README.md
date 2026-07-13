@@ -164,4 +164,10 @@ future raw-edge work falls from 187 candidates/four examples to one attempt/zero
 examples over 13 exact held-out components. Relation predicates themselves are
 still observed evidence rather than invented perception.
 
+ADR-0036 makes that bounded learning restart-safe without trusting serialized
+status. Canonical CAS cohorts survive complete process loss; a blank process
+re-invents, independently replays, reconsolidates, and re-promotes the same
+mechanism. Stored status restored is zero, while the 187-to-one candidate and
+four-to-zero example reductions remain.
+
 The reference implementation is Rust with small, audited C/C++ solver dependencies when justified. The baseline machine is one commodity 8-core CPU with 16 GB RAM. The system must also support multi-process and multi-node CPU swarms through content-addressed, proof-carrying artifacts.

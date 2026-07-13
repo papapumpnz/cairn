@@ -2440,3 +2440,18 @@ source cohorts promote one mechanism; persistent raw-edge reuse reduces 187
 candidates/four examples to one attempt/zero examples and exactly replays 13
 held-out components. Primitive relation predicates and perception remain
 frontend evidence.
+
+## 36. Restart-safe raw grouping evidence
+
+`RawGroupingCohortArchive` stores canonical, parent-bound raw cohorts and their
+claimed mechanism/work commitments in the CAS. It never serializes module
+status, verifier receipts, promotion certificates, or native executable state.
+Artifact identity is invariant to edge order and non-semantic producer/resource
+metadata.
+
+After complete process-state loss, a new runtime loads each cohort as untrusted,
+re-invents the relation-bound RKL mechanism, independently reconstructs and
+replays its components, regenerates receipts, reconsolidates, and re-promotes a
+new provisional module. Two cohorts regain one mechanism; restored use retains
+the 187-to-one candidate and four-to-zero example reduction and solves six
+changed held-out components exactly.

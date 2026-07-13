@@ -847,3 +847,17 @@ Measured: zero supplied partitions; two relation roles; 187 fresh candidates
 become one proposal and four examples become zero; 13 held-out components are
 exact. Malformed accepts and ordering changes are zero. Primitive predicate
 invention, durable restart, and adapter transfer are next gates.
+
+## G2-RAW-GROUPING-RESTART
+
+Persist two independently verified raw cohorts with source-parent lineage,
+then destroy source arrays, learned mechanisms, receipts, store, and CAS handle.
+After reopen/recovery require canonical load, two complete re-inventions,
+independent raw replay, fresh receipts, new consolidation, new provisional-store
+promotion, and exact changed-topology use.
+
+Identical semantic evidence under reordered edges and changed non-semantic
+metadata must preserve artifact identity. Missing parent, wrong kind, changed
+scope/hash/schema/semantics, and capped replay fail closed. Measured: status
+restored directly zero; two cohorts re-invented; one mechanism re-promoted;
+187/4 fresh work becomes 1/0; six held-out components are exact.
