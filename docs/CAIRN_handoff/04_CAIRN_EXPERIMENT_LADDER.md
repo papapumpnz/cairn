@@ -812,3 +812,11 @@ target must compose aggregates rather than copy one. Require two verified
 cohorts, larger held-outs, zero-example reuse, blank-memory failure, and
 wrong-family rejection. Measured: 185 fresh candidates become one memory
 attempt; six held-out groups are exact and wrong accepts are zero.
+
+## G0-JOINT-GROUPING
+
+Provide multiple equal-cardinality grouping hypotheses and no selected role.
+At least one hard alternative must be functionally inconsistent with unordered
+outputs. Require one cross-episode executable grouping/theory, exact held-out
+rebinding, and missing-role failure. Measured: two candidates, four held-out
+groups exact, distractor exact theories zero.

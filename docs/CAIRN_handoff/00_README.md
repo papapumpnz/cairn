@@ -146,4 +146,9 @@ merge promotes from independent cohorts and reuses with zero examples. Group
 membership is still supplied, so joint grouping/entity discovery remains the
 next general-learning gate.
 
+ADR-0033 now selects a grouping relation jointly with its executable merge from
+competing hypotheses. No selected grouping is supplied. Candidate relations
+remain frontend proposals, so this is joint ontology selection rather than raw
+perception.
+
 The reference implementation is Rust with small, audited C/C++ solver dependencies when justified. The baseline machine is one commodity 8-core CPU with 16 GB RAM. The system must also support multi-process and multi-node CPU swarms through content-addressed, proof-carrying artifacts.

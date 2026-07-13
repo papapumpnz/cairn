@@ -2404,3 +2404,11 @@ reuse. This adds bounded split/create semantics, not merge or raw perception.
 outputs, exposes exact count/sum/min/max evidence, and invents one RKL aggregate
 constructor. Independent replay, disjoint-cohort promotion, and proposal-only
 reuse match other mechanisms. Grouping remains an input hypothesis.
+
+## 33. Joint grouping and theory selection
+
+`GroupingRelationInventor` evaluates competing relation-defined partitions and
+retains a grouping only when one executable merge explains complete unordered
+outputs across episodes. Equal-cost alternatives remain ambiguous. Held-out
+execution rebinds the selected role. Candidate relation generation remains a
+frontend responsibility.

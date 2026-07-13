@@ -1122,3 +1122,13 @@ from unordered outputs. Fresh work is 185 candidates; reuse is one attempt and
 zero examples; six larger held-out groups are exact. This closes a bounded
 merge mechanism but not grouping invention: member groups are supplied. It
 does not establish raw ontology learning, general intelligence, or ARC gain.
+
+## 48. Joint grouping-selection checkpoint
+
+CAIRN now chooses between competing grouping relations by executable
+explanatory adequacy rather than receiving one grouping as truth. A hard
+distractor with identical group counts admits no function; the selected role
+transfers to four larger groups and missing-role ablation fails. Candidate
+relations remain supplied and the relation-bound composition is not yet one
+persistent artifact, so raw ontology learning and general intelligence remain
+open.

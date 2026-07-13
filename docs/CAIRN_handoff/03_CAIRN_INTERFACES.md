@@ -1124,3 +1124,10 @@ reconstructs output sets. `ExpansionStore` requires two disjoint cohorts;
 `GroupMergeVerifier` independently recomputes aggregates and output sets.
 `GroupMergeStore` requires two disjoint cohorts, and
 `propose_group_merges_from_memory` returns untrusted proposals.
+
+## 35. Grouping hypothesis contracts
+
+`GroupingHypothesisTrace` maps generic `RelationRole` values to candidate finite
+partitions and carries unordered outputs. `LearnedGroupingMerge` records the
+selected role, learned merge, and evaluated count. Missing roles and equal-cost
+explanations fail closed.
