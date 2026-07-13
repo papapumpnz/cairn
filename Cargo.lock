@@ -229,6 +229,7 @@ dependencies = [
  "cairn-cas",
  "cairn-consolidator",
  "cairn-core",
+ "cairn-curriculum",
  "cairn-invent",
  "cairn-mechanism",
  "cairn-rkl",
@@ -271,6 +272,7 @@ dependencies = [
  "cairn-rkl",
  "cairn-skill",
  "cairn-theory",
+ "cairn-verifier",
  "cairn-world",
 ]
 
@@ -281,6 +283,7 @@ dependencies = [
  "cairn-core",
  "cairn-invent",
  "cairn-rkl",
+ "cairn-theory",
  "cairn-world",
 ]
 
@@ -333,6 +336,7 @@ dependencies = [
  "cairn-cas",
  "cairn-consolidator",
  "cairn-core",
+ "cairn-curriculum",
  "cairn-mechanism",
  "cairn-proof",
  "cairn-rkl",

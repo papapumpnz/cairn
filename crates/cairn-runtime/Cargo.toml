@@ -18,5 +18,8 @@ cairn-skill = { path = "../cairn-skill" }
 cairn-theory = { path = "../cairn-theory" }
 cairn-world = { path = "../cairn-world" }
 
+[dev-dependencies]
+cairn-verifier = { path = "../cairn-verifier" }
+
 [lints]
 workspace = true

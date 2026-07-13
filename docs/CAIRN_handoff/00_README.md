@@ -176,4 +176,101 @@ RKL equality predicate that forms useful collections, then learns their
 aggregate. Independent replay is exact over 13 changed held-out components;
 multi-feature and geometry-derived relations remain open.
 
+ADR-0038 removes the single-feature restriction. On a frozen family where all
+atomic relations fail, CAIRN invents the executable conjunction of two anonymous
+feature equalities, agrees across two independently named cohorts, and replays
+11/11 changed held-out collections with zero examples. Equality atoms and
+frontend-authored features remain decisive limits.
+
+ADR-0039 carries that invented predicate/aggregate through proof-gated memory.
+Two disjoint independent receipts and a consolidator certificate reduce later
+work from 65 candidates/four examples to one proposal/zero examples on changed
+entities. Memory remains proposal-only; durable restart and richer atoms remain
+open.
+
+ADR-0040 adds optional order-comparison atoms and canonical unordered-pair
+orientation. From anonymous interval endpoints and outputs, CAIRN invents the
+two-inequality enclosure relation and independently replays 11/11 changed
+held-out groups. No named geometry primitive, edge, or pair label is supplied.
+
+ADR-0041 makes invented predicate learning restart-safe through evidence rather
+than serialized authority. Two CAS cohorts survive process loss, are re-invented
+and independently replayed, and regain one promoted mechanism with the same
+65-to-one candidate and four-to-zero example reduction.
+
+ADR-0042 removes supplied normalized endpoint features. CAIRN selects executable
+RKL minimum/maximum definitions from anonymous primitive pairs, composes them
+with invented enclosure, and transfers the unchanged learned object from the
+sequence adapter to the vector adapter over 11/11 held-out groups.
+
+ADR-0043 removes the remaining two-template feature menu. A bounded,
+cost-ordered typed RKL grammar constructs scalar feature programs and jointly
+selects them through downstream explanatory adequacy. On a frozen non-ARC
+family it synthesizes addition, transfers sequence-to-vector over 11/11 groups,
+and proof-gated reuse reduces 91 candidates/four examples to one proposal/zero
+examples. ADR-0044 persists evidence without trust and reconstructs the learned
+mechanism after complete process loss. ADR-0045 replaces the fixed pair with
+bounded variable-arity evidence, verifies every observation permutation, and
+records tested support geometry. A three-observation mechanism passes 9/9
+changed held-out groups and restart re-promotion. Entity boundaries and
+projection axes remain supplied; this is bounded learning, not general
+intelligence.
+
+ADR-0046 composes entity hypothesis generation with that learner. From raw
+scalars and two competing anonymous relations per episode, CAIRN selects the
+only entity interpretation supporting a complete executable theory, rebinds
+renamed roles from the sequence adapter to the vector adapter over 9/9 groups,
+and removes 708 feature candidates/four examples during reuse. Candidate
+relations are still frontend evidence, so this is not raw perception or a
+general-intelligence claim.
+
+ADR-0047 removes supplied relations for one bounded non-ARC family. From raw
+primitives with anonymous attributes, CAIRN constructs executable equality RKL,
+selects a task-local attribute binding only through complete explanation, and
+independently regenerates relation edges before entity/mechanism replay. The
+unchanged structure transfers sequence-to-vector over 9/9 groups and reuse
+removes 708 feature candidates/four examples. Equality is the only current
+relation structure and attributes remain frontend evidence, so general
+intelligence remains unmet.
+
+ADR-0048 removes the equality-only closure for the next bounded gate. The
+cost-phased typed relation-key grammar considers projection, addition,
+subtraction, minimum, and maximum. A family with zero explanatory atomic keys
+forces addition; the complete executable mechanism transfers unchanged from
+sequence to vector over 9/9 groups. Two independent verifier receipts promote
+it as a proposal-only module, reducing binding search 15→3 and examples 4→0.
+Canonical evidence survives process loss without authority and is freshly
+re-invented and re-promoted. A content-free relation failure also drives one
+autonomous curriculum objective to verified completion. Exact scalar channels
+and the five grammar constructors are still supplied, so general intelligence
+remains unmet.
+
+ADR-0049 lifts relation keys beyond ordered pairs through a bounded associative
+fold in the same RKL/verifier/memory path. With arity three enabled, a family
+where every atomic and binary key fails learns a three-input sum, promotes it
+from two independent cohorts, cuts current bindings 32→4 and examples 4→0,
+and independently replays 9/9 changed groups. The fold operator and arity cap
+remain developer-supplied, so this is higher-arity mechanism learning rather
+than autonomous grammar invention or general intelligence.
+
+ADR-0050 removes that experiment's manual fold-enablement assumption. The
+default proposal language is closed. A redacted structural failure propagates
+its committed dependency-arity lower bound, while a separate verifier-side
+consolidator requires a promoted binary mechanism before exposing only its own
+associative fold family. Addition/2→sum/3 reduces cohort binding work 128→16,
+examples 4→0, and replays 9/9 changed groups; minimum/2→minimum-fold/3 also
+replays 9/9. The learned additive fold also transfers sequence→vector over 9/9
+groups through unchanged adapters. Cold restart regenerates the extension only
+after re-invention and fresh promotion. Algebra laws and scalar channels remain
+supplied, so this is bounded experience-driven language growth, not general
+intelligence.
+
+ADR-0051 moves beyond one-operator closure. Independently promoted addition and
+minimum mechanisms become the vocabulary for a bounded expression search; the
+certificate does not contain a final AST. Two disjoint cohorts invent and
+promote `minimum(add(p0,p1),p2)`, reducing expression structures 4→1 per cohort
+and examples 4→0. Answer-hidden sequence→vector reuse emits two proposals and
+replays 9/9 groups. This is learner-constructed rule structure, but the binary
+operators and left-associated meta-grammar remain supplied.
+
 The reference implementation is Rust with small, audited C/C++ solver dependencies when justified. The baseline machine is one commodity 8-core CPU with 16 GB RAM. The system must also support multi-process and multi-node CPU swarms through content-addressed, proof-carrying artifacts.

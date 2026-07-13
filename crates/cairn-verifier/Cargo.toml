@@ -10,6 +10,7 @@ repository.workspace = true
 [dependencies]
 cairn-consolidator = { path = "../cairn-consolidator" }
 cairn-core = { path = "../cairn-core" }
+cairn-curriculum = { path = "../cairn-curriculum" }
 cairn-mechanism = { path = "../cairn-mechanism" }
 cairn-proof = { path = "../cairn-proof" }
 cairn-rkl = { path = "../cairn-rkl" }

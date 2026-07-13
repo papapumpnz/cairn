@@ -25,7 +25,9 @@ pub struct AttributedGroupingTrace {
 pub struct PredicateGroupingLimits {
     pub maximum_entities: usize,
     pub maximum_features: usize,
+    pub maximum_conjuncts: usize,
     pub maximum_relation_candidates: usize,
+    pub include_order_comparisons: bool,
 }
 
 impl Default for PredicateGroupingLimits {
@@ -33,7 +35,9 @@ impl Default for PredicateGroupingLimits {
         Self {
             maximum_entities: 4_096,
             maximum_features: 32,
+            maximum_conjuncts: 2,
             maximum_relation_candidates: 256,
+            include_order_comparisons: false,
         }
     }
 }
@@ -85,8 +89,9 @@ pub enum PredicateGroupingError {
 pub struct PredicateGroupingInventor;
 
 impl PredicateGroupingInventor {
-    /// Jointly invent an executable pairwise equality relation, its connected
-    /// collections, and an aggregate explaining complete unordered outputs.
+    /// Jointly invent an executable pairwise equality conjunction, its
+    /// connected collections, and an aggregate explaining complete unordered
+    /// outputs.
     ///
     /// No pair labels, relation edges, partitions, or selected feature are
     /// supplied. Enumeration is bounded to the typed pairwise-relation hole.
@@ -102,13 +107,10 @@ impl PredicateGroupingInventor {
         invention_limits: InventionLimits,
     ) -> Result<LearnedPredicateGroupingMerge, PredicateGroupingError> {
         let feature_count = validate_traces(traces, limits)?;
-        let candidate_count = feature_count.min(limits.maximum_relation_candidates);
-        if candidate_count < feature_count {
-            return Err(PredicateGroupingError::Capacity);
-        }
+        let definitions = relation_definitions(feature_count, limits)?;
+        let candidate_count = definitions.len();
         let mut exact = Vec::new();
-        for feature in 0..feature_count {
-            let definition = equality_definition(feature, feature_count)?;
+        for (definition, relation_cost) in definitions {
             let merge_traces = traces
                 .iter()
                 .map(|trace| {
@@ -120,7 +122,11 @@ impl PredicateGroupingInventor {
                 })
                 .collect::<Result<Vec<_>, PredicateGroupingError>>()?;
             if let Ok(merge) = GroupMergeInventor.invent(&merge_traces, invention_limits) {
-                let cost = merge.constructor.proposal.structural_cost.saturating_add(3);
+                let cost = merge
+                    .constructor
+                    .proposal
+                    .structural_cost
+                    .saturating_add(relation_cost);
                 exact.push((cost, definition, merge));
             }
         }
@@ -215,10 +221,122 @@ fn validate_entities(
     Ok(())
 }
 
-fn equality_definition(
-    selected: usize,
+fn relation_definitions(
+    feature_count: usize,
+    limits: PredicateGroupingLimits,
+) -> Result<Vec<(Definition, u16)>, PredicateGroupingError> {
+    if limits.maximum_conjuncts == 0 || limits.maximum_relation_candidates == 0 {
+        return Err(PredicateGroupingError::Capacity);
+    }
+    let mut atoms = (0..feature_count)
+        .map(|feature| RelationAtom {
+            operation: BinaryOp::Equal,
+            left_side: true,
+            left_feature: feature,
+            right_feature: feature,
+        })
+        .collect::<Vec<_>>();
+    if limits.include_order_comparisons {
+        for left_feature in 0..feature_count {
+            for right_feature in 0..feature_count {
+                atoms.push(RelationAtom {
+                    operation: BinaryOp::LessThan,
+                    left_side: true,
+                    left_feature,
+                    right_feature,
+                });
+                atoms.push(RelationAtom {
+                    operation: BinaryOp::LessThan,
+                    left_side: false,
+                    left_feature,
+                    right_feature,
+                });
+            }
+        }
+    }
+    let mut selections = Vec::new();
+    for width in 1..=limits.maximum_conjuncts.min(atoms.len()) {
+        enumerate_feature_selections(
+            atoms.len(),
+            width,
+            0,
+            &mut Vec::new(),
+            &mut selections,
+            limits.maximum_relation_candidates,
+        )?;
+    }
+    let mut definitions = BTreeMap::new();
+    for selection in selections {
+        let width = u16::try_from(selection.len()).map_err(|_| PredicateGroupingError::Capacity)?;
+        let relation_cost = width
+            .checked_mul(3)
+            .and_then(|cost| cost.checked_add(width.saturating_sub(1)))
+            .ok_or(PredicateGroupingError::Capacity)?;
+        let definition = relation_definition(&selection, &atoms, feature_count)?;
+        let identity = definition
+            .encode_canonical()
+            .map_err(|_| PredicateGroupingError::RelationExecution)?;
+        definitions
+            .entry(identity)
+            .or_insert((definition, relation_cost));
+    }
+    Ok(definitions.into_values().collect())
+}
+
+fn enumerate_feature_selections(
+    feature_count: usize,
+    width: usize,
+    start: usize,
+    current: &mut Vec<usize>,
+    output: &mut Vec<Vec<usize>>,
+    maximum_candidates: usize,
+) -> Result<(), PredicateGroupingError> {
+    if current.len() == width {
+        if output.len() >= maximum_candidates {
+            return Err(PredicateGroupingError::Capacity);
+        }
+        output.push(current.clone());
+        return Ok(());
+    }
+    let remaining = width - current.len();
+    let Some(last_start) = feature_count.checked_sub(remaining) else {
+        return Ok(());
+    };
+    for feature in start..=last_start {
+        current.push(feature);
+        enumerate_feature_selections(
+            feature_count,
+            width,
+            feature + 1,
+            current,
+            output,
+            maximum_candidates,
+        )?;
+        current.pop();
+    }
+    Ok(())
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct RelationAtom {
+    operation: BinaryOp,
+    left_side: bool,
+    left_feature: usize,
+    right_feature: usize,
+}
+
+fn relation_definition(
+    selected: &[usize],
+    atoms: &[RelationAtom],
     feature_count: usize,
 ) -> Result<Definition, PredicateGroupingError> {
+    let Some(first_index) = selected.first().copied() else {
+        return Err(PredicateGroupingError::Capacity);
+    };
+    let first = atoms
+        .get(first_index)
+        .copied()
+        .ok_or(PredicateGroupingError::Capacity)?;
     let parameters = (0..feature_count)
         .map(|feature| Binder {
             name: VarName(format!("left_feature_{feature}")),
@@ -229,22 +347,84 @@ fn equality_definition(
             ty: integer_type(),
         }))
         .collect::<Vec<_>>();
-    let definition = Definition {
+    let atom_expression = |atom: RelationAtom| Expr::Binary {
+        op: atom.operation,
+        left: Box::new(Expr::Var(VarName(format!(
+            "{}_feature_{}",
+            if atom.left_side { "left" } else { "right" },
+            atom.left_feature
+        )))),
+        right: Box::new(Expr::Var(VarName(format!(
+            "{}_feature_{}",
+            if atom.left_side { "right" } else { "left" },
+            atom.right_feature
+        )))),
+    };
+    let body =
+        selected
+            .iter()
+            .copied()
+            .skip(1)
+            .try_fold(atom_expression(first), |left, atom_index| {
+                let atom = atoms
+                    .get(atom_index)
+                    .copied()
+                    .ok_or(PredicateGroupingError::Capacity)?;
+                Ok::<_, PredicateGroupingError>(Expr::Binary {
+                    op: BinaryOp::And,
+                    left: Box::new(left),
+                    right: Box::new(atom_expression(atom)),
+                })
+            })?;
+    let swapped = swap_pair_sides(&body);
+    let definition_for = |body| Definition {
         name: "invented_pair_relation".to_owned(),
-        parameters,
+        parameters: parameters.clone(),
         return_type: Type::Bool,
-        body: Expr::Binary {
-            op: BinaryOp::Equal,
-            left: Box::new(Expr::Var(VarName(format!("left_feature_{selected}")))),
-            right: Box::new(Expr::Var(VarName(format!("right_feature_{selected}")))),
-        },
+        body,
         recursion: None,
         proof_annotations: Vec::new(),
+    };
+    let original_definition = definition_for(body);
+    let swapped_definition = definition_for(swapped);
+    let definition = if swapped_definition
+        .encode_canonical()
+        .map_err(|_| PredicateGroupingError::RelationExecution)?
+        < original_definition
+            .encode_canonical()
+            .map_err(|_| PredicateGroupingError::RelationExecution)?
+    {
+        swapped_definition
+    } else {
+        original_definition
     };
     TypeChecker::new(10_000)
         .check_definition(&definition)
         .map_err(|_| PredicateGroupingError::RelationExecution)?;
     Ok(definition)
+}
+
+fn swap_pair_sides(expression: &Expr) -> Expr {
+    match expression {
+        Expr::Var(name) => {
+            let swapped = name
+                .0
+                .strip_prefix("left_feature_")
+                .map(|suffix| format!("right_feature_{suffix}"))
+                .or_else(|| {
+                    name.0
+                        .strip_prefix("right_feature_")
+                        .map(|suffix| format!("left_feature_{suffix}"))
+                });
+            swapped.map_or_else(|| expression.clone(), |name| Expr::Var(VarName(name)))
+        }
+        Expr::Binary { op, left, right } => Expr::Binary {
+            op: *op,
+            left: Box::new(swap_pair_sides(left)),
+            right: Box::new(swap_pair_sides(right)),
+        },
+        _ => expression.clone(),
+    }
 }
 
 fn execute_groups(
@@ -265,24 +445,19 @@ fn execute_groups(
         .collect::<BTreeMap<_, _>>();
     for left in 0..entities.len() {
         for right in (left + 1)..entities.len() {
-            let mut environment = RuntimeEnvironment::new();
-            for feature in 0..feature_count {
-                environment.insert(
-                    VarName(format!("left_feature_{feature}")),
-                    Value::Int(entities[left].features[feature]),
-                );
-                environment.insert(
-                    VarName(format!("right_feature_{feature}")),
-                    Value::Int(entities[right].features[feature]),
-                );
-            }
-            let Value::Bool(related) = executor
-                .execute(&typed_expression, &environment)
-                .map_err(|_| PredicateGroupingError::RelationExecution)?
-                .result
-            else {
-                return Err(PredicateGroupingError::RelationExecution);
-            };
+            let related = execute_pair_relation(
+                &executor,
+                &typed_expression,
+                &entities[left],
+                &entities[right],
+                feature_count,
+            )? || execute_pair_relation(
+                &executor,
+                &typed_expression,
+                &entities[right],
+                &entities[left],
+                feature_count,
+            )?;
             if related {
                 adjacency
                     .get_mut(&left)
@@ -312,6 +487,34 @@ fn execute_groups(
         groups.push(values);
     }
     Ok(groups)
+}
+
+fn execute_pair_relation(
+    executor: &ReferenceExecutor,
+    expression: &cairn_rkl::TypedExpr,
+    left: &AttributedGroupingEntity,
+    right: &AttributedGroupingEntity,
+    feature_count: usize,
+) -> Result<bool, PredicateGroupingError> {
+    let mut environment = RuntimeEnvironment::new();
+    for feature in 0..feature_count {
+        environment.insert(
+            VarName(format!("left_feature_{feature}")),
+            Value::Int(left.features[feature]),
+        );
+        environment.insert(
+            VarName(format!("right_feature_{feature}")),
+            Value::Int(right.features[feature]),
+        );
+    }
+    match executor
+        .execute(expression, &environment)
+        .map_err(|_| PredicateGroupingError::RelationExecution)?
+        .result
+    {
+        Value::Bool(related) => Ok(related),
+        _ => Err(PredicateGroupingError::RelationExecution),
+    }
 }
 
 fn integer_type() -> Type {

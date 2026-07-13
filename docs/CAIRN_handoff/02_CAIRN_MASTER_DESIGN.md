@@ -2469,3 +2469,247 @@ components. Two independently named cohorts synthesize the same relation/merge;
 187 fresh candidates become one learned attempt and four examples become zero.
 Thirteen changed held-out components replay exactly. The current primitive
 grammar is equality-only and frontend features remain supplied.
+
+## 38. Conjunctive pair-relation invention
+
+`PredicateGroupingInventor` now enumerates bounded conjunctions of corresponding
+anonymous-feature equality atoms. Candidate order is increasing width then
+lexicographic feature index, and both conjunction depth and total candidate
+count terminate through explicit caps. Exact theory cost includes the complete
+relation AST rather than treating every relation as one atom.
+
+The frozen compound-key family is not explainable by any atomic candidate. Two
+independently named source cohorts synthesize the same two-atom RKL definition;
+the unchanged verifier executes it and reconstructs 11/11 changed held-out
+components. Removing either conjunct destroys exact replay. Feature extraction,
+inequality and geometry atoms, predicate persistence, and raw perception remain
+open, so this is bounded language growth rather than general intelligence.
+
+## 39. Persistent invented predicate compositions
+
+`PredicateGroupingStore` binds the learned pair-relation RKL and aggregate RKL
+under their joint semantic identity. Independent verifier receipts record exact
+replay and strict search reduction; a separate consolidator requires two
+disjoint cohorts and issues the only token that changes status to persistent.
+
+The shared cognition runtime executes persistent definitions only as untrusted
+current-entity proposals. In the frozen experiment, later work falls from 65
+candidates/four examples to one attempt/zero examples and five changed groups
+are exact. Duplicate evidence and blank memory contribute nothing. CAS restart,
+support geometry, and cross-adapter feature derivation remain open.
+
+## 40. Order-derived interval relations
+
+The predicate hole optionally includes less-than atoms across anonymous feature
+slots. Because grouping pairs are unordered, the executor tests each learned
+directional body in both orientations. Candidate definitions alpha-normalize
+against complete left/right reversal before semantic comparison; reverse
+syntax therefore cannot manufacture ambiguity or a second answer mode.
+
+Crossing interval negatives force the learned relation to use opposing endpoint
+inequalities. Two source cohorts produce one canonical RKL body and the verifier
+reconstructs 11/11 changed held-out groups. The result invents one-dimensional
+enclosure but still receives endpoint features from a frontend.
+
+## 41. Restart-safe predicate evidence
+
+`PredicateGroupingCohortArchive` stores canonical attributed traces and claimed
+work/identity commitments, never module status, receipts, certificates, or
+native executable objects. Entity order is non-semantic. A reopened process must
+re-invent, independently replay, reconsolidate, and freshly promote.
+
+Two cohorts regain one compound predicate after complete state loss. Restored
+use remains one proposal/zero examples instead of 65 candidates/four examples,
+with five changed held-out groups exact.
+
+## 42. Observation-feature invention and adapter transfer
+
+`ObservationPredicateInventor` receives opaque primitive entities with two
+anonymous scalar observations and complete outputs. It evaluates bounded raw
+and minimum/maximum RKL feature programs, then invokes ordinary predicate and
+aggregate invention. The verifier separately executes feature RKL before
+independent grouping replay.
+
+Raw order cannot explain the frozen family. Minimum/maximum features compose
+with enclosure and transfer unchanged from sequence spans to projected vector
+segments, replaying 11/11 changed groups. Entity boundaries and projection axes
+remain frontend evidence.
+
+## 43. Typed observation-feature program synthesis
+
+`ObservationPredicateInventor` no longer receives a fixed raw-versus-min/max
+menu. It deterministically enumerates typed integer RKL expressions by
+structural cost, collapses equivalent current-evidence behavior, enforces the
+primitive observation collection's declared unordered symmetry, and tests bounded one- or
+two-feature collections through ordinary predicate/aggregate invention.
+
+The initial grammar contains anonymous variables, negation, addition,
+subtraction, multiplication, minimum, and maximum. Candidate expressions,
+structural cost, feature count, feature sets, and entity count have independent
+caps. The learned identity binds the variable-length executable feature program
+collection to the relation and aggregate under historical v2 semantics.
+
+A frozen omitted-feature family requires addition: raw, minimum, and maximum
+values vary inside every target collection. Two disjoint cohorts invent the
+same feature/relation/aggregate. The mechanism transfers unchanged from sequence
+to vector observations over 11/11 groups, and verified memory reuse reduces 91
+candidate units/four examples to one proposal/zero examples.
+
+## 44. Durable observation-feature continual memory
+
+Canonical CAS artifacts persist only raw primitive evidence, semantic
+commitments, measured work, and parent lineage. Complete process loss destroys
+all learned objects and authority. Recovery re-invents, independently replays,
+re-consolidates, and re-promotes before the cognition runtime can retrieve the
+mechanism as an untrusted proposal. Two cohorts restore zero status directly and
+retain strict candidate/example reduction after fresh verification.
+
+## 45. Variable-arity feature mechanisms and support geometry
+
+Primitive entities now carry two to four anonymous observations under default
+bounds. Typed feature parameters, grammar seeds, canonical identity, and exact
+execution use the task arity. For unordered evidence, producer and independent
+verifier separately enumerate every index permutation under a factorial cap.
+
+A three-observation hidden-law family forces a composed symmetric feature. It
+passes all six permutations and 9/9 changed held-out groups with 640 typed
+candidates and five feature sets. The same arity-three mechanism survives CAS
+loss and fresh promotion; restart reuse reduces 708 candidate units/four
+episodes to one proposal/zero new episodes. Certificates expose exact tested
+arity, entity-count range, and scalar range. Raw entity discovery, deep
+open-ended grammar growth, and autonomous curriculum expansion remain open.
+This is broader bounded mechanism learning, not general intelligence.
+
+## 46. Joint entity interpretation and mechanism learning
+
+The general learner now accepts raw scalar primitives plus competing anonymous
+binary relations. It constructs connected-component entity interpretations,
+enumerates bounded cross-episode bindings, and retains an interpretation only
+when the resulting variable-arity features, learned pair relation, collections,
+and aggregate explain every output exactly. Relation names remain task-local;
+the reusable identity is the executable mechanism.
+
+The producer uses deterministic graph traversal while the verifier independently
+uses disjoint sets. Two-role families evaluate four binding sets, reject
+equivalent ambiguity and cap exhaustion explicitly, and transfer 9/9 changed
+groups through actual sequence and vector adapters with no core change. Memory
+removes 708 feature candidates and four examples on reuse while still trying two
+current bindings and requiring verification. Primitive relation invention and
+raw sensory segmentation remain open.
+
+## 47. Primitive relation invention from anonymous attributes
+
+The general learner now accepts raw primitives with anonymous scalar attributes
+and no binary relations or entity groups. It constructs an executable RKL
+equality relation, binds it to each bounded task-local attribute position, and
+retains a relation/entity interpretation only when the complete downstream
+feature, predicate, collection, and aggregate theory replays exactly.
+
+Attribute indexes and generated relation names are excluded from reusable
+identity. The verifier type-checks and executes relation RKL directly on raw
+attributes, creates its own edges, and then uses the independent entity replay
+path. Sequence and vector adapters transfer the same mechanism over 9/9 changed
+groups. Persistent experience removes 708 feature candidates/four examples but
+retains three current binding attempts and independent verification. Equality
+is currently the only relation-program structure, and raw attributes remain
+frontend evidence; this is not open-ended relation learning or general
+intelligence.
+
+## 48. Composed relation-program learning and durable promotion
+
+Raw relation induction now uses a bounded typed key-program grammar rather than
+one equality projection. Projection is the first structural-cost phase;
+addition, subtraction, minimum, and maximum over pairs of anonymous attributes
+are admitted only if the cheap phase has no exact theory. The output remains an
+RKL equality relation over the learned key, so exact replay and total bounds are
+preserved.
+
+`RawRelationMechanism` binds the executable relation definition, its
+source-independent operator, and the downstream feature/predicate/collection/
+aggregate mechanism. Task-local attribute indexes are excluded. Independent
+reuse receipts derive current grammar work, and a separate consolidator needs
+two disjoint cohorts before `RawRelationStore` may mark the module persistent.
+Runtime use narrows operator structure only; current binding, execution, and
+verification remain mandatory.
+
+`RawRelationCohortArchive` stores canonical parent-bound evidence under schema
+`cairn.memory.raw-relation-cohort` v1, semantics 2.0.0. Restart restores no
+module, receipt, or certificate. Re-invention and replay over two artifacts
+freshly promote the mechanism.
+
+The additive-key family has no exact atomic theory, transfers sequence-to-
+vector over 9/9 groups, reduces runtime binding work 15→3 and examples 4→0,
+and completes a content-free relation-focused curriculum objective. The five
+constructors and scalar channels remain supplied; this is a measured bounded
+advance toward a self-compressing learner, not general intelligence.
+
+## 49. Bounded variable-arity relation folds
+
+The relation-key grammar may now admit an associative sum fold over three or
+more anonymous attributes under an explicit `maximum_key_arity`. Default arity
+remains two. Canonical combinations, rather than ordered tuples, define fold
+bindings, and the learner reaches this phase only after projection and binary
+structures have no exact explanation.
+
+The compiled RKL definition carries every input parameter and the full fold.
+`RawRelationMechanism`, independent reuse receipts, promotion support geometry,
+and runtime applicability carry the learned arity. Persistent memory therefore
+reduces structure search without erasing current attribute rebinding.
+
+In the frozen four-channel family, all atomic and pair structures fail. A
+three-input sum transfers over changed values, layouts, identifiers, and
+cardinalities with 9/9 exact held-out groups. Two receipts reduce cohort work
+128→16 and runtime work 32→4; examples fall 4→0. This is bounded n-ary
+composition over supplied RKL algebra, not learner-generated grammar.
+
+## 50. Experience-driven bounded relation-language growth
+
+The default relation learner now exposes no higher-arity folds. Arity capacity
+and algebra-family reachability are separate: increasing
+`maximum_key_arity` alone is insufficient. A content-free failure-driven
+curriculum request carries the failure core's committed minimum dependency
+arity, without observation content or expected truth.
+
+After two disjoint verifier receipts promote a binary associative mechanism, a
+separate `RelationLanguageExtensionConsolidator` may issue an opaque certificate
+mapping only that operator to its bounded fold family. Addition exposes sum,
+minimum exposes minimum-fold, and maximum exposes maximum-fold. Subtraction and
+unsupported operators fail closed. Applying the certificate changes proposal
+language only; the new mechanism still requires current binding, exact
+execution, independent replay, separate reuse receipts, and promotion.
+
+The additive frozen family moves from zero exact theories without the extension
+to a learned ternary fold, with candidate bindings 128→16, examples 4→0,
+9/9 held-out exact groups, and zero observed negative transfer. An independently
+constructed minimum family also replays 9/9, showing that the gate is not an
+addition-specific branch. The learned additive extension transfers unchanged
+from the sequence adapter to the vector adapter over 9/9 groups. Evidence-only
+restart restores no language authority and regenerates the certificate only
+after fresh invention and promotion.
+
+This is self-expansion inside a developer-proved associative envelope. It does
+not invent algebra laws, raw channels, arbitrary syntax, or recursion, and does
+not satisfy the general-intelligence release claim.
+
+## 51. Learned multi-operator relation expressions
+
+Promoted binary mechanisms can now become a typed proposal vocabulary rather
+than only reusable leaves. `RelationKeyExpression` separates source-independent
+parameterized AST structure from task-local anonymous attribute bindings and
+lowers the complete result to RKL. A proof-gated language certificate requires
+at least two distinct, independently promoted operators plus an opaque redacted
+dependency-arity failure; it supplies no final AST.
+
+The reference learner enumerates bounded left-associated expressions and
+selects one only through joint relation, entity, feature, predicate, collection,
+and aggregate explanation. The verifier reconstructs both AST lowering and
+relation evaluation independently. Two disjoint expression receipts are needed
+before proposal-only reuse counts as persistent learning.
+
+The frozen family combines promoted addition and minimum. Four structures are
+reachable, and two independent cohorts invent
+`minimum(add(p0,p1),p2)`. Structure search falls 4→1 per cohort, examples 4→0,
+and answer-hidden sequence→vector transfer replays 9/9 groups using two current
+proposals. This is bounded new rule-structure invention, not a named composite
+operator. Arbitrary tree grammars, learned scalar operations, raw channels,
+durable CAS expression storage, and general intelligence remain open.

@@ -4,17 +4,25 @@ mod collection_expansion;
 mod conditional_construction;
 mod construction_program;
 mod correspondence;
+mod entity_observation;
 mod group_merge;
 mod layer;
+mod observation_predicate;
 mod predicate_grouping;
+mod relation_expression;
+mod relation_observation;
 
 pub use collection_expansion::*;
 pub use conditional_construction::*;
 pub use construction_program::*;
 pub use correspondence::*;
+pub use entity_observation::*;
 pub use group_merge::*;
 pub use layer::*;
+pub use observation_predicate::*;
 pub use predicate_grouping::*;
+pub use relation_expression::*;
+pub use relation_observation::*;
 
 use cairn_consolidator::{
     CompiledInternalMechanism, ConstructedInternalComposition, EpisodeBindings,

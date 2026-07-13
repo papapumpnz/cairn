@@ -13,7 +13,7 @@ use std::collections::{btree_map::Entry, BTreeMap, BTreeSet};
 use std::fmt;
 
 pub const FAILURE_CORE_SEMANTICS_VERSION: &str = "1.0.0";
-pub const DEVELOPMENTAL_CURRICULUM_SEMANTICS_VERSION: &str = "1.2.0";
+pub const DEVELOPMENTAL_CURRICULUM_SEMANTICS_VERSION: &str = "1.3.0";
 pub const CURRICULUM_CHECKPOINT_SCHEMA: &str = "cairn.curriculum.checkpoint";
 pub const CURRICULUM_CHECKPOINT_SCHEMA_VERSION: u32 = 1;
 
@@ -503,6 +503,27 @@ pub struct GeneratedDevelopmentalObjective {
     pub objective: DevelopmentalObjective,
     pub need: DevelopmentalNeed,
     pub failure_core: Hash32,
+    minimum_dependency_arity_lower_bound: u32,
+}
+
+/// Opaque content-free evidence that a failed learner requires a relation
+/// structure with at least the declared dependency arity.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct RelationLanguageGrowthRequest {
+    failure_core: Hash32,
+    minimum_dependency_arity_lower_bound: u32,
+}
+
+impl RelationLanguageGrowthRequest {
+    #[must_use]
+    pub const fn failure_core(&self) -> Hash32 {
+        self.failure_core
+    }
+
+    #[must_use]
+    pub const fn minimum_dependency_arity_lower_bound(&self) -> u32 {
+        self.minimum_dependency_arity_lower_bound
+    }
 }
 
 /// Content-free contract sent to a separately governed environment
@@ -514,9 +535,25 @@ pub struct DevelopmentalExerciseRequest {
     pub prerequisites: BTreeSet<MechanismTarget>,
     pub failure_core: Hash32,
     pub minimum_independent_variations: u32,
+    pub minimum_dependency_arity_lower_bound: u32,
 }
 
 impl GeneratedDevelopmentalObjective {
+    #[must_use]
+    pub const fn minimum_dependency_arity_lower_bound(&self) -> u32 {
+        self.minimum_dependency_arity_lower_bound
+    }
+
+    /// Bind the redacted failure commitment to its inferred dependency arity.
+    /// External callers cannot construct this token directly.
+    #[must_use]
+    pub const fn relation_language_growth_request(&self) -> RelationLanguageGrowthRequest {
+        RelationLanguageGrowthRequest {
+            failure_core: self.failure_core,
+            minimum_dependency_arity_lower_bound: self.minimum_dependency_arity_lower_bound,
+        }
+    }
+
     /// Derive the materializer request without exposing task content or giving
     /// the curriculum authority over a concrete environment.
     #[must_use]
@@ -527,6 +564,7 @@ impl GeneratedDevelopmentalObjective {
             prerequisites: self.objective.prerequisites.clone(),
             failure_core: self.failure_core,
             minimum_independent_variations: 2,
+            minimum_dependency_arity_lower_bound: self.minimum_dependency_arity_lower_bound,
         }
     }
 }
@@ -605,6 +643,10 @@ impl FailureDrivenObjectiveGenerator {
             },
             need,
             failure_core,
+            minimum_dependency_arity_lower_bound: u32::try_from(
+                core.minimum_dependency_arity_lower_bound,
+            )
+            .map_err(|_| ObjectiveGenerationError::InvalidEvidence)?,
         })
     }
 }

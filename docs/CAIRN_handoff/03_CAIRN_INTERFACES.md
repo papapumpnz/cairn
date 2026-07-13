@@ -1185,3 +1185,170 @@ definitions, constructs components, and induces an aggregate.
 `cairn.predicate-grouping-merge.v1`. `PredicateGroupingVerifier` independently
 returns `VerifiedPredicateGrouping` only after raw definition execution,
 complete component reconstruction, and exact output replay.
+
+`PredicateGroupingLimits::maximum_conjuncts` bounds canonical conjunctions of
+corresponding feature-equality atoms. Enumeration terminates with `Capacity`
+before exceeding `maximum_relation_candidates`. Exact candidate ranking charges
+three cost units per equality atom and one per Boolean conjunction. Existing
+`cairn.predicate-grouping-merge.v1` artifacts remain compatible because their
+identity already contains the complete executable RKL definitions.
+
+`VerifiedPredicateGroupingReuse` is opaque evidence for one exact cohort and a
+strict candidate reduction. `PredicateGroupingPromotionConsolidator` requires
+two disjoint receipts and produces `VerifiedPredicateGroupingPromotion`.
+`PredicateGroupingStore` applies a token only when it covers the complete local
+ledger. `CognitionRuntime::propose_predicate_groupings_from_memory` returns
+untrusted unordered outputs and attempt counts; it cannot accept an answer.
+
+`PredicateGroupingLimits::include_order_comparisons` enables bounded less-than
+atoms between anonymous feature slots. It defaults to false. Directional bodies
+are evaluated in both entity orders for unordered component semantics and are
+canonicalized against complete left/right reversal before candidate
+deduplication. Producer and verifier retain separate execution paths.
+
+`PredicateGroupingCohortArtifact` uses schema
+`cairn.memory.predicate-grouping-cohort` version 1 and semantics 1.0.0.
+`PredicateGroupingCohortArchive::load` returns untrusted evidence;
+`replay` returns a freshly invented mechanism and newly issued verifier receipt.
+No artifact field restores `ModuleStatus` or promotion authority.
+
+`PrimitiveObservationEntity` contains opaque identity, scalar evidence, and a
+bounded vector of anonymous scalar observations. `PrimitivePairEntity` remains
+a source alias, not a fixed-arity semantic contract. Every task has one checked
+arity. `LearnedObservationPredicateGrouping` binds that arity and a bounded
+variable-length vector of executable feature `Definition` values to a
+predicate/aggregate mechanism. Its v3 semantic identity includes the arity,
+complete ordered definition vector, and downstream mechanism.
+`ObservationPredicateVerifier` independently lowers current primitives.
+`SequenceAdapter::lower_span_observations` and
+`VectorAdapter::lower_segment_observations` emit the same envelope without
+normalizing endpoints or assigning relation semantics.
+
+`ObservationPredicateLimits` independently caps entities, observation arity,
+observation permutations, exposed features, feature expression cost, typed
+candidates, and feature sets. Search constructs
+integer RKL from variables, negation, minimum, maximum, addition, subtraction,
+and multiplication. `feature_candidates_evaluated` and
+`feature_sets_evaluated` report producer work. `ObservationPredicateStore`
+requires two disjoint `VerifiedObservationPredicateReuse` receipts plus a
+complete-ledger `VerifiedObservationPredicatePromotion`; persistent entries
+remain proposals and require current-evidence replay.
+The verifier independently enumerates every observation-index permutation under
+the declared cap and replays the complete mechanism. Reuse and promotion
+certificates report tested arity, entity-count range, and scalar range; only
+arity is a hard runtime applicability constraint. It derives fresh candidate
+work from the learned reports;
+the receipt API does not accept caller-authored reduction metrics.
+
+`ObservationPredicateCohortArtifact` uses schema
+`cairn.memory.observation-predicate-cohort` version 2 and semantics 3.0.0. It
+contains evidence and commitments only. `ObservationPredicateCohortArchive`
+re-invents and re-verifies after restart; no module status, executable learned
+object, receipt, or certificate is deserialized. `CognitionRuntime` owns the
+re-promoted store and emits proposals only.
+
+`RawEntityObservationEvidence` contains opaque scalar primitives and unselected
+binary `RelationRecord` candidates. `EntityObservationInventor` enumerates one
+connected-component interpretation per role and bounded cross-episode binding
+sets. `LearnedEntityObservationGrouping::selected_relations` is task-local
+lineage; `mechanism_hash` excludes those source names and identifies only the
+executable observation-feature/predicate/aggregate composition.
+
+`EntityObservationVerifier` independently reconstructs components through a
+disjoint-set reference path before ordinary observation-mechanism replay.
+`CognitionRuntime::propose_entity_observations_from_memory` tries each current
+role against structurally compatible persistent modules and returns mechanism,
+binding, output, and work counts as proposals only. `SequenceAdapter` and
+`VectorAdapter` lower frontend primitives to this same evidence contract without
+selecting groups.
+
+`RawRelationObservationTrace` contains opaque attributed primitives and complete
+outputs but no `RelationRecord` values or entity groups.
+`RawRelationObservationInventor` constructs a typed RKL equality definition,
+enumerates bounded task-local attribute bindings, materializes candidate graphs,
+and invokes explanation-driven entity/mechanism induction.
+`LearnedRawRelationObservationGrouping::mechanism_hash` binds canonical relation
+RKL and the downstream executable mechanism while excluding episode attribute
+indexes and generated roles.
+
+`RawRelationObservationVerifier` independently type-checks and executes relation
+RKL against raw attributes, creates verifier-local edges, and invokes the
+disjoint-set entity verifier.
+`CognitionRuntime::propose_raw_relation_observations_from_memory` tries every
+bounded current attribute binding against proof-gated persistent observation
+mechanisms and returns untrusted proposals plus work counts. Actual sequence and
+vector adapters expose unrelated primitives without constructing relations.
+
+`RelationKeyOperator` is the source-independent key-program node set:
+`Projection`, `Add`, `Subtract`, `Minimum`, `Maximum`, `Sum`, `MinimumFold`,
+and `MaximumFold`.
+`RelationAttributeBinding` binds operator arguments to current anonymous
+attribute positions and is task-local. `RawRelationMechanism` stores relation
+RKL, operator, key arity, and the downstream executable mechanism under semantic
+identity marker `cairn.raw-relation-observation.v2`; all four enter identity.
+
+`RawRelationObservationVerifier::verify_reuse` returns opaque exact-replay and
+binding-reduction evidence. `RawRelationObservationPromotionConsolidator`
+requires two disjoint receipts and returns a complete-ledger promotion.
+`RawRelationStore` stores the full mechanism as a proposal source.
+`CognitionRuntime::propose_raw_relation_programs_from_memory` filters the
+current candidate grammar by the learned operator, then rebinds and executes it;
+it has no acceptance authority.
+
+`RawRelationCohortArtifact` uses schema
+`cairn.memory.raw-relation-cohort`, version 1, semantics 2.0.0. The archive
+persists evidence and commitments only. `load` is untrusted and `replay`
+performs fresh invention plus independent verification. Status, receipts,
+certificates, and learned native objects are not serialized.
+
+`RelationObservationLimits::maximum_key_arity` bounds variable-arity key
+enumeration and defaults to two. `enabled_associative_folds` is a separate
+`RelationFoldMask` and defaults to empty; raising arity alone cannot expose a
+fold. `Sum`, `MinimumFold`, and `MaximumFold` accept canonical attribute
+combinations of arity three through the cap and lower to typed left-associated
+RKL folds. `RawRelationMechanism::key_arity` and
+`RawRelationSupportGeometry::key_arity` are mandatory applicability fields.
+Verifier receipts derive their arity from the learned definition and selected
+bindings; runtime retrieval matches both operator and arity before proposal.
+
+Developmental semantics 1.3.0 propagates
+`minimum_dependency_arity_lower_bound` through
+`GeneratedDevelopmentalObjective` and `DevelopmentalExerciseRequest`. The value
+already participates in the content-free failure commitment and exposes no task
+content. `GeneratedDevelopmentalObjective::relation_language_growth_request`
+also issues an opaque `RelationLanguageGrowthRequest` binding the commitment to
+that arity; external callers cannot construct it. The ordinary exercise request
+remains a materializer message and grants no language authority.
+
+`RelationLanguageExtensionConsolidator::consolidate` accepts a binary
+`RawRelationMechanism`, its opaque
+`VerifiedRawRelationObservationPromotion`, the opaque growth request, and
+`RelationLanguageExtensionLimits`. It returns an opaque
+`VerifiedRelationLanguageExtension` only for the corresponding associative fold
+under the declared cap. `apply` modifies proposal limits only. It cannot persist
+a mechanism or verify an answer, and no extension certificate is restored from
+the evidence archive.
+
+`RelationKeyExpression` is a source-independent AST over `Parameter` and
+`Binary` nodes. `RelationExpressionBinding` maps its logical parameters to
+current anonymous attributes and is excluded from semantic identity.
+`RelationExpressionMechanism` binds the expression, exact RKL definition, and
+downstream executable observation mechanism under marker
+`cairn.relation-expression.v1`.
+
+`RelationExpressionLanguageConsolidator` consumes at least two pairs of
+`RawRelationMechanism` and opaque promotion certificates plus an opaque
+`RelationLanguageGrowthRequest`. Its opaque
+`VerifiedRelationExpressionLanguage` exposes only the promoted operator set,
+requested arity, binary-node bound, failure commitment, and source mechanism
+identities. Applying it changes `RelationExpressionLimits` proposal
+reachability; it cannot supply an expression or accept output.
+
+`RelationExpressionInventor` constructs bounded left-associated ASTs, binds
+current attributes, and uses complete downstream explanation.
+`RelationExpressionVerifier` reconstructs RKL and relation graphs through a
+separate path. `VerifiedRelationExpressionReuse` derives structure work from
+the certified language. `RelationExpressionPromotionConsolidator` requires two
+disjoint same-mechanism receipts and returns
+`VerifiedRelationExpressionPromotion`. `propose` accepts answer-hidden current
+evidence and emits untrusted binding/output alternatives only.

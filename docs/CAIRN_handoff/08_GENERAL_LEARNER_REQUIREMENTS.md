@@ -855,6 +855,62 @@ construct complete proof hosts from raw observations, learn a new action law in
 the generated exercise, or demonstrate unbounded self-curriculum. General
 intelligence and the ARC target remain unmet.
 
+## 53. Compound relation-language checkpoint
+
+Output-driven predicate invention now composes anonymous equality atoms. A
+frozen family rejects every single atom and requires a two-condition relation;
+two source cohorts learn the same executable definition and 11 changed held-out
+groups replay exactly with zero examples. The ablation removing either condition
+fails, so the composition is causally necessary.
+
+This satisfies a bounded omitted-structure test, not GLL completion. Atom types,
+feature derivation, persistence, support geometry, cross-adapter realization,
+open-ended curriculum growth, and broad unknown-world coupling remain open.
+
+## 54. Persistent compound-predicate checkpoint
+
+Two disjoint cohorts now independently verify the same invented compound
+predicate/aggregate. A separate consolidation certificate promotes it, and the
+shared runtime rebinds it as a proposal on changed entities. Candidate work
+falls 65-to-one and examples four-to-zero with no accuracy loss.
+
+This advances GLL continual learning but does not complete it: persistence is
+not yet restart-safe, support boundaries are not learned, frontend features are
+supplied, and the mechanism has not transferred through multiple adapters.
+
+## 55. Geometry-derived relation checkpoint
+
+With only anonymous interval endpoints and downstream outputs, CAIRN now
+invents enclosure as two opposing inequalities. Full pair reversal is one
+canonical unordered semantic mode. Independent replay is exact over 11 changed
+held-out groups.
+
+This passes another bounded omitted-mechanism test but not the general-learning
+gates. Endpoint/entity extraction, higher-dimensional relations, durable
+promotion, broad transfer, noise, and autonomous curriculum coupling remain
+open.
+
+## 56. Durable compound-predicate checkpoint
+
+Canonical attributed-evidence cohorts now survive complete process loss. A
+blank process re-invents, independently re-verifies, reconsolidates, and freshly
+promotes the compound predicate. No trusted status is deserialized, while the
+65-to-one candidate and four-to-zero example reduction remains.
+
+This advances continual-learning durability but still relies on frontend-
+supplied entities/features and bounded exact evidence.
+
+## 57. Observation-feature and adapter-transfer checkpoint
+
+CAIRN now receives anonymous primitive scalar pairs rather than normalized
+features. It learns executable minimum/maximum feature definitions, composes
+them with enclosure, and transfers unchanged from sequence to vector adapters
+with 11/11 held-out groups exact. Feature ablation removes the capability.
+
+This advances task learning and cross-domain representation, but primitive
+entity boundaries, projection selection, exact input, and a two-hypothesis
+feature grammar remain supplied.
+
 ## 52. Primitive relation-invention checkpoint
 
 CAIRN now invents an executable pair relation from downstream explanatory
@@ -1190,3 +1246,173 @@ This demonstrates durable continual learning for one bounded mechanism while
 preserving verifier authority. It does not invent primitive relation predicates,
 establish broad support geometry, or demonstrate adapter/ARC transfer. General
 intelligence and the ARC target remain unmet.
+
+## 52. Typed feature-program synthesis checkpoint
+
+The observation learner now constructs executable feature structure from a
+bounded typed RKL arithmetic grammar instead of selecting raw versus min/max
+templates. A frozen family forces addition because raw values and both extrema
+vary within every target collection. Two independently named cohorts converge
+on the same executable feature, relation, and aggregate; independent replay
+rejects a raw-body ablation and explicit candidate exhaustion returns
+`Capacity`.
+
+The unchanged learned object transfers from sequence spans to vector segments
+over 11/11 changed groups. Two disjoint reuse receipts promote it as a proposal,
+reducing measured work from 91 candidates/four examples to one attempt/zero
+examples with five exact current-evidence groups. This advances G0, G1, G2, and
+G5, but does not close them broadly. Entity segmentation, observation arity,
+projection axes, durable feature-memory reconstruction, support geometry,
+open-ended grammar growth, autonomous problem generation, and broad unknown-
+world coupling remain open. It is not a general-intelligence claim.
+
+## 53. Durable variable-arity feature-learning checkpoint
+
+The observation learner now accepts a bounded anonymous observation collection
+rather than exactly two scalars. A three-observation family varies all six
+orders and supplies no aggregate template. The typed grammar constructs one
+permutation-invariant mechanism; the independent verifier separately checks all
+six permutations and 9/9 changed held-out groups.
+
+Promotion certificates report exact tested arity, entity-count range, and
+scalar range. The cognition runtime uses structural arity to filter proposals
+but does not mistake observed numeric ranges for universal proof. Two canonical
+CAS cohorts survive complete authority loss, are re-invented, re-verified, and
+re-promoted; zero status is restored directly and future work falls from 708
+candidate units/four episodes to one proposal/zero new episodes.
+
+This advances the omitted-mechanism, actual-reuse, continual-improvement, and
+cross-representation requirements. It still assumes supplied entity boundaries,
+exact scalar observations, a declared unordered symmetry, clean targets, and a
+small bounded grammar. It does not establish autonomous developmental scaling,
+broad interactive causal learning, raw perception, or general intelligence.
+
+## 54. Explanation-driven entity interpretation checkpoint
+
+The observation learner no longer receives selected entity groups. It receives
+raw scalar primitives and competing anonymous relation roles, constructs
+component interpretations, and selects the only cross-episode binding that
+supports a complete executable feature/predicate/aggregate theory. Source role
+names are task-local and excluded from reusable mechanism identity.
+
+The verifier independently reconstructs components with disjoint sets. Renamed
+source cohorts and actual sequence/vector adapters share the same mechanism;
+9/9 changed held-out groups replay exactly. Binding ablation, equivalent-role
+ambiguity, and cap violation acceptances are zero. Continual reuse removes 708
+feature candidates/four examples but retains two explicit current binding
+attempts and independent acceptance.
+
+This advances joint perception/explanation, G0, G1, G2, and G5. Primitive
+relations, scalar extraction, uniform arity, and connected-component structure
+remain supplied. Raw multimodal perception, autonomously invented relations,
+nested entities, broad unknown-world coupling, and general intelligence remain
+unmet.
+
+## 55. Primitive relation invention checkpoint
+
+The learner now receives anonymous attributed primitives, complete outputs, and
+zero binary relations or entity groups. It constructs typed equality RKL,
+enumerates task-local attribute bindings, and selects the relation/entity theory
+only through exact downstream explanation. Attribute indexes do not enter the
+reusable identity.
+
+The independent verifier executes relation RKL directly against raw attributes
+before constructing its own relation graph and entity components. Two source
+cohorts and actual sequence/vector adapters share one mechanism; 9/9 changed
+held-out groups replay exactly. Binding ablation, duplicate-binding ambiguity,
+and relation-cap acceptances are zero. Reuse removes 708 feature candidates and
+four examples while retaining three current binding attempts.
+
+This advances G0, G1, G2, G5, and joint perception/explanation. It does not
+close them broadly: equality is the only relation-program structure, scalar
+attributes remain supplied evidence, and raw sensory feature learning, nested
+entities, open-ended relation grammars, autonomous curricula, broad interactive
+coupling, and general intelligence remain unmet.
+
+## 57. Composed relation-program and autonomous-curriculum checkpoint
+
+The relation learner now chooses among five typed key structures. A frozen
+family makes every projection wrong, so addition must be synthesized and bound
+to different anonymous attribute positions across experiences. The resulting
+RKL relation plus downstream mechanism is source independent and transfers
+unchanged from sequence to vector over 9/9 held-out groups.
+
+Two disjoint independent verifier receipts automatically support one
+consolidator-issued promotion. Persistent use reduces current structural
+bindings from 15 to 3 and source examples from four to zero; it cannot accept
+an output. After complete process-memory loss, two canonical evidence artifacts
+restore no authority, are re-invented and independently replayed, and yield a
+fresh certificate. A content-free relational failure core generates a layout-
+variation curriculum objective, which completes with the same proof boundary
+and 9/9 held-out groups.
+
+This strengthens G0, G1, G2, G5, and G6 with measured invention, actual reuse,
+cross-domain transfer, cold restart, and failure-driven exercise selection. It
+does not satisfy the general-learning release gate: the program grammar is
+developer-supplied and bounded, scalar channels remain frontend evidence, and
+nested entity discovery, grammar self-extension, sustained multi-capability
+curricula, and broad unknown-world integration remain incomplete.
+
+## 58. Variable-arity relation-fold checkpoint
+
+The same relation learner and trusted replay path now support explicitly bounded
+n-ary key folds. With the cap raised to three, all projections and binary
+structures fail on a four-channel family; a three-input sum is selected under
+permuted bindings and replays 9/9 changed held-out groups.
+
+Two independent verifier receipts promote the complete arity-bound mechanism.
+Cohort binding work falls 128→16, runtime binding work 32→4, and examples 4→0.
+Arity is carried by the learned mechanism, support geometry, certificate, and
+runtime applicability rather than inferred from an operator label.
+
+This advances mechanism composition and continual compression beyond ordered
+pairs. It still does not pass the general-learning release gate: the fold node
+is supplied, grammar growth is not autonomously proposed, attributes remain
+frontend channels, and evidence covers one clean finite algebraic family.
+
+## 59. Experience-driven relation-language growth checkpoint
+
+The fold grammar is now closed by default. A content-free failure objective
+propagates its committed dependency-arity lower bound, and only a separately
+verified, promoted associative binary mechanism can authorize its own bounded
+fold family. The certificate changes proposal reachability but cannot persist a
+mechanism, bind current attributes, replay evidence, or accept an answer.
+
+Addition/2 experience unlocks sum/3 only. The blank configuration finds zero
+exact theories; the learned extension reduces cohort binding work 128→16 and
+examples 4→0, then the newly learned fold replays 9/9 changed held-out groups
+with zero observed negative transfer. Minimum/2 independently unlocks
+minimum-fold/3 and replays 9/9, constraining the result against an
+addition-specific implementation. Cold restart restores zero extension
+authority and regenerates it only after re-invention, replay, and fresh
+promotion. The learned additive extension also transfers through unchanged
+sequence and vector adapters over 9/9 exact groups.
+
+This is the first bounded checkpoint where verified experience plus structural
+failure changes the learner's future representational search. The general-
+learning release gate still fails: associativity and the binary algebra are
+supplied, observations expose scalar channels, arbitrary rule-structure
+invention and recursion remain absent, and broad autonomous/cross-domain
+curriculum evidence is incomplete.
+
+## 60. Learned relation-expression composition checkpoint
+
+Two independently promoted relation mechanisms can now authorize a bounded
+multi-operator proposal vocabulary without supplying a composite template.
+Logical expression parameters enter semantic identity; current channel
+positions do not. The learner constructs the AST from evidence, while the
+verifier separately reconstructs its RKL definition and relation graph.
+
+Addition/2 and minimum/2 produce four candidate structures. Two disjoint
+cohorts independently select `minimum(add(p0,p1),p2)`, after which a separate
+consolidator certificate reduces expression search 4→1 per cohort and examples
+4→0. Answer-hidden sequence→vector use emits two current proposals and replays
+9/9 groups. One source operator, blank language, over-cap arity, and a corrupted
+AST/definition pair are rejected.
+
+This is a stronger G0/G1/G2/G5/G6 result because learned mechanisms become the
+parts of a newly synthesized executable rule. It still fails the general-
+intelligence release boundary: the meta-grammar is left-associated and bounded,
+base operators and anonymous scalar channels are supplied, expression memory
+lacks durable CAS reconstruction, and broad autonomous interactive composition
+has not been demonstrated.

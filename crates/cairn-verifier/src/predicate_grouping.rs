@@ -17,6 +17,75 @@ pub struct VerifiedPredicateGrouping {
     replayed_groups: u64,
 }
 
+/// Opaque evidence that a learned predicate/merge reduced bounded search and
+/// independently replayed one disjoint cohort.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedPredicateGroupingReuse {
+    mechanism: Hash32,
+    experiences: BTreeSet<Hash32>,
+    replayed_groups: u64,
+    candidate_executions_without: u64,
+    candidate_executions_with: u64,
+}
+
+impl VerifiedPredicateGroupingReuse {
+    #[must_use]
+    pub const fn mechanism(&self) -> Hash32 {
+        self.mechanism
+    }
+    #[must_use]
+    pub const fn experiences(&self) -> &BTreeSet<Hash32> {
+        &self.experiences
+    }
+    #[must_use]
+    pub const fn replayed_groups(&self) -> u64 {
+        self.replayed_groups
+    }
+    #[must_use]
+    pub const fn candidate_executions_without(&self) -> u64 {
+        self.candidate_executions_without
+    }
+    #[must_use]
+    pub const fn candidate_executions_with(&self) -> u64 {
+        self.candidate_executions_with
+    }
+}
+
+/// Consolidator authority covering the complete disjoint predicate-reuse
+/// ledger of one mechanism.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedPredicateGroupingPromotion {
+    mechanism: Hash32,
+    experiences: BTreeSet<Hash32>,
+    verified_reuses: u32,
+}
+
+impl VerifiedPredicateGroupingPromotion {
+    #[must_use]
+    pub const fn mechanism(&self) -> Hash32 {
+        self.mechanism
+    }
+    #[must_use]
+    pub const fn experiences(&self) -> &BTreeSet<Hash32> {
+        &self.experiences
+    }
+    #[must_use]
+    pub const fn verified_reuses(&self) -> u32 {
+        self.verified_reuses
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PredicateGroupingPromotionError {
+    Verification(PredicateGroupingVerifyError),
+    NoLearningReduction,
+    InsufficientIndependentEvidence,
+    MixedMechanism,
+    OverlappingExperience,
+    Capacity,
+    Canonicalization,
+}
+
 impl VerifiedPredicateGrouping {
     #[must_use]
     pub const fn mechanism(&self) -> Hash32 {
@@ -98,6 +167,85 @@ impl PredicateGroupingVerifier {
             replayed_groups: merge.replayed_groups(),
         })
     }
+
+    /// Replay one cohort and bind its exact receipt to measured search
+    /// reduction. This receipt has no promotion authority by itself.
+    ///
+    /// # Errors
+    ///
+    /// Rejects absent reduction or any ordinary independent replay failure.
+    pub fn verify_reuse(
+        &self,
+        learned: &LearnedPredicateGroupingMerge,
+        traces: &[AttributedGroupingTrace],
+        limits: PredicateGroupingLimits,
+        execution_limits: ExecLimits,
+        candidate_executions_without: u64,
+        candidate_executions_with: u64,
+    ) -> Result<VerifiedPredicateGroupingReuse, PredicateGroupingPromotionError> {
+        if candidate_executions_without == 0
+            || candidate_executions_with >= candidate_executions_without
+        {
+            return Err(PredicateGroupingPromotionError::NoLearningReduction);
+        }
+        let replay = self
+            .verify(learned, traces, limits, execution_limits)
+            .map_err(PredicateGroupingPromotionError::Verification)?;
+        Ok(VerifiedPredicateGroupingReuse {
+            mechanism: replay.mechanism,
+            experiences: replay.experiences,
+            replayed_groups: replay.replayed_groups,
+            candidate_executions_without,
+            candidate_executions_with,
+        })
+    }
+}
+
+/// Separate consolidation authority for independently verified predicate
+/// grouping cohorts.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct PredicateGroupingPromotionConsolidator;
+
+impl PredicateGroupingPromotionConsolidator {
+    /// Cover two or more disjoint reuse receipts with one promotion token.
+    ///
+    /// # Errors
+    ///
+    /// Rejects mixed mechanisms, overlapping evidence, insufficient receipts,
+    /// absent reduction, overflow, or canonicalization failure.
+    pub fn consolidate(
+        &self,
+        learned: &LearnedPredicateGroupingMerge,
+        receipts: &[VerifiedPredicateGroupingReuse],
+    ) -> Result<VerifiedPredicateGroupingPromotion, PredicateGroupingPromotionError> {
+        if receipts.len() < 2 {
+            return Err(PredicateGroupingPromotionError::InsufficientIndependentEvidence);
+        }
+        let mechanism = learned
+            .semantic_hash()
+            .map_err(|_| PredicateGroupingPromotionError::Canonicalization)?;
+        let mut experiences = BTreeSet::new();
+        for receipt in receipts {
+            if receipt.mechanism != mechanism {
+                return Err(PredicateGroupingPromotionError::MixedMechanism);
+            }
+            if receipt.candidate_executions_without == 0
+                || receipt.candidate_executions_with >= receipt.candidate_executions_without
+            {
+                return Err(PredicateGroupingPromotionError::NoLearningReduction);
+            }
+            if !experiences.is_disjoint(&receipt.experiences) {
+                return Err(PredicateGroupingPromotionError::OverlappingExperience);
+            }
+            experiences.extend(&receipt.experiences);
+        }
+        Ok(VerifiedPredicateGroupingPromotion {
+            mechanism,
+            experiences,
+            verified_reuses: u32::try_from(receipts.len())
+                .map_err(|_| PredicateGroupingPromotionError::Capacity)?,
+        })
+    }
 }
 
 fn verifier_groups(
@@ -141,24 +289,21 @@ fn verifier_groups(
         .collect::<BTreeMap<_, _>>();
     for left in 0..entities.len() {
         for right in (left + 1)..entities.len() {
-            let mut environment = RuntimeEnvironment::new();
-            for feature in 0..feature_count {
-                environment.insert(
-                    definition.parameters[feature].name.clone(),
-                    Value::Int(entities[left].features[feature]),
-                );
-                environment.insert(
-                    definition.parameters[feature_count + feature].name.clone(),
-                    Value::Int(entities[right].features[feature]),
-                );
-            }
-            let Value::Bool(related) = executor
-                .execute(&typed_expression, &environment)
-                .map_err(|_| PredicateGroupingVerifyError::RelationExecution)?
-                .result
-            else {
-                return Err(PredicateGroupingVerifyError::RelationExecution);
-            };
+            let related = verifier_pair_relation(
+                &executor,
+                &typed_expression,
+                definition,
+                &entities[left],
+                &entities[right],
+                feature_count,
+            )? || verifier_pair_relation(
+                &executor,
+                &typed_expression,
+                definition,
+                &entities[right],
+                &entities[left],
+                feature_count,
+            )?;
             if related {
                 adjacency
                     .get_mut(&left)
@@ -188,4 +333,33 @@ fn verifier_groups(
         groups.push(values);
     }
     Ok(groups)
+}
+
+fn verifier_pair_relation(
+    executor: &ReferenceExecutor,
+    expression: &cairn_rkl::TypedExpr,
+    definition: &cairn_rkl::Definition,
+    left: &AttributedGroupingEntity,
+    right: &AttributedGroupingEntity,
+    feature_count: usize,
+) -> Result<bool, PredicateGroupingVerifyError> {
+    let mut environment = RuntimeEnvironment::new();
+    for feature in 0..feature_count {
+        environment.insert(
+            definition.parameters[feature].name.clone(),
+            Value::Int(left.features[feature]),
+        );
+        environment.insert(
+            definition.parameters[feature_count + feature].name.clone(),
+            Value::Int(right.features[feature]),
+        );
+    }
+    match executor
+        .execute(expression, &environment)
+        .map_err(|_| PredicateGroupingVerifyError::RelationExecution)?
+        .result
+    {
+        Value::Bool(related) => Ok(related),
+        _ => Err(PredicateGroupingVerifyError::RelationExecution),
+    }
 }

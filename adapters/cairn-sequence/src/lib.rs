@@ -1,15 +1,45 @@
 //! Sequence segment relations lowered to generic typed examples.
 
-use cairn_core::{CollectionDemonstration, CollectionProcedureProblem};
+use cairn_core::{CollectionDemonstration, CollectionProcedureProblem, EntityId, RelationRecord};
 use cairn_invent::{BindingExample, InventionLimits, InventionProblem};
 use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
+use cairn_theory::{
+    PrimitivePairEntity, RawAttributedObservationPrimitive, RawEntityObservationEvidence,
+    RawObservationPrimitive, RawRelationObservationTrace,
+};
 use cairn_world::{ActionId, LatentEpisode, TransitionObservation, WorldState};
+use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SegmentShift {
     pub endpoints: (i64, i64),
     pub shifts: (i64, i64),
+}
+
+/// Frontend sequence segment with orientation left uninterpreted for cognition.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SequenceSpanObservation {
+    pub id: cairn_core::EntityId,
+    pub endpoints: (i64, i64),
+    pub value: i64,
+}
+
+/// One uninterpreted scalar sequence primitive. Candidate membership relations
+/// are lowered separately and remain competing cognition hypotheses.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SequencePrimitiveObservation {
+    pub id: EntityId,
+    pub observation: i64,
+}
+
+/// One sequence primitive with anonymous scalar attributes and no supplied
+/// relation or entity membership.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SequenceAttributedPrimitiveObservation {
+    pub id: EntityId,
+    pub observation: i64,
+    pub attributes: Vec<i64>,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -31,6 +61,74 @@ pub struct SequenceTransition {
 }
 
 impl SequenceAdapter {
+    /// Lower anonymous primitive attributes without constructing relations or
+    /// selecting entity boundaries.
+    #[must_use]
+    pub fn lower_unrelated_primitives(
+        &self,
+        episode: cairn_core::Hash32,
+        primitives: &[SequenceAttributedPrimitiveObservation],
+        outputs: BTreeSet<i64>,
+    ) -> RawRelationObservationTrace {
+        RawRelationObservationTrace {
+            episode,
+            primitives: primitives
+                .iter()
+                .map(|primitive| {
+                    (
+                        primitive.id.clone(),
+                        RawAttributedObservationPrimitive {
+                            observation: primitive.observation,
+                            attributes: primitive.attributes.clone(),
+                        },
+                    )
+                })
+                .collect(),
+            outputs,
+        }
+    }
+
+    /// Lower scalar primitives and unselected binary relations to the common
+    /// entity-interpretation evidence contract.
+    #[must_use]
+    pub fn lower_entity_candidates(
+        &self,
+        primitives: &[SequencePrimitiveObservation],
+        relations: &[RelationRecord],
+    ) -> RawEntityObservationEvidence {
+        RawEntityObservationEvidence {
+            primitives: primitives
+                .iter()
+                .map(|primitive| {
+                    (
+                        primitive.id.clone(),
+                        RawObservationPrimitive {
+                            observation: primitive.observation,
+                        },
+                    )
+                })
+                .collect::<BTreeMap<_, _>>(),
+            relations: relations.to_vec(),
+        }
+    }
+
+    /// Lower sequence spans to anonymous primitive pairs. Endpoint
+    /// normalization and relational meaning remain cognition responsibilities.
+    #[must_use]
+    pub fn lower_span_observations(
+        &self,
+        observations: &[SequenceSpanObservation],
+    ) -> Vec<PrimitivePairEntity> {
+        observations
+            .iter()
+            .map(|observation| PrimitivePairEntity {
+                id: observation.id.clone(),
+                value: observation.value,
+                observations: vec![observation.endpoints.0, observation.endpoints.1],
+            })
+            .collect()
+    }
+
     /// Lower an exact sequence trace into the common visible transition
     /// protocol used by world-mechanism learning.
     #[must_use]

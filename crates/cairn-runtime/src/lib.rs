@@ -19,7 +19,8 @@ use cairn_memory::{
     ConditionalConstructionStore, ConstructionProgramStore, EntityCorrespondenceStore,
     ExpansionStore, GroupMergeStore, GroupingMergeStore, InternalMechanismStore,
     LatentMechanismStore, LayerMechanismStore, MechanismStore, MemoryAssistedInventor,
-    MemorySolveOutcome, ModuleStatus, ProceduralMechanismModule, ProceduralMechanismStore,
+    MemorySolveOutcome, ModuleStatus, ObservationPredicateStore, PredicateGroupingStore,
+    ProceduralMechanismModule, ProceduralMechanismStore, RawRelationStore,
 };
 use cairn_rkl::{
     ExecLimits, ReferenceTheoryExecutor, RuntimeEnvironment, TheoryExecLimits,
@@ -27,13 +28,19 @@ use cairn_rkl::{
 };
 use cairn_skill::{Condition, Skill, SkillPlan, SkillPlanError, SkillPlanner};
 use cairn_theory::{
-    CollectionInventionError, CollectionMechanismInventor, ConditionalConstructionError,
-    ConditionalConstructionSynthesizer, EntityConstruction, EntityConstructionProgramError,
-    EntityConstructionProgramSynthesizer, EntityCorrespondenceError, EntityCorrespondenceLearner,
-    EntityCorrespondenceLimits, EntityGeometryScene, GroupMergeError, GroupMergeInventor,
-    GroupingRelationInventor, GroupingSelectionError, LayerMechanismError, LayerMechanismLearner,
-    LayerRender, LayerScene, RawGroupingError, RawGroupingEvidence, RawGroupingLimits,
-    RawRelationGroupingInventor, RelationalGeometryScene,
+    AttributedGroupingEntity, CollectionInventionError, CollectionMechanismInventor,
+    ConditionalConstructionError, ConditionalConstructionSynthesizer, EntityConstruction,
+    EntityConstructionProgramError, EntityConstructionProgramSynthesizer,
+    EntityCorrespondenceError, EntityCorrespondenceLearner, EntityCorrespondenceLimits,
+    EntityGeometryScene, EntityObservationError, EntityObservationInventor,
+    EntityObservationLimits, GroupMergeError, GroupMergeInventor, GroupingRelationInventor,
+    GroupingSelectionError, LayerMechanismError, LayerMechanismLearner, LayerRender, LayerScene,
+    ObservationPredicateError, ObservationPredicateInventor, ObservationPredicateLimits,
+    PredicateGroupingError, PredicateGroupingInventor, PredicateGroupingLimits,
+    PrimitivePairEntity, RawEntityObservationTrace, RawGroupingError, RawGroupingEvidence,
+    RawGroupingLimits, RawRelationGroupingInventor, RawRelationObservationInventor,
+    RawRelationObservationTrace, RelationAttributeBinding, RelationObservationError,
+    RelationObservationLimits, RelationalGeometryScene,
 };
 use cairn_world::{
     ActionId, ActiveLatentInductionReport, ActiveLatentLimits, ActiveLatentWorldLearner,
@@ -57,6 +64,9 @@ pub struct CognitionRuntime {
     expansions: ExpansionStore,
     group_merges: GroupMergeStore,
     grouping_merges: GroupingMergeStore,
+    predicate_groupings: PredicateGroupingStore,
+    observation_predicates: ObservationPredicateStore,
+    raw_relations: RawRelationStore,
     knowledge: KnowledgeBase,
 }
 
@@ -216,6 +226,10 @@ pub enum CognitionError {
     ExpansionMemory(ExpansionMemoryRuntimeError),
     GroupMergeMemory(GroupMergeMemoryRuntimeError),
     GroupingMergeMemory(GroupingMergeMemoryRuntimeError),
+    PredicateGroupingMemory(PredicateGroupingMemoryRuntimeError),
+    ObservationPredicateMemory(ObservationPredicateMemoryRuntimeError),
+    EntityObservationMemory(EntityObservationMemoryRuntimeError),
+    RawRelationObservationMemory(RawRelationObservationMemoryRuntimeError),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -345,6 +359,83 @@ pub struct GroupingMergeMemoryOutcome {
     pub persistent_mechanisms_attempted: u64,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PredicateGroupingMemoryRuntimeError {
+    NoVerifiedProposal,
+    Capacity,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PredicateGroupingMemoryOutcome {
+    pub proposals: Vec<BTreeSet<i64>>,
+    pub persistent_mechanisms_attempted: u64,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ObservationPredicateMemoryRuntimeError {
+    NoVerifiedProposal,
+    Capacity,
+    Execution,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ObservationPredicateMemoryOutcome {
+    pub proposals: Vec<BTreeSet<i64>>,
+    pub persistent_mechanisms_attempted: u64,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EntityObservationMemoryRuntimeError {
+    NoVerifiedProposal,
+    Capacity,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EntityObservationMemoryProposal {
+    pub mechanism: Hash32,
+    pub relation: RelationRole,
+    pub output: BTreeSet<i64>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EntityObservationMemoryOutcome {
+    pub proposals: Vec<EntityObservationMemoryProposal>,
+    pub persistent_mechanisms_considered: u64,
+    pub entity_bindings_attempted: u64,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RawRelationObservationMemoryRuntimeError {
+    NoVerifiedProposal,
+    Capacity,
+    InvalidEvidence,
+}
+
+fn map_raw_relation_memory_error(error: &RelationObservationError) -> CognitionError {
+    let terminal = match error {
+        RelationObservationError::Capacity
+        | RelationObservationError::Entity(EntityObservationError::Capacity) => {
+            RawRelationObservationMemoryRuntimeError::Capacity
+        }
+        _ => RawRelationObservationMemoryRuntimeError::InvalidEvidence,
+    };
+    CognitionError::RawRelationObservationMemory(terminal)
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RawRelationObservationMemoryProposal {
+    pub mechanism: Hash32,
+    pub binding: RelationAttributeBinding,
+    pub output: BTreeSet<i64>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RawRelationObservationMemoryOutcome {
+    pub proposals: Vec<RawRelationObservationMemoryProposal>,
+    pub persistent_mechanisms_considered: u64,
+    pub relation_bindings_attempted: u64,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum InternalCompositionRuntimeError {
     UnavailableMechanism(Hash32),
@@ -366,6 +457,9 @@ impl CognitionRuntime {
             expansions: ExpansionStore::new(),
             group_merges: GroupMergeStore::new(),
             grouping_merges: GroupingMergeStore::new(),
+            predicate_groupings: PredicateGroupingStore::new(),
+            observation_predicates: ObservationPredicateStore::new(),
+            raw_relations: RawRelationStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -384,6 +478,9 @@ impl CognitionRuntime {
             expansions: ExpansionStore::new(),
             group_merges: GroupMergeStore::new(),
             grouping_merges: GroupingMergeStore::new(),
+            predicate_groupings: PredicateGroupingStore::new(),
+            observation_predicates: ObservationPredicateStore::new(),
+            raw_relations: RawRelationStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -405,6 +502,9 @@ impl CognitionRuntime {
             expansions: ExpansionStore::new(),
             group_merges: GroupMergeStore::new(),
             grouping_merges: GroupingMergeStore::new(),
+            predicate_groupings: PredicateGroupingStore::new(),
+            observation_predicates: ObservationPredicateStore::new(),
+            raw_relations: RawRelationStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -425,6 +525,9 @@ impl CognitionRuntime {
             expansions: ExpansionStore::new(),
             group_merges: GroupMergeStore::new(),
             grouping_merges: GroupingMergeStore::new(),
+            predicate_groupings: PredicateGroupingStore::new(),
+            observation_predicates: ObservationPredicateStore::new(),
+            raw_relations: RawRelationStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -445,6 +548,9 @@ impl CognitionRuntime {
             expansions: ExpansionStore::new(),
             group_merges: GroupMergeStore::new(),
             grouping_merges: GroupingMergeStore::new(),
+            predicate_groupings: PredicateGroupingStore::new(),
+            observation_predicates: ObservationPredicateStore::new(),
+            raw_relations: RawRelationStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -466,6 +572,9 @@ impl CognitionRuntime {
             expansions: ExpansionStore::new(),
             group_merges: GroupMergeStore::new(),
             grouping_merges: GroupingMergeStore::new(),
+            predicate_groupings: PredicateGroupingStore::new(),
+            observation_predicates: ObservationPredicateStore::new(),
+            raw_relations: RawRelationStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -487,6 +596,9 @@ impl CognitionRuntime {
             expansions: ExpansionStore::new(),
             group_merges: GroupMergeStore::new(),
             grouping_merges: GroupingMergeStore::new(),
+            predicate_groupings: PredicateGroupingStore::new(),
+            observation_predicates: ObservationPredicateStore::new(),
+            raw_relations: RawRelationStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -508,6 +620,9 @@ impl CognitionRuntime {
             expansions: ExpansionStore::new(),
             group_merges: GroupMergeStore::new(),
             grouping_merges: GroupingMergeStore::new(),
+            predicate_groupings: PredicateGroupingStore::new(),
+            observation_predicates: ObservationPredicateStore::new(),
+            raw_relations: RawRelationStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -527,6 +642,9 @@ impl CognitionRuntime {
             expansions,
             group_merges: GroupMergeStore::new(),
             grouping_merges: GroupingMergeStore::new(),
+            predicate_groupings: PredicateGroupingStore::new(),
+            observation_predicates: ObservationPredicateStore::new(),
+            raw_relations: RawRelationStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -546,6 +664,9 @@ impl CognitionRuntime {
             expansions: ExpansionStore::new(),
             group_merges,
             grouping_merges: GroupingMergeStore::new(),
+            predicate_groupings: PredicateGroupingStore::new(),
+            observation_predicates: ObservationPredicateStore::new(),
+            raw_relations: RawRelationStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -565,7 +686,57 @@ impl CognitionRuntime {
             expansions: ExpansionStore::new(),
             group_merges: GroupMergeStore::new(),
             grouping_merges,
+            predicate_groupings: PredicateGroupingStore::new(),
+            observation_predicates: ObservationPredicateStore::new(),
+            raw_relations: RawRelationStore::new(),
             knowledge: KnowledgeBase::new(),
+        }
+    }
+
+    /// Construct a runtime with proof-gated invented predicate/merge memory.
+    #[must_use]
+    pub const fn with_predicate_grouping_memory(
+        predicate_groupings: PredicateGroupingStore,
+    ) -> Self {
+        Self {
+            memory: MechanismStore::new(),
+            procedures: ProceduralMechanismStore::new(),
+            internal_mechanisms: InternalMechanismStore::new(),
+            latent_mechanisms: LatentMechanismStore::new(),
+            layer_mechanisms: LayerMechanismStore::new(),
+            entity_correspondences: EntityCorrespondenceStore::new(),
+            construction_programs: ConstructionProgramStore::new(),
+            conditional_constructions: ConditionalConstructionStore::new(),
+            expansions: ExpansionStore::new(),
+            group_merges: GroupMergeStore::new(),
+            grouping_merges: GroupingMergeStore::new(),
+            predicate_groupings,
+            observation_predicates: ObservationPredicateStore::new(),
+            raw_relations: RawRelationStore::new(),
+            knowledge: KnowledgeBase::new(),
+        }
+    }
+
+    /// Construct a runtime with proof-gated synthesized observation-feature
+    /// memory. The mechanisms remain proposal sources and require current-task
+    /// verification before acceptance.
+    #[must_use]
+    pub fn with_observation_predicate_memory(
+        observation_predicates: ObservationPredicateStore,
+    ) -> Self {
+        Self {
+            observation_predicates,
+            ..Self::new()
+        }
+    }
+
+    /// Construct a runtime with proof-gated complete primitive-relation
+    /// mechanisms. Modules remain proposal-only.
+    #[must_use]
+    pub fn with_raw_relation_memory(raw_relations: RawRelationStore) -> Self {
+        Self {
+            raw_relations,
+            ..Self::new()
         }
     }
 
@@ -666,6 +837,30 @@ impl CognitionRuntime {
     }
     pub const fn grouping_merge_memory_mut(&mut self) -> &mut GroupingMergeStore {
         &mut self.grouping_merges
+    }
+
+    #[must_use]
+    pub const fn predicate_grouping_memory(&self) -> &PredicateGroupingStore {
+        &self.predicate_groupings
+    }
+    pub const fn predicate_grouping_memory_mut(&mut self) -> &mut PredicateGroupingStore {
+        &mut self.predicate_groupings
+    }
+
+    #[must_use]
+    pub const fn observation_predicate_memory(&self) -> &ObservationPredicateStore {
+        &self.observation_predicates
+    }
+    pub const fn observation_predicate_memory_mut(&mut self) -> &mut ObservationPredicateStore {
+        &mut self.observation_predicates
+    }
+
+    #[must_use]
+    pub const fn raw_relation_memory(&self) -> &RawRelationStore {
+        &self.raw_relations
+    }
+    pub const fn raw_relation_memory_mut(&mut self) -> &mut RawRelationStore {
+        &mut self.raw_relations
     }
 
     #[must_use]
@@ -1359,6 +1554,367 @@ impl CognitionRuntime {
         Ok(GroupingMergeMemoryOutcome {
             proposals,
             persistent_mechanisms_attempted,
+        })
+    }
+
+    /// Execute persistent invented pair predicates and aggregates as untrusted
+    /// proposals over current attributed entities.
+    ///
+    /// # Errors
+    ///
+    /// Returns typed absence or bounded/exact execution failure. A separate
+    /// verifier must replay current evidence before any proposal is accepted.
+    pub fn propose_predicate_groupings_from_memory(
+        &self,
+        entities: &[AttributedGroupingEntity],
+        limits: PredicateGroupingLimits,
+    ) -> Result<PredicateGroupingMemoryOutcome, CognitionError> {
+        let mut persistent_mechanisms_attempted = 0_u64;
+        let mut proposals = Vec::new();
+        for mechanism in self.predicate_groupings.persistent_mechanisms() {
+            persistent_mechanisms_attempted = persistent_mechanisms_attempted.saturating_add(1);
+            match PredicateGroupingInventor.predict(mechanism, entities, limits) {
+                Ok(output) => proposals.push(output),
+                Err(
+                    PredicateGroupingError::Capacity
+                    | PredicateGroupingError::RelationExecution
+                    | PredicateGroupingError::Merge(GroupMergeError::Capacity),
+                ) => {
+                    return Err(CognitionError::PredicateGroupingMemory(
+                        PredicateGroupingMemoryRuntimeError::Capacity,
+                    ));
+                }
+                Err(_) => {}
+            }
+        }
+        if proposals.is_empty() {
+            return Err(CognitionError::PredicateGroupingMemory(
+                PredicateGroupingMemoryRuntimeError::NoVerifiedProposal,
+            ));
+        }
+        Ok(PredicateGroupingMemoryOutcome {
+            proposals,
+            persistent_mechanisms_attempted,
+        })
+    }
+
+    /// Execute persistent synthesized observation-feature programs and their
+    /// learned predicate/aggregate compositions as untrusted proposals.
+    ///
+    /// This method does not accept an answer: the caller must independently
+    /// replay the selected mechanism over complete current evidence.
+    ///
+    /// # Errors
+    ///
+    /// Returns typed absence, resource capacity, or exact execution failure.
+    pub fn propose_observation_predicates_from_memory(
+        &self,
+        entities: &[PrimitivePairEntity],
+        limits: ObservationPredicateLimits,
+        predicate_limits: PredicateGroupingLimits,
+    ) -> Result<ObservationPredicateMemoryOutcome, CognitionError> {
+        let mut persistent_mechanisms_attempted = 0_u64;
+        let mut proposals = Vec::new();
+        for module in self.observation_predicates.persistent_modules() {
+            if !module
+                .support()
+                .is_some_and(|support| support.structurally_applies(entities))
+            {
+                continue;
+            }
+            persistent_mechanisms_attempted = persistent_mechanisms_attempted.saturating_add(1);
+            match ObservationPredicateInventor.predict(
+                module.mechanism(),
+                entities,
+                limits,
+                predicate_limits,
+            ) {
+                Ok(output) => proposals.push(output),
+                Err(ObservationPredicateError::Capacity) => {
+                    return Err(CognitionError::ObservationPredicateMemory(
+                        ObservationPredicateMemoryRuntimeError::Capacity,
+                    ));
+                }
+                Err(ObservationPredicateError::FeatureExecution) => {
+                    return Err(CognitionError::ObservationPredicateMemory(
+                        ObservationPredicateMemoryRuntimeError::Execution,
+                    ));
+                }
+                Err(_) => {}
+            }
+        }
+        if proposals.is_empty() {
+            return Err(CognitionError::ObservationPredicateMemory(
+                ObservationPredicateMemoryRuntimeError::NoVerifiedProposal,
+            ));
+        }
+        Ok(ObservationPredicateMemoryOutcome {
+            proposals,
+            persistent_mechanisms_attempted,
+        })
+    }
+
+    /// Rebind persistent source-independent feature mechanisms across every
+    /// anonymous relation role in one raw episode. Returned interpretations
+    /// remain untrusted proposals requiring multi-episode verifier replay.
+    ///
+    /// # Errors
+    ///
+    /// Returns typed absence or explicit entity/feature capacity exhaustion.
+    pub fn propose_entity_observations_from_memory(
+        &self,
+        trace: &RawEntityObservationTrace,
+        entity_limits: EntityObservationLimits,
+        observation_limits: ObservationPredicateLimits,
+        predicate_limits: PredicateGroupingLimits,
+    ) -> Result<EntityObservationMemoryOutcome, CognitionError> {
+        let roles = trace
+            .evidence
+            .relations
+            .iter()
+            .map(|relation| relation.role.clone())
+            .collect::<BTreeSet<_>>();
+        if roles.len() > entity_limits.maximum_roles_per_episode {
+            return Err(CognitionError::EntityObservationMemory(
+                EntityObservationMemoryRuntimeError::Capacity,
+            ));
+        }
+        let mut proposals = Vec::new();
+        let mut persistent_mechanisms_considered = 0_u64;
+        let mut entity_bindings_attempted = 0_u64;
+        for module in self.observation_predicates.persistent_modules() {
+            persistent_mechanisms_considered = persistent_mechanisms_considered.saturating_add(1);
+            for relation in &roles {
+                entity_bindings_attempted = entity_bindings_attempted.saturating_add(1);
+                let lowered = match EntityObservationInventor.lower(
+                    trace,
+                    relation,
+                    entity_limits,
+                    observation_limits,
+                ) {
+                    Ok(lowered) => lowered,
+                    Err(EntityObservationError::Capacity) => {
+                        return Err(CognitionError::EntityObservationMemory(
+                            EntityObservationMemoryRuntimeError::Capacity,
+                        ));
+                    }
+                    Err(_) => continue,
+                };
+                if !module
+                    .support()
+                    .is_some_and(|support| support.structurally_applies(&lowered.entities))
+                {
+                    continue;
+                }
+                match ObservationPredicateInventor.predict(
+                    module.mechanism(),
+                    &lowered.entities,
+                    observation_limits,
+                    predicate_limits,
+                ) {
+                    Ok(output) => proposals.push(EntityObservationMemoryProposal {
+                        mechanism: module.id(),
+                        relation: relation.clone(),
+                        output,
+                    }),
+                    Err(ObservationPredicateError::Capacity) => {
+                        return Err(CognitionError::EntityObservationMemory(
+                            EntityObservationMemoryRuntimeError::Capacity,
+                        ));
+                    }
+                    Err(_) => {}
+                }
+            }
+        }
+        if proposals.is_empty() {
+            return Err(CognitionError::EntityObservationMemory(
+                EntityObservationMemoryRuntimeError::NoVerifiedProposal,
+            ));
+        }
+        Ok(EntityObservationMemoryOutcome {
+            proposals,
+            persistent_mechanisms_considered,
+            entity_bindings_attempted,
+        })
+    }
+
+    /// Bind persistent source-independent mechanisms across anonymous raw
+    /// primitive attributes. Equality relations and entities are reconstructed
+    /// for each binding, but every result remains an untrusted proposal.
+    ///
+    /// # Errors
+    ///
+    /// Returns typed absence or explicit relation/entity/feature capacity.
+    #[allow(clippy::too_many_arguments)]
+    pub fn propose_raw_relation_observations_from_memory(
+        &self,
+        trace: &RawRelationObservationTrace,
+        relation_limits: RelationObservationLimits,
+        entity_limits: EntityObservationLimits,
+        observation_limits: ObservationPredicateLimits,
+        predicate_limits: PredicateGroupingLimits,
+    ) -> Result<RawRelationObservationMemoryOutcome, CognitionError> {
+        let bindings = RawRelationObservationInventor
+            .candidate_bindings(trace, relation_limits)
+            .map_err(|error| map_raw_relation_memory_error(&error))?;
+        let mut proposals = Vec::new();
+        let mut persistent_mechanisms_considered = 0_u64;
+        let mut relation_bindings_attempted = 0_u64;
+        for module in self.observation_predicates.persistent_modules() {
+            persistent_mechanisms_considered = persistent_mechanisms_considered.saturating_add(1);
+            for binding in &bindings {
+                relation_bindings_attempted = relation_bindings_attempted.saturating_add(1);
+                let lowered = match RawRelationObservationInventor.lower(
+                    trace,
+                    binding,
+                    relation_limits,
+                    entity_limits,
+                    observation_limits,
+                ) {
+                    Ok(lowered) => lowered,
+                    Err(
+                        RelationObservationError::Capacity
+                        | RelationObservationError::Entity(EntityObservationError::Capacity),
+                    ) => {
+                        return Err(CognitionError::RawRelationObservationMemory(
+                            RawRelationObservationMemoryRuntimeError::Capacity,
+                        ));
+                    }
+                    Err(_) => continue,
+                };
+                if !module
+                    .support()
+                    .is_some_and(|support| support.structurally_applies(&lowered.entities))
+                {
+                    continue;
+                }
+                match ObservationPredicateInventor.predict(
+                    module.mechanism(),
+                    &lowered.entities,
+                    observation_limits,
+                    predicate_limits,
+                ) {
+                    Ok(output) => proposals.push(RawRelationObservationMemoryProposal {
+                        mechanism: module.id(),
+                        binding: binding.clone(),
+                        output,
+                    }),
+                    Err(ObservationPredicateError::Capacity) => {
+                        return Err(CognitionError::RawRelationObservationMemory(
+                            RawRelationObservationMemoryRuntimeError::Capacity,
+                        ));
+                    }
+                    Err(_) => {}
+                }
+            }
+        }
+        if proposals.is_empty() {
+            return Err(CognitionError::RawRelationObservationMemory(
+                RawRelationObservationMemoryRuntimeError::NoVerifiedProposal,
+            ));
+        }
+        Ok(RawRelationObservationMemoryOutcome {
+            proposals,
+            persistent_mechanisms_considered,
+            relation_bindings_attempted,
+        })
+    }
+
+    /// Rebind proof-gated complete relation programs, pruning every relation
+    /// structure other than the learned operator while retaining current
+    /// current attribute enumeration and independent acceptance.
+    ///
+    /// # Errors
+    ///
+    /// Returns typed absence or explicit relation/entity/feature capacity.
+    #[allow(clippy::too_many_arguments)]
+    pub fn propose_raw_relation_programs_from_memory(
+        &self,
+        trace: &RawRelationObservationTrace,
+        relation_limits: RelationObservationLimits,
+        entity_limits: EntityObservationLimits,
+        observation_limits: ObservationPredicateLimits,
+        predicate_limits: PredicateGroupingLimits,
+    ) -> Result<RawRelationObservationMemoryOutcome, CognitionError> {
+        let bindings = RawRelationObservationInventor
+            .candidate_bindings(trace, relation_limits)
+            .map_err(|error| map_raw_relation_memory_error(&error))?;
+        let attribute_count = trace
+            .primitives
+            .values()
+            .next()
+            .map_or(0, |primitive| primitive.attributes.len());
+        let mut proposals = Vec::new();
+        let mut persistent_mechanisms_considered = 0_u64;
+        let mut relation_bindings_attempted = 0_u64;
+        for module in self.raw_relations.persistent_modules() {
+            let Some(support) = module.support() else {
+                continue;
+            };
+            let Ok(attribute_count) = u32::try_from(attribute_count) else {
+                return Err(CognitionError::RawRelationObservationMemory(
+                    RawRelationObservationMemoryRuntimeError::Capacity,
+                ));
+            };
+            if attribute_count < support.minimum_attributes
+                || attribute_count > support.maximum_attributes
+            {
+                continue;
+            }
+            persistent_mechanisms_considered = persistent_mechanisms_considered.saturating_add(1);
+            for binding in bindings.iter().filter(|binding| {
+                binding.operator == module.mechanism().operator
+                    && u32::try_from(binding.attributes.len())
+                        .is_ok_and(|arity| arity == module.mechanism().key_arity)
+            }) {
+                relation_bindings_attempted = relation_bindings_attempted.saturating_add(1);
+                let lowered = match RawRelationObservationInventor.lower(
+                    trace,
+                    binding,
+                    relation_limits,
+                    entity_limits,
+                    observation_limits,
+                ) {
+                    Ok(lowered) => lowered,
+                    Err(
+                        RelationObservationError::Capacity
+                        | RelationObservationError::Entity(EntityObservationError::Capacity),
+                    ) => {
+                        return Err(CognitionError::RawRelationObservationMemory(
+                            RawRelationObservationMemoryRuntimeError::Capacity,
+                        ));
+                    }
+                    Err(_) => continue,
+                };
+                match ObservationPredicateInventor.predict(
+                    &module.mechanism().observation_mechanism,
+                    &lowered.entities,
+                    observation_limits,
+                    predicate_limits,
+                ) {
+                    Ok(output) => proposals.push(RawRelationObservationMemoryProposal {
+                        mechanism: module.id(),
+                        binding: binding.clone(),
+                        output,
+                    }),
+                    Err(ObservationPredicateError::Capacity) => {
+                        return Err(CognitionError::RawRelationObservationMemory(
+                            RawRelationObservationMemoryRuntimeError::Capacity,
+                        ));
+                    }
+                    Err(_) => {}
+                }
+            }
+        }
+        if proposals.is_empty() {
+            return Err(CognitionError::RawRelationObservationMemory(
+                RawRelationObservationMemoryRuntimeError::NoVerifiedProposal,
+            ));
+        }
+        Ok(RawRelationObservationMemoryOutcome {
+            proposals,
+            persistent_mechanisms_considered,
+            relation_bindings_attempted,
         })
     }
 

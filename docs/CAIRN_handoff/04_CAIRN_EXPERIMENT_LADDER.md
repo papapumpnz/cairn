@@ -874,3 +874,222 @@ Measured: two anonymous feature candidates; 187 total fresh candidates versus
 one learned attempt; four examples versus zero; 13 held-out components exact;
 ordering changes and ablation acceptances zero. Next expand beyond equality,
 persist the composed predicate, and realize it through multiple adapters.
+
+## G0-CONJUNCTIVE-PREDICATE-GROUPING
+
+Freeze a family whose useful collections require equality on two anonymous
+attributes while equality on either attribute alone merges unrelated entities
+and equality on a distractor splits correct groups. Supply no pair labels,
+edges, partitions, selected attributes, or relation name. Require every atomic
+candidate to fail, two independent cohort definitions to agree, exact changed
+held-out replay, entity-order invariance, typed candidate-cap termination, and
+failure after a single-conjunct ablation.
+
+Measured: atomic exact theories zero; six bounded relation candidates; four
+source examples become zero on reuse; 11/11 held-out components replay exactly;
+ordering changes, cap violations, and ablation acceptances are zero. Next add
+inequality/geometry atoms, proof-gated predicate persistence, and adapter-level
+feature derivation.
+
+## G2-PERSISTENT-PREDICATE-GROUPING
+
+Independently invent the same compound predicate/aggregate in two disjoint
+cohorts. Require exact verifier receipts, strict fresh-versus-reuse reduction,
+a separate consolidation certificate, duplicate/overlap rejection, complete
+ledger coverage, proposal-only shared-runtime rebinding, and blank-memory
+failure.
+
+Measured: two receipts promote one mechanism; 65 fresh candidates become one
+runtime attempt; four examples become zero; five changed held-out groups are
+exact; duplicate receipts and blank proposals are zero. Durable evidence replay,
+support geometry, and cross-adapter realization are next.
+
+## G0-INTERVAL-RELATION-INVENTION
+
+Supply anonymous interval endpoints and unordered aggregate outputs, with no
+geometry names, pair labels, edges, partitions, or selected comparisons. Include
+crossing intervals that defeat one-sided order shortcuts. Require a canonical
+opposing-inequality relation across two cohorts, reversal equivalence, separate
+verifier replay, changed-coordinate/cardinality transfer, and entity-order
+invariance.
+
+Measured: 31 unique bounded relation candidates; two source cohorts agree;
+11/11 held-out components are exact; ordering changes are zero. Next derive
+endpoints from less structured observations, transfer through adapters, and
+promote/test support for order predicates.
+
+## G2-PREDICATE-GROUPING-RESTART
+
+Persist two disjoint attributed cohorts, destroy all process-local traces,
+mechanisms, receipts, certificates, stores, and CAS handles, then reopen. Require
+canonical order invariance, lineage enforcement, two complete re-inventions,
+two independent replays, new consolidation, fresh promotion, cap failure, and
+exact changed held-out use.
+
+Measured: two artifacts; status restored directly zero; two cohorts re-invented;
+one mechanism re-promoted; 65/4 fresh work becomes 1/0; five held-out groups are
+exact.
+
+## G0/G5-OBSERVATION-FEATURE-TRANSFER
+
+Supply unordered primitive scalar pairs with inconsistent orientation and no
+derived features. Require raw-order failure, executable feature-program
+selection, joint relation/aggregate invention, independent feature and relation
+replay, ablation failure, and unchanged sequence-to-vector adapter transfer.
+
+Historical ADR-0042 measurement: two feature hypotheses; minimum/maximum
+selected; 11/11 held-out groups exact; raw-feature ablation and adapter-
+conditioned core branches zero. ADR-0043 supersedes the two-template search.
+
+## G0/G1/G2/G5-TYPED-FEATURE-PROGRAM-SYNTHESIS
+
+Freeze a family whose useful collection invariant is absent from any named
+feature template and from raw/minimum/maximum observations. Require bounded
+typed RKL construction, two independent cohort identities, explicit capacity
+termination, independent replay, changed-value/cardinality/orientation
+transfer, unchanged sequence-to-vector use, feature-body ablation failure, and
+two-receipt proposal-only promotion.
+
+Measured under the v3 variable-arity grammar: zero named feature templates; 217 typed candidates and six feature
+sets before synthesizing `observation_0 + observation_1`; two cohorts agree;
+11/11 cross-adapter held-out groups are exact; ablation and cap acceptances are
+zero; verified reuse reduces 286 candidate units/four examples to one proposal/
+zero examples with five exact memory-held-out groups.
+
+## G0/G1/G2-VARIABLE-ARITY-FEATURE-RESTART
+
+Supply three anonymous observations per entity in all six orders. Require the
+same typed grammar to construct an invariant absent from named templates,
+independent verification of every permutation, changed-value/cardinality/domain
+transfer, exact support geometry, canonical evidence persistence, complete
+authority loss, fresh re-invention, new receipts, re-promotion, and runtime
+proposal-only use.
+
+Measured: arity three; six permutations; 640 candidate programs and five
+feature sets; 9/9 held-out groups exact. Restart persists two canonical evidence
+artifacts, restores zero authority, re-invents two cohorts, re-promotes one
+mechanism, and reduces 708 candidate units/four episodes to one proposal/zero
+new episodes with five exact held-out groups. Next gates are learned entity
+segmentation, explicit ordered/symmetry-group observations, richer relations,
+and autonomous grammar/curriculum expansion.
+
+## G0/G1/G2/G5-ENTITY-INTERPRETATION-LEARNING
+
+Supply raw scalar primitives, two anonymous binary relation roles per episode,
+and complete outputs, but no entity groups. Require bounded cross-episode entity
+binding enumeration, exactly one explanatory interpretation, independent
+disjoint-set reconstruction, renamed-role transfer, duplicate-interpretation
+ambiguity, explicit binding capacity, feature/body and binding ablations,
+proposal-only memory reuse, and unchanged sequence-to-vector adapters.
+
+Measured: zero supplied groups; four binding sets; independently renamed source
+cohorts agree on one reusable mechanism; 9/9 changed held-out groups are exact;
+binding ablation accepts zero; sequence-to-vector core changes are zero. Memory
+reduces 708 typed feature candidates/four examples to zero synthesis/zero new
+examples while two current role bindings remain explicit. Next gates are
+primitive relation invention, non-uniform/nested entities, raw sensory
+segmentation, and autonomous entity-focused curricula.
+
+## G0/G1/G2/G5-RAW-RELATION-INVENTION
+
+Supply primitives with three anonymous scalar attributes and complete outputs,
+but no binary relations or entity groups. Require executable RKL relation
+construction, task-local attribute rebinding, hard-negative equal-cardinality
+partitions, independent relation execution and entity reconstruction, changed
+values/counts/axes, unchanged sequence-to-vector transfer, binding ablation,
+explicit ambiguity/capacity, and proposal-only memory reuse.
+
+Measured: zero supplied relations and groups; one bounded equality program
+structure; independently renamed source cohorts agree; 9/9 changed held-out
+groups and 9/9 sequence-to-vector groups are exact; ablation, ambiguity, and cap
+acceptances are zero. Memory removes 708 feature candidates/four examples while
+retaining three current attribute attempts. Next gates are multi-structure
+relation-program synthesis, learned primitive attributes, nested entities, and
+autonomous relation-focused curricula.
+
+## G0/G1/G2/G5/G6-COMPOSED-RELATION-PROGRAM
+
+Freeze a family in which every atomic anonymous attribute induces the wrong
+entity partition and only a composed key explains the complete outputs. Require
+cost-phased typed relation construction, changed attribute positions, exact
+independent edge reconstruction, two disjoint promotion receipts, proposal-only
+runtime reuse, canonical evidence restart with zero restored authority,
+unchanged sequence/vector adapters, and a content-free failure-driven
+curriculum objective.
+
+Measured: five relation-key structures; zero exact atomic theories; addition
+selected; 9/9 changed held-out groups and 9/9 sequence-to-vector groups exact.
+Two receipts reduce cohort binding work 60→12 and runtime work 15→3 while
+examples fall 4→0. Two canonical artifacts restore zero authority, re-invent
+two cohorts, and freshly promote one mechanism. One generated curriculum
+objective is selected, independently verified over two variations, completes
+with 9/9 held-out groups, and survives checkpoint restoration.
+
+Next gates are learner-generated grammar growth, scalar-channel learning from
+less structured observations, nested and overlapping entity systems, and
+sustained autonomous curricula spanning static and interactive failures.
+
+## G0/G1/G2-VARIABLE-ARITY-RELATION-FOLD
+
+Raise the explicit key-arity bound to three and freeze four anonymous channels
+whose intended component key is conserved only across a three-input fold.
+Require all atomic and binary phases to fail, canonical binding enumeration,
+typed RKL lowering, independent replay, two-cohort promotion, current-evidence
+rebinding, strict work/sample reduction, and changed values, identifiers,
+cardinalities, and layouts.
+
+Measured: six relation structure families; atomic and pair exact theories zero;
+three-input sum selected; 9/9 held-out groups exact. Two receipts reduce cohort
+binding work 128→16 and issue a certificate saving 112 bindings. Proposal-only
+runtime work is 32→4, examples are 4→0, and independent current-evidence replay
+is 9/9 exact.
+
+Next require learner-proposed structural productions, fold transfer through a
+third frontend, and curriculum selection of arity growth from a genuine typed
+failure rather than a configured experiment.
+
+## G0/G1/G2/G6-EXPERIENCE-DRIVEN-RELATION-LANGUAGE-GROWTH
+
+Begin with an empty fold capability mask and a key-arity cap of two. Learn and
+promote one associative binary relation mechanism from two disjoint non-ARC
+cohorts. Present a redacted failure core whose independently inferred minimum
+dependency arity is three. Require a separate consolidator to expose only the
+promoted operator's bounded fold family, then require ordinary task learning,
+verification, promotion, current-evidence reuse, negative-transfer accounting,
+and evidence-only cold restart.
+
+Measured for addition: default exact theories zero; requested arity three;
+sum/3 is the only unlocked family; cohort bindings 128→16; examples 4→0;
+held-out groups 9/9 exact; observed negative transfer zero. Requests below three
+and above the cap are rejected. A separate minimum/2 family unlocks only
+minimum-fold/3 and independently replays 9/9 changed groups. Restart restores
+zero authority and regenerates one extension only after two fresh replays and a
+new base promotion. The same learned additive fold transfers from sequence to
+vector through unchanged adapters over 9/9 exact groups.
+
+Next require structure invention beyond developer-certified associative
+closures, learned primitive channels, multi-step curriculum generation from
+several simultaneous failure cores, and cross-domain/interactive use of the
+newly exposed mechanisms. This result is not a general-intelligence claim.
+
+## G0/G1/G2/G5/G6-LEARNED-RELATION-EXPRESSION-COMPOSITION
+
+Independently learn and promote at least two binary relation mechanisms. Supply
+only their typed operator identities and a redacted dependency-arity failure to
+a separate language consolidator. Require the task learner to invent a nested
+AST absent from named templates, bind anonymous channels, replay through an
+independent evaluator, obtain two disjoint expression-reuse receipts, promote,
+and transfer from sequence to vector without expected outputs.
+
+Measured: addition/2 and minimum/2 are separately promoted; four nested
+structures are reachable; the selected expression is
+`minimum(add(p0,p1),p2)`. Two expression receipts reduce structure work 4→1 per
+cohort and save six evaluations. Source examples fall 4→0. Two answer-hidden
+vector proposals cover 9/9 exact groups. Blank language, one-source
+certification, over-cap arity, and expression-definition corruption accept
+zero.
+
+Next require durable evidence-only expression restart, broader tree/control
+structure, composition across interactive transitions and static relations,
+and learner-discovered primitive operators. This is not a general-intelligence
+claim.

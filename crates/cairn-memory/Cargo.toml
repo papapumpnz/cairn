@@ -20,6 +20,7 @@ cairn-world = { path = "../cairn-world" }
 
 [dev-dependencies]
 cairn-bench = { path = "../cairn-bench" }
+cairn-curriculum = { path = "../cairn-curriculum" }
 
 [lints]
 workspace = true

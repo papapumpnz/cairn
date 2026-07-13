@@ -1,19 +1,54 @@
 //! Vector-scene observations lowered to the generic learning contract.
 
-use cairn_core::{CollectionDemonstration, CollectionProcedureProblem};
+use cairn_core::{CollectionDemonstration, CollectionProcedureProblem, EntityId, RelationRecord};
 use cairn_invent::{BindingExample, InventionLimits, InventionProblem};
 use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
 use cairn_theory::{
     EntityCorrespondenceError, EntityCorrespondenceExample, EntityCorrespondenceLearner,
     EntityCorrespondenceLimits, LayerLearningExample, LayerLearningLimits, LayerMechanism,
-    LayerMechanismError, LayerMechanismLearner, LearnedEntityCorrespondence,
+    LayerMechanismError, LayerMechanismLearner, LearnedEntityCorrespondence, PrimitivePairEntity,
+    RawAttributedObservationPrimitive, RawEntityObservationEvidence, RawObservationPrimitive,
+    RawRelationObservationTrace,
 };
 use cairn_world::{ActionId, LatentEpisode, TransitionObservation, WorldState};
+use std::collections::BTreeMap;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct VectorTranslation {
     pub point: (i64, i64),
     pub displacement: (i64, i64),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum VectorAxis {
+    Horizontal,
+    Vertical,
+}
+
+/// Frontend vector segment. Cognition receives only the selected anonymous
+/// coordinate pair and must derive its useful orientation and relation.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VectorSegmentObservation {
+    pub id: cairn_core::EntityId,
+    pub first: (i64, i64),
+    pub second: (i64, i64),
+    pub value: i64,
+}
+
+/// One uninterpreted scalar vector primitive before entity grouping.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VectorPrimitiveObservation {
+    pub id: EntityId,
+    pub observation: i64,
+}
+
+/// One vector-scene primitive with anonymous scalar attributes and no supplied
+/// relation or entity membership.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VectorAttributedPrimitiveObservation {
+    pub id: EntityId,
+    pub observation: i64,
+    pub attributes: Vec<i64>,
 }
 
 /// A batch of scalar attributes attached to otherwise frontend-owned vector
@@ -37,6 +72,81 @@ pub struct VectorPointTransition {
 pub struct VectorAdapter;
 
 impl VectorAdapter {
+    /// Lower anonymous primitive attributes without constructing relations or
+    /// selecting entity boundaries.
+    #[must_use]
+    pub fn lower_unrelated_primitives(
+        &self,
+        episode: cairn_core::Hash32,
+        primitives: &[VectorAttributedPrimitiveObservation],
+        outputs: std::collections::BTreeSet<i64>,
+    ) -> RawRelationObservationTrace {
+        RawRelationObservationTrace {
+            episode,
+            primitives: primitives
+                .iter()
+                .map(|primitive| {
+                    (
+                        primitive.id.clone(),
+                        RawAttributedObservationPrimitive {
+                            observation: primitive.observation,
+                            attributes: primitive.attributes.clone(),
+                        },
+                    )
+                })
+                .collect(),
+            outputs,
+        }
+    }
+
+    /// Lower scalar point evidence and unselected binary relations to the same
+    /// entity-interpretation contract used by non-graphics adapters.
+    #[must_use]
+    pub fn lower_entity_candidates(
+        &self,
+        primitives: &[VectorPrimitiveObservation],
+        relations: &[RelationRecord],
+    ) -> RawEntityObservationEvidence {
+        RawEntityObservationEvidence {
+            primitives: primitives
+                .iter()
+                .map(|primitive| {
+                    (
+                        primitive.id.clone(),
+                        RawObservationPrimitive {
+                            observation: primitive.observation,
+                        },
+                    )
+                })
+                .collect::<BTreeMap<_, _>>(),
+            relations: relations.to_vec(),
+        }
+    }
+
+    /// Project vector segments onto one declared observation axis without
+    /// assigning endpoint roles or relational meaning.
+    #[must_use]
+    pub fn lower_segment_observations(
+        &self,
+        observations: &[VectorSegmentObservation],
+        axis: VectorAxis,
+    ) -> Vec<PrimitivePairEntity> {
+        observations
+            .iter()
+            .map(|observation| {
+                let pair = match axis {
+                    VectorAxis::Horizontal => [observation.first.1, observation.second.1],
+                    VectorAxis::Vertical => [observation.first.0, observation.second.0],
+                };
+                PrimitivePairEntity {
+                    id: observation.id.clone(),
+                    value: observation.value,
+                    observations: pair.to_vec(),
+                }
+            })
+            .collect()
+    }
+
     /// Learn a collection-level coordinate correspondence with exact
     /// entity/point construction provenance.
     ///
