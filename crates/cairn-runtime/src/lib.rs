@@ -17,9 +17,9 @@ use cairn_invent::{InventionError, InventionProblem};
 use cairn_knowledge::KnowledgeBase;
 use cairn_memory::{
     ConditionalConstructionStore, ConstructionProgramStore, EntityCorrespondenceStore,
-    InternalMechanismStore, LatentMechanismStore, LayerMechanismStore, MechanismStore,
-    MemoryAssistedInventor, MemorySolveOutcome, ModuleStatus, ProceduralMechanismModule,
-    ProceduralMechanismStore,
+    ExpansionStore, InternalMechanismStore, LatentMechanismStore, LayerMechanismStore,
+    MechanismStore, MemoryAssistedInventor, MemorySolveOutcome, ModuleStatus,
+    ProceduralMechanismModule, ProceduralMechanismStore,
 };
 use cairn_rkl::{
     ExecLimits, ReferenceTheoryExecutor, RuntimeEnvironment, TheoryExecLimits,
@@ -27,11 +27,11 @@ use cairn_rkl::{
 };
 use cairn_skill::{Condition, Skill, SkillPlan, SkillPlanError, SkillPlanner};
 use cairn_theory::{
-    ConditionalConstructionError, ConditionalConstructionSynthesizer, EntityConstruction,
-    EntityConstructionProgramError, EntityConstructionProgramSynthesizer,
-    EntityCorrespondenceError, EntityCorrespondenceLearner, EntityCorrespondenceLimits,
-    EntityGeometryScene, LayerMechanismError, LayerMechanismLearner, LayerRender, LayerScene,
-    RelationalGeometryScene,
+    CollectionInventionError, CollectionMechanismInventor, ConditionalConstructionError,
+    ConditionalConstructionSynthesizer, EntityConstruction, EntityConstructionProgramError,
+    EntityConstructionProgramSynthesizer, EntityCorrespondenceError, EntityCorrespondenceLearner,
+    EntityCorrespondenceLimits, EntityGeometryScene, LayerMechanismError, LayerMechanismLearner,
+    LayerRender, LayerScene, RelationalGeometryScene,
 };
 use cairn_world::{
     ActionId, ActiveLatentInductionReport, ActiveLatentLimits, ActiveLatentWorldLearner,
@@ -52,6 +52,7 @@ pub struct CognitionRuntime {
     entity_correspondences: EntityCorrespondenceStore,
     construction_programs: ConstructionProgramStore,
     conditional_constructions: ConditionalConstructionStore,
+    expansions: ExpansionStore,
     knowledge: KnowledgeBase,
 }
 
@@ -208,6 +209,7 @@ pub enum CognitionError {
     EntityCorrespondenceMemory(EntityCorrespondenceMemoryRuntimeError),
     ConstructionProgramMemory(ConstructionProgramMemoryRuntimeError),
     ConditionalConstructionMemory(ConditionalConstructionMemoryRuntimeError),
+    ExpansionMemory(ExpansionMemoryRuntimeError),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -301,6 +303,18 @@ pub struct ConditionalConstructionMemoryOutcome {
     pub persistent_programs_attempted: u64,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ExpansionMemoryRuntimeError {
+    NoVerifiedProposal,
+    Capacity,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ExpansionMemoryOutcome {
+    pub proposals: Vec<BTreeSet<i64>>,
+    pub persistent_mechanisms_attempted: u64,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum InternalCompositionRuntimeError {
     UnavailableMechanism(Hash32),
@@ -319,6 +333,7 @@ impl CognitionRuntime {
             entity_correspondences: EntityCorrespondenceStore::new(),
             construction_programs: ConstructionProgramStore::new(),
             conditional_constructions: ConditionalConstructionStore::new(),
+            expansions: ExpansionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -334,6 +349,7 @@ impl CognitionRuntime {
             entity_correspondences: EntityCorrespondenceStore::new(),
             construction_programs: ConstructionProgramStore::new(),
             conditional_constructions: ConditionalConstructionStore::new(),
+            expansions: ExpansionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -352,6 +368,7 @@ impl CognitionRuntime {
             entity_correspondences: EntityCorrespondenceStore::new(),
             construction_programs: ConstructionProgramStore::new(),
             conditional_constructions: ConditionalConstructionStore::new(),
+            expansions: ExpansionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -369,6 +386,7 @@ impl CognitionRuntime {
             entity_correspondences: EntityCorrespondenceStore::new(),
             construction_programs: ConstructionProgramStore::new(),
             conditional_constructions: ConditionalConstructionStore::new(),
+            expansions: ExpansionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -386,6 +404,7 @@ impl CognitionRuntime {
             entity_correspondences: EntityCorrespondenceStore::new(),
             construction_programs: ConstructionProgramStore::new(),
             conditional_constructions: ConditionalConstructionStore::new(),
+            expansions: ExpansionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -404,6 +423,7 @@ impl CognitionRuntime {
             entity_correspondences,
             construction_programs: ConstructionProgramStore::new(),
             conditional_constructions: ConditionalConstructionStore::new(),
+            expansions: ExpansionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -422,6 +442,7 @@ impl CognitionRuntime {
             entity_correspondences: EntityCorrespondenceStore::new(),
             construction_programs,
             conditional_constructions: ConditionalConstructionStore::new(),
+            expansions: ExpansionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -440,6 +461,24 @@ impl CognitionRuntime {
             entity_correspondences: EntityCorrespondenceStore::new(),
             construction_programs: ConstructionProgramStore::new(),
             conditional_constructions,
+            expansions: ExpansionStore::new(),
+            knowledge: KnowledgeBase::new(),
+        }
+    }
+
+    /// Construct a runtime with proof-gated one-to-many expansion memory.
+    #[must_use]
+    pub const fn with_expansion_memory(expansions: ExpansionStore) -> Self {
+        Self {
+            memory: MechanismStore::new(),
+            procedures: ProceduralMechanismStore::new(),
+            internal_mechanisms: InternalMechanismStore::new(),
+            latent_mechanisms: LatentMechanismStore::new(),
+            layer_mechanisms: LayerMechanismStore::new(),
+            entity_correspondences: EntityCorrespondenceStore::new(),
+            construction_programs: ConstructionProgramStore::new(),
+            conditional_constructions: ConditionalConstructionStore::new(),
+            expansions,
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -516,6 +555,15 @@ impl CognitionRuntime {
         &mut self,
     ) -> &mut ConditionalConstructionStore {
         &mut self.conditional_constructions
+    }
+
+    #[must_use]
+    pub const fn expansion_memory(&self) -> &ExpansionStore {
+        &self.expansions
+    }
+
+    pub const fn expansion_memory_mut(&mut self) -> &mut ExpansionStore {
+        &mut self.expansions
     }
 
     #[must_use]
@@ -1062,6 +1110,41 @@ impl CognitionRuntime {
         Ok(ConditionalConstructionMemoryOutcome {
             proposals,
             persistent_programs_attempted,
+        })
+    }
+
+    /// Execute every persistent one-to-many constructor as an untrusted
+    /// proposal over current values.
+    ///
+    /// # Errors
+    ///
+    /// Returns typed absence or exact execution failure.
+    pub fn propose_expansions_from_memory(
+        &self,
+        inputs: &[i64],
+    ) -> Result<ExpansionMemoryOutcome, CognitionError> {
+        let mut persistent_mechanisms_attempted = 0_u64;
+        let mut proposals = Vec::new();
+        for mechanism in self.expansions.persistent_mechanisms() {
+            persistent_mechanisms_attempted = persistent_mechanisms_attempted.saturating_add(1);
+            match CollectionMechanismInventor.expand(mechanism, inputs) {
+                Ok(output) => proposals.push(output),
+                Err(CollectionInventionError::Invention(_)) => {
+                    return Err(CognitionError::ExpansionMemory(
+                        ExpansionMemoryRuntimeError::Capacity,
+                    ));
+                }
+                Err(_) => {}
+            }
+        }
+        if proposals.is_empty() {
+            return Err(CognitionError::ExpansionMemory(
+                ExpansionMemoryRuntimeError::NoVerifiedProposal,
+            ));
+        }
+        Ok(ExpansionMemoryOutcome {
+            proposals,
+            persistent_mechanisms_attempted,
         })
     }
 

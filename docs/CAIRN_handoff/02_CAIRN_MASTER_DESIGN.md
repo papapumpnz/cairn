@@ -2388,3 +2388,12 @@ coordinate pairing that independent axis sets cannot prove. Independent replay,
 two disjoint cohorts, proposal-only runtime reuse, and a finite-field
 ordered-contact frontend are implemented. This establishes filter/delete with
 variable output cardinality, not split/merge or perception.
+
+## 31. Relational paths and variable-multiplicity construction
+
+The selector grammar now constructs exact ordered two-role path denotations and
+lets ordinary contrast invention decide whether they explain selection. A
+separate expansion learner searches bounded multiplicity and tuple-free
+`(item, slot)` RKL constructors against complete unordered output sets. Both
+have independent replay, disjoint-cohort promotion, and proposal-only runtime
+reuse. This adds bounded split/create semantics, not merge or raw perception.

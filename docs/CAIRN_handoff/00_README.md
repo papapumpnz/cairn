@@ -135,4 +135,10 @@ zero-example reuse, and finite-field transfer. The frozen ARC-10 ablation is
 creation, raw perception, broad general intelligence, and the ARC target remain
 open.
 
+ADR-0030/0031 add learned ordered two-relation paths and unordered one-to-many
+collection construction. Both now pass independent-cohort promotion and
+zero-example reuse gates. Relation roles/entities remain supplied, and merge,
+conditional multiplicity, raw perception, and broad general intelligence are
+still open.
+
 The reference implementation is Rust with small, audited C/C++ solver dependencies when justified. The baseline machine is one commodity 8-core CPU with 16 GB RAM. The system must also support multi-process and multi-node CPU swarms through content-addressed, proof-carrying artifacts.

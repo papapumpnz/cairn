@@ -1107,3 +1107,12 @@ uses `ConditionalConstructionExample`; held-out execution uses only
 `RelationalGeometryScene`. `ConditionalConstructionVerifier` independently
 recomputes features and executes definitions. `ConditionalConstructionStore`
 requires two disjoint receipts; runtime retrieval returns proposals only.
+
+## 33. Path and expansion contracts
+
+`EntityFeature::TwoHopOutDegree(first, second)` counts distinct endpoints of an
+exact ordered two-edge path. `LearnedExpansionMechanism` contains an admitted
+constructor, bounded multiplicity, checked nested-`ForEach` theory, source
+episodes, and observed cardinalities. `ExpansionMechanismVerifier` independently
+reconstructs output sets. `ExpansionStore` requires two disjoint cohorts;
+`propose_expansions_from_memory` returns untrusted sets only.

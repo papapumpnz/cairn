@@ -8,13 +8,15 @@ use cairn_memory::{ConditionalConstructionPromotion, ConditionalConstructionStor
 use cairn_rkl::ExecLimits;
 use cairn_runtime::{CognitionError, CognitionRuntime, ConditionalConstructionMemoryRuntimeError};
 use cairn_theory::{
-    ConditionalConstructionExample, ConditionalConstructionSynthesizer, EntityGeometryRender,
-    EntityGeometryScene, GeometricEntity, RelationalGeometryScene, RenderedEntity,
+    ConditionalConstructionExample, ConditionalConstructionSynthesizer, EntityFeature,
+    EntityGeometryRender, EntityGeometryScene, GeometricEntity, RelationalGeometryScene,
+    RenderedEntity,
 };
 use cairn_verifier::{ConditionalConstructionVerifier, ConditionalConstructionVerifyError};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn relation_conditioned_program_promotes_and_removes_future_examples() {
     let first = [
         family("vector-a", 17, 19, 2, 1),
@@ -34,6 +36,14 @@ fn relation_conditioned_program_promotes_and_removes_future_examples() {
         first_report.program.semantic_hash().expect("id"),
         second_report.program.semantic_hash().expect("id")
     );
+    assert!(first_report
+        .program
+        .selector
+        .features
+        .contains(&EntityFeature::TwoHopOutDegree(
+            RelationRole("ordered-contact".to_owned()),
+            RelationRole("ordered-contact".to_owned()),
+        )));
 
     let first_receipt = ConditionalConstructionVerifier
         .verify(&first_report.program, &first, ExecLimits::default())
@@ -121,7 +131,7 @@ fn relation_conditioned_program_promotes_and_removes_future_examples() {
             | ConditionalConstructionVerifyError::Construction)
     ));
 
-    eprintln!("G2_CONDITIONAL_PROGRAM cohorts=2 experiences=4 output_cardinalities=1..6 fresh_candidates={} memory_attempts=2 memory_examples=0 heldout=2 field_transfer=1 changed_truth_accepts=0", first_report.candidates_evaluated);
+    eprintln!("G2_RELATION_PATH_PROGRAM cohorts=2 experiences=4 output_cardinalities=1..6 fresh_candidates={} memory_attempts=2 memory_examples=0 heldout=2 field_transfer=1 changed_truth_accepts=0", first_report.candidates_evaluated);
 }
 
 fn limits() -> InventionLimits {
@@ -133,6 +143,7 @@ fn limits() -> InventionLimits {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn family(
     domain: &str,
     rows: u32,
@@ -147,28 +158,67 @@ fn family(
     for index in 0..selected_count {
         let index_i64 = i64::try_from(index).expect("small");
         let identity = Hash32::digest(format!("{domain}:controller:{index}").as_bytes());
+        let bridge = Hash32::digest(format!("{domain}:bridge:{index}").as_bytes());
+        let endpoint = Hash32::digest(format!("{domain}:endpoint:{index}").as_bytes());
         selected_ids.insert(identity);
-        geometry.push(GeometricEntity {
-            identity,
-            value: shift * 100 + index_i64,
-            points: [vec![shift + index_i64 * 2, shift + index_i64 * 3]].into(),
-        });
-        records.push(record(identity, index + domain.len()));
-        for member in 0..=(index % 3) {
-            let member_i64 = i64::try_from(member).expect("small");
-            let member_id = Hash32::digest(format!("{domain}:member:{index}:{member}").as_bytes());
-            geometry.push(GeometricEntity {
-                identity: member_id,
-                value: shift * 1000 + index_i64 * 10 + member_i64,
-                points: [vec![shift + index_i64 * 2 + member_i64 + 1, shift + 10]].into(),
-            });
-            records.push(record(member_id, member + index));
-            relations.push(RelationRecord {
-                role: RelationRole("ordered-contact".to_owned()),
-                subject: EntityId(identity),
-                object: EntityId(member_id),
-            });
-        }
+        geometry.extend([
+            geometric(
+                identity,
+                shift * 100 + index_i64,
+                shift + index_i64 * 2,
+                shift,
+            ),
+            geometric(
+                bridge,
+                shift * 1000 + index_i64 * 10,
+                shift + index_i64 * 2,
+                shift + 1,
+            ),
+            geometric(
+                endpoint,
+                shift * 1000 + index_i64 * 10 + 1,
+                shift + index_i64 * 2,
+                shift + 2,
+            ),
+        ]);
+        records.extend([record(identity, 0), record(bridge, 0), record(endpoint, 0)]);
+        relations.extend([
+            relation("ordered-contact", identity, bridge),
+            relation("ordered-contact", bridge, endpoint),
+        ]);
+
+        let decoy = Hash32::digest(format!("{domain}:decoy:{index}").as_bytes());
+        let decoy_bridge = Hash32::digest(format!("{domain}:decoy-bridge:{index}").as_bytes());
+        let decoy_endpoint = Hash32::digest(format!("{domain}:decoy-endpoint:{index}").as_bytes());
+        geometry.extend([
+            geometric(
+                decoy,
+                shift * 2000 + index_i64 * 10,
+                shift + index_i64 * 2 + 1,
+                shift + 5,
+            ),
+            geometric(
+                decoy_bridge,
+                shift * 3000 + index_i64 * 10,
+                shift + index_i64 * 2 + 1,
+                shift + 6,
+            ),
+            geometric(
+                decoy_endpoint,
+                shift * 3000 + index_i64 * 10 + 1,
+                shift + index_i64 * 2 + 1,
+                shift + 7,
+            ),
+        ]);
+        records.extend([
+            record(decoy, 0),
+            record(decoy_bridge, 0),
+            record(decoy_endpoint, 0),
+        ]);
+        relations.extend([
+            relation("ordered-contact", decoy, decoy_bridge),
+            relation("distracts", decoy_bridge, decoy_endpoint),
+        ]);
     }
     let orphan = Hash32::digest(format!("{domain}:orphan").as_bytes());
     geometry.push(GeometricEntity {
@@ -218,16 +268,34 @@ fn record(identity: Hash32, distractor: usize) -> EntityRecord {
     }
 }
 
+fn geometric(identity: Hash32, value: i64, row: i64, column: i64) -> GeometricEntity {
+    GeometricEntity {
+        identity,
+        value,
+        points: [vec![row, column]].into(),
+    }
+}
+
+fn relation(role: &str, subject: Hash32, object: Hash32) -> RelationRecord {
+    RelationRecord {
+        role: RelationRole(role.to_owned()),
+        subject: EntityId(subject),
+        object: EntityId(object),
+    }
+}
+
 fn field_case() -> (FiniteField, FiniteField) {
     let field = FiniteField {
-        shape: vec![4, 5],
+        shape: vec![3, 7],
         values: vec![
-            0, 10, 20, 0, 0, 0, 0, 0, 0, 0, 30, 40, 0, 0, 0, 0, 0, 0, 0, 0,
+            10, 20, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 40, 50, 0, 0, 0, 0, 0,
         ],
     };
     let expected = FiniteField {
         shape: field.shape.clone(),
-        values: vec![0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        values: vec![
+            10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ],
     };
     (field, expected)
 }

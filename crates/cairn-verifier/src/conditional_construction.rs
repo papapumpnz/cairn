@@ -226,6 +226,28 @@ fn feature_values(
                     .count(),
             )
             .unwrap_or(i64::MAX),
+            EntityFeature::TwoHopOutDegree(first, second) => i64::try_from(
+                example
+                    .source
+                    .relations
+                    .relations
+                    .iter()
+                    .filter(|relation| relation.role == *first && relation.subject == *id)
+                    .flat_map(|relation| {
+                        example
+                            .source
+                            .relations
+                            .relations
+                            .iter()
+                            .filter_map(move |next| {
+                                (next.role == *second && next.subject == relation.object)
+                                    .then_some(next.object.clone())
+                            })
+                    })
+                    .collect::<BTreeSet<_>>()
+                    .len(),
+            )
+            .unwrap_or(i64::MAX),
         })
         .collect()
 }

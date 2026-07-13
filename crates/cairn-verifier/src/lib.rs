@@ -1,10 +1,12 @@
 //! Independent promotion boundary combining replay provenance and learning gates.
 
+mod collection_expansion;
 mod conditional_construction;
 mod construction_program;
 mod correspondence;
 mod layer;
 
+pub use collection_expansion::*;
 pub use conditional_construction::*;
 pub use construction_program::*;
 pub use correspondence::*;

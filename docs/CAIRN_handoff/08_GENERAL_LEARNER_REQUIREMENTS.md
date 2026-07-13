@@ -1099,3 +1099,18 @@ one finite-field transfer are exact; changed relation truth is rejected. This
 advances G0-G2 and G5. It does not establish raw entity learning, split/merge,
 recursive construction, sustained open-ended scaling, general intelligence, or
 80% ARC. ARC-10 is unchanged and ARC-20 is a capacity result, not a score.
+
+## 46. Relation-path and one-to-many checkpoint
+
+CAIRN now invents an ordered two-relation selector that cannot be replaced by
+any direct-degree feature on the frozen hard negatives. It also infers bounded
+multiplicity and an executable one-to-many constructor without output/input
+pairing. Both pass independent replay, two-cohort promotion, changed-cardinality
+reuse, ablation, and zero-example future application. This broadens G0-G2 and
+composition prerequisites. It does not establish merge, conditional expansion,
+raw entity/relation discovery, open-ended learning, general intelligence, or
+the ARC target.
+
+The post-freeze ARC regression is unchanged: 10/10 on the saturated first-ten
+conditional ablation and 17/20 on the official frozen first-20. No ARC progress
+is attributed to this checkpoint.

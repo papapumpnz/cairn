@@ -791,3 +791,16 @@ failure, and changed-truth rejection.
 Measured: 140 fresh candidates become two memory attempts and zero examples;
 held-outs 2/2, field transfer 1/1, negative accepts zero. ARC-10 remains 10/10
 in both conditions; ARC-20 terminates at the fixed 600-second command cap.
+
+## G2-PATH-EXPAND
+
+Require two-edge path selection where all one-edge features fail on hard
+negatives, plus unordered one-to-many construction without paired outputs.
+Both must cross two verified cohorts, reduce future candidate/example work,
+transfer to higher cardinality, survive order changes, and fail on ablation or
+changed truth. Measured path work is 110 to two attempts; expansion work is 522
+to one attempt; future examples are zero and negative accepts are zero.
+
+Post-freeze ARC regression: conditional first-ten remains 10/10 in both blank
+and memory conditions with zero incorrect; the official frozen first-20 remains
+17/20. This is a no-improvement result.

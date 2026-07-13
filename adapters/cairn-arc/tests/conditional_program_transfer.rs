@@ -16,14 +16,14 @@ use std::fs;
 use std::path::Path;
 
 #[test]
-#[ignore = "quarantined first-20 non-ARC conditional-program causal ablation"]
-fn frozen_arc20_conditional_program_ablation() {
+#[ignore = "quarantined first-10 non-ARC conditional-program causal ablation"]
+fn frozen_arc10_conditional_program_ablation() {
     let corpus =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("../../datasets/arc-agi-1-v1.0.2/training");
     let runtime = CognitionRuntime::new();
     let blank = run_training_batch_with_runtime_and_structural_bindings(
         &corpus,
-        20,
+        10,
         limits(),
         ExecLimits::default(),
         &runtime,
@@ -33,7 +33,7 @@ fn frozen_arc20_conditional_program_ablation() {
     let learned = non_arc_program();
     let transfer = run_training_batch_with_runtime_and_structural_bindings(
         &corpus,
-        20,
+        10,
         limits(),
         ExecLimits::default(),
         &runtime,
@@ -43,11 +43,11 @@ fn frozen_arc20_conditional_program_ablation() {
     )
     .expect("conditional transfer");
     fs::write(
-        "/tmp/cairn_arc20_conditional_program_ablation_20260713.json",
+        "/tmp/cairn_arc10_conditional_program_ablation_20260713.json",
         serde_json::to_string_pretty(&(blank.clone(), transfer.clone())).expect("json"),
     )
     .expect("report");
-    eprintln!("ARC20_CONDITIONAL blank_exact={} transfer_exact={} blank_incorrect={} transfer_incorrect={}", blank.exact_tasks, transfer.exact_tasks, blank.incorrect_tasks, transfer.incorrect_tasks);
+    eprintln!("ARC10_CONDITIONAL blank_exact={} transfer_exact={} blank_incorrect={} transfer_incorrect={}", blank.exact_tasks, transfer.exact_tasks, blank.incorrect_tasks, transfer.incorrect_tasks);
     assert_eq!(transfer.incorrect_tasks, 0);
 }
 

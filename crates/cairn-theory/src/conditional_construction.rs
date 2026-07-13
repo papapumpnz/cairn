@@ -66,6 +66,11 @@ impl CanonicalEncode for ConditionalEntityConstructionProgram {
                     CanonicalValue::Text("in-degree".to_owned()),
                     CanonicalValue::Text(role.0.clone()),
                 ]),
+                EntityFeature::TwoHopOutDegree(first, second) => CanonicalValue::Array(vec![
+                    CanonicalValue::Text("two-hop-out-degree".to_owned()),
+                    CanonicalValue::Text(first.0.clone()),
+                    CanonicalValue::Text(second.0.clone()),
+                ]),
             })
             .collect();
         CanonicalValue::Array(vec![

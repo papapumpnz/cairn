@@ -12,7 +12,7 @@ pub use layer::*;
 
 use cairn_invent::{
     BindingExample, DefinitionInventor, InventionError, InventionLimits, InventionOutcome,
-    InventionProblem,
+    InventionProblem, UnorderedMappingEpisode, UnorderedMappingProblem,
 };
 use cairn_rkl::{
     BinaryOp, Binder, CheckedTheory, ConflictPolicy, Definition, Effect, Expr, Quantifier,
@@ -22,7 +22,8 @@ use cairn_rkl::{
 use std::collections::{BTreeMap, BTreeSet};
 
 use cairn_core::{
-    EntityId, EntitySelectionProblem, FeatureId, RelationRole, RelationalEntityCollection,
+    CanonicalEncode, CanonicalValue, EntityId, EntitySelectionProblem, FeatureId, Hash32,
+    RelationRole, RelationalEntityCollection,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -623,6 +624,33 @@ pub struct LearnedCollectionMechanism {
     pub observed_cardinalities: BTreeSet<usize>,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct LearnedExpansionMechanism {
+    pub constructor: InventionOutcome,
+    pub multiplicity: u32,
+    pub theory: CheckedTheory,
+    pub source_episodes: BTreeSet<cairn_core::Hash32>,
+    pub observed_input_cardinalities: BTreeSet<usize>,
+    pub observed_output_cardinalities: BTreeSet<usize>,
+}
+
+impl LearnedExpansionMechanism {
+    /// Return the canonical executable expansion identity.
+    ///
+    /// # Errors
+    ///
+    /// Returns canonical encoding failure.
+    pub fn semantic_hash(&self) -> Result<Hash32, cairn_core::CanonicalError> {
+        CanonicalValue::Array(vec![
+            CanonicalValue::Text("cairn.collection-expansion.v1".to_owned()),
+            CanonicalValue::Unsigned(u64::from(self.multiplicity)),
+            CanonicalValue::Bytes(self.constructor.proposal.definition.encode_canonical()?),
+        ])
+        .encode_canonical()
+        .map(|bytes| Hash32::digest(&bytes))
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CollectionInventionError {
     InsufficientEpisodes,
@@ -637,6 +665,217 @@ pub enum CollectionInventionError {
 pub struct CollectionMechanismInventor;
 
 impl CollectionMechanismInventor {
+    /// Invent a bounded one-to-many constructor without supplied output/input
+    /// correspondence.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed or duplicate traces, fixed-only evidence, expansion
+    /// cap exhaustion, bounded RKL invention failure, or invalid theory.
+    #[allow(clippy::too_many_lines)]
+    pub fn invent_expansion(
+        &self,
+        traces: &[CollectionTrace],
+        maximum_input_cardinality: u32,
+        maximum_multiplicity: u32,
+        limits: InventionLimits,
+    ) -> Result<LearnedExpansionMechanism, CollectionInventionError> {
+        if traces.len() < 2 {
+            return Err(CollectionInventionError::InsufficientEpisodes);
+        }
+        let source_episodes = traces
+            .iter()
+            .map(|trace| trace.episode)
+            .collect::<BTreeSet<_>>();
+        if source_episodes.len() != traces.len() {
+            return Err(CollectionInventionError::DuplicateEpisode);
+        }
+        if maximum_input_cardinality == 0
+            || maximum_multiplicity < 2
+            || traces.iter().any(|trace| {
+                trace.inputs.is_empty()
+                    || trace.outputs.is_empty()
+                    || trace.inputs.iter().copied().collect::<BTreeSet<_>>().len()
+                        != trace.inputs.len()
+                    || trace.outputs.iter().copied().collect::<BTreeSet<_>>().len()
+                        != trace.outputs.len()
+                    || trace.inputs.len() > maximum_input_cardinality as usize
+            })
+        {
+            return Err(CollectionInventionError::InvalidTrace);
+        }
+        let observed_input_cardinalities = traces
+            .iter()
+            .map(|trace| trace.inputs.len())
+            .collect::<BTreeSet<_>>();
+        if observed_input_cardinalities.len() < 2 {
+            return Err(CollectionInventionError::FixedCardinalityOnly);
+        }
+        let item = VarName("item".to_owned());
+        let slot = VarName("slot".to_owned());
+        let integer = Type::Int(cairn_rkl::IntRange {
+            lower: -i64::from(u16::MAX),
+            upper: i64::from(u16::MAX),
+        });
+        let mut selected = None;
+        for multiplicity in 2..=maximum_multiplicity {
+            if traces.iter().any(|trace| {
+                trace.outputs.len() != trace.inputs.len().saturating_mul(multiplicity as usize)
+            }) {
+                continue;
+            }
+            let episodes = traces
+                .iter()
+                .map(|trace| {
+                    let inputs = trace
+                        .inputs
+                        .iter()
+                        .flat_map(|value| {
+                            (0..multiplicity).map(|index| {
+                                let mut environment = RuntimeEnvironment::new();
+                                environment.insert(item.clone(), Value::Int(*value));
+                                environment.insert(slot.clone(), Value::Int(i64::from(index)));
+                                environment
+                            })
+                        })
+                        .collect();
+                    UnorderedMappingEpisode {
+                        inputs,
+                        expected_outputs: trace.outputs.iter().copied().map(Value::Int).collect(),
+                    }
+                })
+                .collect();
+            match DefinitionInventor.invent_unordered_mapping(&UnorderedMappingProblem {
+                definition_name: "invented_expansion_constructor".to_owned(),
+                parameters: vec![
+                    Binder {
+                        name: item.clone(),
+                        ty: integer.clone(),
+                    },
+                    Binder {
+                        name: slot.clone(),
+                        ty: integer.clone(),
+                    },
+                ],
+                return_type: integer.clone(),
+                literals: vec![Value::Int(0), Value::Int(1), Value::Int(2)],
+                episodes,
+                limits,
+            }) {
+                Ok(outcome) => {
+                    selected = Some((multiplicity, outcome));
+                    break;
+                }
+                Err(InventionError::NoDefinition { .. }) => {}
+                Err(error) => return Err(CollectionInventionError::Invention(error)),
+            }
+        }
+        let (multiplicity, constructor) = selected.ok_or(CollectionInventionError::InvalidTrace)?;
+        let collection = VarName("collection".to_owned());
+        let slots = VarName("slots".to_owned());
+        let rule_name = "invented_expand".to_owned();
+        let theory = Theory {
+            inputs: vec![
+                Binder {
+                    name: collection.clone(),
+                    ty: Type::List {
+                        element: Box::new(integer.clone()),
+                        maximum: maximum_input_cardinality,
+                    },
+                },
+                Binder {
+                    name: slots.clone(),
+                    ty: Type::List {
+                        element: Box::new(integer.clone()),
+                        maximum: multiplicity,
+                    },
+                },
+            ],
+            definitions: vec![constructor.proposal.definition.clone()],
+            rules: vec![RewriteRule {
+                name: rule_name.clone(),
+                binders: vec![
+                    RuleBinder {
+                        variable: Binder {
+                            name: item.clone(),
+                            ty: integer.clone(),
+                        },
+                        domain: Expr::Var(collection.clone()),
+                        quantifier: Quantifier::ForEach,
+                    },
+                    RuleBinder {
+                        variable: Binder {
+                            name: slot.clone(),
+                            ty: integer,
+                        },
+                        domain: Expr::Var(slots),
+                        quantifier: Quantifier::ForEach,
+                    },
+                ],
+                guard: Expr::Bool(true),
+                effects: vec![Effect::Emit(Expr::Call {
+                    function: constructor.proposal.definition.name.clone(),
+                    arguments: vec![Expr::Var(item), Expr::Var(slot)],
+                })],
+                priority: 0,
+            }],
+            schedule: Schedule::Sequence(vec![rule_name]),
+            renderer: Renderer {
+                canvas: Expr::Var(collection),
+                layers: Vec::new(),
+                conflict_policy: ConflictPolicy::SameValueIdempotent,
+                background: Expr::Int(0),
+            },
+            assumptions: Vec::new(),
+            proof_annotations: Vec::new(),
+        };
+        let theory = TypeChecker::new(10_000)
+            .check_theory(&theory)
+            .map_err(CollectionInventionError::Theory)?;
+        Ok(LearnedExpansionMechanism {
+            constructor,
+            multiplicity,
+            theory,
+            source_episodes,
+            observed_input_cardinalities,
+            observed_output_cardinalities: traces.iter().map(|trace| trace.outputs.len()).collect(),
+        })
+    }
+
+    /// Execute a task-local expansion on new inputs.
+    ///
+    /// # Errors
+    ///
+    /// Propagates exact constructor execution failure.
+    pub fn expand(
+        &self,
+        learned: &LearnedExpansionMechanism,
+        inputs: &[i64],
+    ) -> Result<BTreeSet<i64>, CollectionInventionError> {
+        let item = VarName("item".to_owned());
+        let slot = VarName("slot".to_owned());
+        inputs
+            .iter()
+            .flat_map(|value| (0..learned.multiplicity).map(move |index| (*value, index)))
+            .map(|(value, index)| {
+                let mut environment = RuntimeEnvironment::new();
+                environment.insert(item.clone(), Value::Int(value));
+                environment.insert(slot.clone(), Value::Int(i64::from(index)));
+                match DefinitionInventor
+                    .predict(
+                        &learned.constructor.proposal,
+                        &environment,
+                        cairn_rkl::ExecLimits::default(),
+                    )
+                    .map_err(CollectionInventionError::Invention)?
+                {
+                    Value::Int(output) => Ok(output),
+                    _ => Err(CollectionInventionError::InvalidTrace),
+                }
+            })
+            .collect()
+    }
+
     /// Learn one element transformation from aligned collection traces and
     /// lift it into a variable-cardinality `ForEach` rule.
     ///
@@ -861,6 +1100,7 @@ pub enum EntityFeature {
     Attribute(FeatureId),
     OutDegree(RelationRole),
     InDegree(RelationRole),
+    TwoHopOutDegree(RelationRole, RelationRole),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -1047,11 +1287,20 @@ fn entity_feature_schema<'a>(
                 .map(|relation| relation.role.clone()),
         );
     }
+    let path_roles = roles
+        .iter()
+        .flat_map(|first| {
+            roles
+                .iter()
+                .map(move |second| EntityFeature::TwoHopOutDegree(first.clone(), second.clone()))
+        })
+        .collect::<Vec<_>>();
     attributes
         .into_iter()
         .map(EntityFeature::Attribute)
         .chain(roles.clone().into_iter().map(EntityFeature::OutDegree))
         .chain(roles.into_iter().map(EntityFeature::InDegree))
+        .chain(path_roles)
         .collect()
 }
 
@@ -1082,6 +1331,21 @@ fn entity_features(
                     .iter()
                     .filter(|relation| relation.role == *role && relation.object == *id)
                     .count(),
+            )
+            .unwrap_or(i64::MAX),
+            EntityFeature::TwoHopOutDegree(first, second) => i64::try_from(
+                collection
+                    .relations
+                    .iter()
+                    .filter(|relation| relation.role == *first && relation.subject == *id)
+                    .flat_map(|relation| {
+                        collection.relations.iter().filter_map(move |next| {
+                            (next.role == *second && next.subject == relation.object)
+                                .then_some(next.object.clone())
+                        })
+                    })
+                    .collect::<BTreeSet<_>>()
+                    .len(),
             )
             .unwrap_or(i64::MAX),
         })
