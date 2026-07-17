@@ -1122,7 +1122,8 @@ memory on changed held-out values.
 Measured: left-only exact theories zero; tree shapes 1→2; eight expression
 structures reduce to one; both cohorts select
 `subtract(p0,minimum(p1,p2))`; receipts save 14 structures; examples fall
-4→0; and runtime memory covers 8/8 held-out cases after 96 current bindings.
+4→0; and sequence-to-vector runtime memory covers 8/8 held-out cases after 96
+current bindings.
 Wrong-arity requests accept zero. Relation-only evidence remains insufficient
 because equality partitions erase association.
 

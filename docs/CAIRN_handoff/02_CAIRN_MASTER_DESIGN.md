@@ -2751,7 +2751,8 @@ mechanisms to current inputs without acceptance authority.
 
 The frozen family rejects the left-only language, selects
 `subtract(p0,minimum(p1,p2))` from eight full-tree structures in two cohorts,
-reduces structure search 8→1 and examples 4→0, and covers 8/8 changed held-out
-cases through memory. This remains bounded synthetic scalar learning. Primitive
+reduces structure search 8→1 and examples 4→0, and transfers from typed
+sequence evidence to 8/8 changed vector cases through memory. This remains
+bounded synthetic scalar learning. Primitive
 operators, numeric channels, and tree caps are supplied; durable CAS replay,
 broad cross-domain reuse, and general intelligence remain open.

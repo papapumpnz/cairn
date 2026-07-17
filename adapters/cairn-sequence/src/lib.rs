@@ -5,7 +5,8 @@ use cairn_invent::{BindingExample, InventionLimits, InventionProblem};
 use cairn_rkl::{Binder, IntRange, RuntimeEnvironment, Type, Value, VarName};
 use cairn_theory::{
     PrimitivePairEntity, RawAttributedObservationPrimitive, RawEntityObservationEvidence,
-    RawObservationPrimitive, RawRelationObservationTrace,
+    RawObservationPrimitive, RawRelationObservationTrace, ScalarExpressionExample,
+    ScalarExpressionTrace,
 };
 use cairn_world::{ActionId, LatentEpisode, TransitionObservation, WorldState};
 use std::collections::BTreeMap;
@@ -42,6 +43,14 @@ pub struct SequenceAttributedPrimitiveObservation {
     pub attributes: Vec<i64>,
 }
 
+/// One exact scalar result over anonymous sequence-derived channels. The
+/// adapter assigns no algebraic role to any channel.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SequenceScalarExample {
+    pub channels: Vec<i64>,
+    pub result: i64,
+}
+
 #[derive(Clone, Copy, Debug, Default)]
 pub struct SequenceAdapter;
 
@@ -61,6 +70,25 @@ pub struct SequenceTransition {
 }
 
 impl SequenceAdapter {
+    /// Lower exact anonymous scalar evidence to the shared expression learner.
+    #[must_use]
+    pub fn lower_scalar_expression(
+        &self,
+        experience: cairn_core::Hash32,
+        examples: &[SequenceScalarExample],
+    ) -> ScalarExpressionTrace {
+        ScalarExpressionTrace {
+            experience,
+            examples: examples
+                .iter()
+                .map(|example| ScalarExpressionExample {
+                    inputs: example.channels.clone(),
+                    output: example.result,
+                })
+                .collect(),
+        }
+    }
+
     /// Lower anonymous primitive attributes without constructing relations or
     /// selecting entity boundaries.
     #[must_use]

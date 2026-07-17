@@ -1390,6 +1390,10 @@ lowers it to RKL. Source bindings are excluded from
 `ScalarExpressionMechanism` identity under marker
 `cairn.scalar-expression.v1`.
 
+`SequenceScalarExample` and `VectorScalarConstraintExample` are typed frontend
+records. Their adapters lower them losslessly to `ScalarExpressionTrace` and
+assign no channel role, operator, tree shape, or expected mechanism.
+
 `ScalarExpressionVerifier` reconstructs definition and evaluation independently.
 `ScalarExpressionPromotionConsolidator` requires two disjoint exact receipts.
 `ScalarExpressionStore` grants persistence only when the certificate covers its

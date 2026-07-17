@@ -8,7 +8,7 @@ use cairn_theory::{
     EntityCorrespondenceLimits, LayerLearningExample, LayerLearningLimits, LayerMechanism,
     LayerMechanismError, LayerMechanismLearner, LearnedEntityCorrespondence, PrimitivePairEntity,
     RawAttributedObservationPrimitive, RawEntityObservationEvidence, RawObservationPrimitive,
-    RawRelationObservationTrace,
+    RawRelationObservationTrace, ScalarExpressionExample, ScalarExpressionTrace,
 };
 use cairn_world::{ActionId, LatentEpisode, TransitionObservation, WorldState};
 use std::collections::BTreeMap;
@@ -51,6 +51,14 @@ pub struct VectorAttributedPrimitiveObservation {
     pub attributes: Vec<i64>,
 }
 
+/// One exact scalar constraint result over anonymous vector-scene channels.
+/// Coordinate or geometric roles are not assigned by the adapter.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VectorScalarConstraintExample {
+    pub channels: Vec<i64>,
+    pub result: i64,
+}
+
 /// A batch of scalar attributes attached to otherwise frontend-owned vector
 /// entities. Cognition sees only the generic collection contract.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -72,6 +80,26 @@ pub struct VectorPointTransition {
 pub struct VectorAdapter;
 
 impl VectorAdapter {
+    /// Lower exact anonymous constraint evidence to the shared expression
+    /// learner without adding geometry-specific operations.
+    #[must_use]
+    pub fn lower_scalar_expression(
+        &self,
+        experience: cairn_core::Hash32,
+        examples: &[VectorScalarConstraintExample],
+    ) -> ScalarExpressionTrace {
+        ScalarExpressionTrace {
+            experience,
+            examples: examples
+                .iter()
+                .map(|example| ScalarExpressionExample {
+                    inputs: example.channels.clone(),
+                    output: example.result,
+                })
+                .collect(),
+        }
+    }
+
     /// Lower anonymous primitive attributes without constructing relations or
     /// selecting entity boundaries.
     #[must_use]

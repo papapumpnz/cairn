@@ -9,13 +9,15 @@ use cairn_invent::InventionLimits;
 use cairn_memory::ScalarExpressionStore;
 use cairn_rkl::ExecLimits;
 use cairn_runtime::CognitionRuntime;
+use cairn_sequence::{SequenceAdapter, SequenceScalarExample};
 use cairn_theory::{
     EntityObservationLimits, ObservationPredicateLimits, PredicateGroupingLimits,
     RawAttributedObservationPrimitive, RawRelationMechanism, RawRelationObservationInventor,
     RawRelationObservationTrace, RelationExpressionLimits, RelationExpressionShapePolicy,
     RelationKeyExpression, RelationKeyOperator, RelationObservationLimits, ScalarExpressionError,
-    ScalarExpressionExample, ScalarExpressionInventor, ScalarExpressionTrace,
+    ScalarExpressionInventor, ScalarExpressionTrace,
 };
+use cairn_vector::{VectorAdapter, VectorScalarConstraintExample};
 use cairn_verifier::{
     RawRelationObservationPromotionConsolidator, RawRelationObservationVerifier,
     RelationExpressionLanguageConsolidator, RelationExpressionLanguageLimits,
@@ -143,12 +145,36 @@ fn ambiguity_drives_contrasts_that_identify_a_non_left_associated_expression() {
 
     let contrast_cohorts = [
         [
-            scalar_trace("association-scalar-a", [0, 1, 2, 3], 1, 0),
-            scalar_trace("association-scalar-b", [3, 0, 2, 1], 2, 100),
+            scalar_trace(
+                ScalarFrontend::Sequence,
+                "association-scalar-a",
+                [0, 1, 2, 3],
+                1,
+                0,
+            ),
+            scalar_trace(
+                ScalarFrontend::Sequence,
+                "association-scalar-b",
+                [3, 0, 2, 1],
+                2,
+                100,
+            ),
         ],
         [
-            scalar_trace("association-scalar-c", [2, 1, 3, 0], 3, -200),
-            scalar_trace("association-scalar-d", [1, 2, 0, 3], 4, 300),
+            scalar_trace(
+                ScalarFrontend::Vector,
+                "association-scalar-c",
+                [2, 1, 3, 0],
+                3,
+                -200,
+            ),
+            scalar_trace(
+                ScalarFrontend::Vector,
+                "association-scalar-d",
+                [1, 2, 0, 3],
+                4,
+                300,
+            ),
         ],
     ];
     let left_result = ScalarExpressionInventor.invent(&contrast_cohorts[0], &left_limits);
@@ -202,7 +228,13 @@ fn ambiguity_drives_contrasts_that_identify_a_non_left_associated_expression() {
     }
     assert!(memory.apply_verified_promotion(mechanism_id, &promotion));
     let runtime = CognitionRuntime::with_scalar_expression_memory(memory);
-    let held_out = scalar_trace("association-scalar-heldout", [1, 3, 0, 2], 5, -700);
+    let held_out = scalar_trace(
+        ScalarFrontend::Vector,
+        "association-scalar-heldout",
+        [1, 3, 0, 2],
+        5,
+        -700,
+    );
     let mut exact = 0_u64;
     let mut proposals_attempted = 0_u64;
     for example in &held_out.examples {
@@ -369,7 +401,14 @@ fn raw_episode(
     }
 }
 
+#[derive(Clone, Copy)]
+enum ScalarFrontend {
+    Sequence,
+    Vector,
+}
+
 fn scalar_trace(
+    frontend: ScalarFrontend,
     domain: &str,
     permutation: [usize; 4],
     scale: i64,
@@ -397,15 +436,31 @@ fn scalar_trace(
             for (source, destination) in permutation.into_iter().enumerate() {
                 inputs[destination] = logical_channels[source];
             }
-            ScalarExpressionExample {
-                inputs,
-                output: scaled[0] - scaled[1].min(scaled[2]),
-            }
+            (inputs, scaled[0] - scaled[1].min(scaled[2]))
         })
-        .collect();
-    ScalarExpressionTrace {
-        experience: Hash32::digest(domain.as_bytes()),
-        examples,
+        .collect::<Vec<_>>();
+    let experience = Hash32::digest(domain.as_bytes());
+    match frontend {
+        ScalarFrontend::Sequence => SequenceAdapter.lower_scalar_expression(
+            experience,
+            &examples
+                .iter()
+                .map(|(channels, result)| SequenceScalarExample {
+                    channels: channels.clone(),
+                    result: *result,
+                })
+                .collect::<Vec<_>>(),
+        ),
+        ScalarFrontend::Vector => VectorAdapter.lower_scalar_expression(
+            experience,
+            &examples
+                .iter()
+                .map(|(channels, result)| VectorScalarConstraintExample {
+                    channels: channels.clone(),
+                    result: *result,
+                })
+                .collect::<Vec<_>>(),
+        ),
     }
 }
 

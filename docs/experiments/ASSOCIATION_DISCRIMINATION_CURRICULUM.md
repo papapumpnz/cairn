@@ -38,6 +38,7 @@ selected expression: subtract(p0, minimum(p1, p2))
 independent reuse cohorts: 2
 expression structures saved: 14
 source examples / reuse examples: 4 / 0
+source/target typed frontends: sequence / vector
 promoted in-process memory modules: 1
 held-out exact scalar cases: 8 / 8
 current anonymous bindings attempted: 96
@@ -51,11 +52,13 @@ produce the same relation. Exact scalar evidence is necessary for this family.
 
 The gain is caused by a content-free curriculum request, full-tree search,
 scalar-valued evidence, independent replay, and proof-gated memory. Removing
-the extension leaves no exact theory. No ARC case or answer was used.
+the extension leaves no exact theory. Sequence and vector adapters perform only
+lossless lowering to the same trace; neither contains operators, expression
+shapes, or output logic. No ARC case or answer was used.
 
 This is bounded mechanism invention and continual reuse, not general
 intelligence. Operators and integer channels remain developer-supplied, the
 tree bound is finite, scalar memory is not yet CAS-reconstructable, the held-out
-domain is still synthetic, and no sustained mixed static/interactive
+domains are still typed synthetic frontends, and no sustained mixed
+static/interactive
 curriculum or ARC improvement is claimed.
-

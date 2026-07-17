@@ -412,8 +412,9 @@ important failure—equality partitions erase association—so the architecture
 now retains exact scalar evidence in a separate task-learning channel. Two
 independent cohorts invent and verifier-promote
 `subtract(p0, minimum(p1,p2))`; expression search contracts 8→1, examples
-4→0, and proposal-only runtime memory covers 8/8 changed held-out cases after
-anonymous-channel rebinding. This is bounded mechanism learning, not general
+4→0, and proposal-only runtime memory learned through the sequence frontend
+covers 8/8 changed vector-frontend cases after anonymous-channel rebinding.
+This is bounded mechanism learning, not general
 intelligence, and no ARC result is attributed to it. See
 [ASSOCIATION_DISCRIMINATION_CURRICULUM.md](docs/experiments/ASSOCIATION_DISCRIMINATION_CURRICULUM.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are

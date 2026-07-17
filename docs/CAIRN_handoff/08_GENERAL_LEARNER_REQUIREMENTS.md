@@ -1445,12 +1445,14 @@ separate verifier reconstruction before two-cohort promotion.
 The left-only language has no exact theory. After the generated shape request,
 two independent cohorts select the same previously unreachable expression from
 eight structures. Verified promotion saves 14 structures, removes all four
-source examples at reuse time, and proposal-only memory covers 8/8 changed
-held-out values. This is direct evidence that a structural failure plus new
+source examples at reuse time, and proposal-only memory transfers from sequence
+to vector evidence over 8/8 changed held-out values. This is direct evidence
+that a structural failure plus new
 experience can expand and compress the learner's future search.
 
 The general-learning release gate still fails. The experience is one bounded
 synthetic scalar family; primitive operators and numeric channels are supplied;
-the memory lacks durable scalar reconstruction; cross-domain and interactive
-reuse are unmeasured; autonomous curriculum operation is not yet sustained
+the memory lacks durable scalar reconstruction; the two typed scalar frontends
+do not establish broad cross-domain transfer and interactive reuse is
+unmeasured; autonomous curriculum operation is not yet sustained
 across concurrent gaps; and no broad external evaluation improvement follows.
