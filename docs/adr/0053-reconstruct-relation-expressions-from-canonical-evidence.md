@@ -46,4 +46,3 @@ Remove the archive path if loaded fields can restore status, if replay imports
 producer authority, if altered lineage/schema/hash is accepted, if a
 single-cohort certificate promotes, or if runtime memory can accept an output
 without independent current-task verification.
-
