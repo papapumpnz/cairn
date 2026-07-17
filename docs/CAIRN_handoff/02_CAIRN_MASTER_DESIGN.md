@@ -2713,3 +2713,21 @@ and answer-hidden sequence→vector transfer replays 9/9 groups using two curren
 proposals. This is bounded new rule-structure invention, not a named composite
 operator. Arbitrary tree grammars, learned scalar operations, raw channels,
 durable CAS expression storage, and general intelligence remain open.
+
+## 52. Durable relation-expression reconstruction
+
+Relation-expression persistence follows the same evidence-not-authority law as
+primitive relation and observation-feature memory. Canonical cohort artifacts
+contain sorted raw observations, a semantic commitment, and verifier-derived
+work accounting. They exclude the learned AST, executable RKL, receipts,
+certificates, and module status. A recovered process must repeat invention and
+independent replay twice before a new promotion makes the mechanism available
+as a proposal source in `CognitionRuntime`.
+
+The frozen restart family restores zero authority, freshly reconstructs two
+cohorts, promotes once, retains the 4→1 expression and 4→0 example reduction,
+and emits one exact answer-hidden future proposal. A separate attempted
+full-binary-tree expansion made the unchanged evidence ambiguous; ADR-0052
+stops that path rather than imposing a hidden tie-break. Durable bounded reuse
+therefore passes, while arbitrary grammar invention and general intelligence
+remain open.

@@ -15,6 +15,7 @@ mod layer_memory;
 mod observation_predicate_memory;
 mod predicate_grouping_memory;
 mod raw_relation_memory;
+mod relation_expression_memory;
 
 pub use conditional_construction_memory::*;
 pub use construction_program_memory::*;
@@ -27,6 +28,7 @@ pub use layer_memory::*;
 pub use observation_predicate_memory::*;
 pub use predicate_grouping_memory::*;
 pub use raw_relation_memory::*;
+pub use relation_expression_memory::*;
 
 use cairn_cas::{Cas, CasError, StoredArtifact};
 use cairn_consolidator::{

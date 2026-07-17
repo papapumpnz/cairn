@@ -2,14 +2,14 @@
   "schema_version": "1.0",
   "bundle": "CAIRN_ARCHITECTURE_HANDOFF",
   "architecture": "CAIRN — Causal Analogical Induction over Relational Networks",
-  "generated_utc": "2026-07-13T20:57:32Z",
+  "generated_utc": "2026-07-17T05:15:28Z",
   "hash_algorithm": "SHA-256",
   "manifest_excludes": [
     "manifest.json",
     "manifest.sha256"
   ],
   "file_count": 63,
-  "total_bytes": 597847,
+  "total_bytes": 602458,
   "source_archives": [
     {
       "name": "mosasic_experiments.zip",
@@ -27,8 +27,8 @@
   "files": [
     {
       "path": "00_README.md",
-      "bytes": 17409,
-      "sha256": "cb6ad953c0cfcc88735763adb0fdd5cf4bfcb7a95a55794546d6943895d1a12f"
+      "bytes": 18013,
+      "sha256": "209bac1c36c037016f5b54637f7de24339dbf48d46837c9c59319e941eec3282"
     },
     {
       "path": "01_REVIEW_FINDINGS.md",
@@ -37,18 +37,18 @@
     },
     {
       "path": "02_CAIRN_MASTER_DESIGN.md",
-      "bytes": 113103,
-      "sha256": "3127b36660f17c7e7c73c0c9bc928596618c948cfc4252877c6111ca2b6d81b7"
+      "bytes": 114138,
+      "sha256": "2716a7c2dbc3c3a588aa8f9c597ff48c5ca63f6c073af4cad3f2acf845a88e6c"
     },
     {
       "path": "03_CAIRN_INTERFACES.md",
-      "bytes": 54404,
-      "sha256": "56e7330f5d9a839bb64064f398120b254c32de6d0d2023bbf1e6f239c1e9deed"
+      "bytes": 55253,
+      "sha256": "f4a2d4497a8deed69d76dd950d835de3b9a96bb007a142b28351923ad95e6a94"
     },
     {
       "path": "04_CAIRN_EXPERIMENT_LADDER.md",
-      "bytes": 48094,
-      "sha256": "9104116e787775f1455bdcf1cdd8c9de6701ad8badd3c844afc5629a700ffe34"
+      "bytes": 48913,
+      "sha256": "e57cbbef6bb2cfd0346735f664066a7b654cee81dfdc45c2129a7224499f5e01"
     },
     {
       "path": "05_CAIRN_SWARM_PROTOCOL.md",
@@ -67,8 +67,8 @@
     },
     {
       "path": "08_GENERAL_LEARNER_REQUIREMENTS.md",
-      "bytes": 78190,
-      "sha256": "f4f34f0b23d4ce731e079b5eb3de88090f76d369c242cf81c9d3f8d49be7ede9"
+      "bytes": 79114,
+      "sha256": "5f1f04aa2ee10324b8f689f3619233791bc63a55d4d3a09b76e11b5e3221e372"
     },
     {
       "path": "BIBLIOGRAPHY.md",
@@ -332,8 +332,8 @@
     },
     {
       "path": "work_packages/WP34.md",
-      "bytes": 17771,
-      "sha256": "ac4f86576595cc03c82313b2a94f58f53b9a21f1c6cca41220b6dcb4d125d2d4"
+      "bytes": 18151,
+      "sha256": "d43741c81c1ef900f02e18769feb7ae7697c5f50fa13e9f02b09d694e4755ab9"
     },
     {
       "path": "work_packages/index.json",

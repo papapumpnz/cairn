@@ -1352,3 +1352,19 @@ the certified language. `RelationExpressionPromotionConsolidator` requires two
 disjoint same-mechanism receipts and returns
 `VerifiedRelationExpressionPromotion`. `propose` accepts answer-hidden current
 evidence and emits untrusted binding/output alternatives only.
+
+## 40. Durable relation-expression evidence contracts
+
+`RelationExpressionCohortArtifact` uses schema
+`cairn.memory.relation-expression-cohort` version 1 and semantics 1.0.0. It
+stores sorted raw evidence, semantic commitment, replay count, and
+verifier-derived expression-work counts. It does not encode an expression,
+definition, receipt, certificate, or status.
+
+`RelationExpressionCohortArchive::load` returns untrusted evidence and `replay`
+performs fresh task learning plus independent verification.
+`RelationExpressionStore` requires two disjoint receipts and a complete-ledger
+`VerifiedRelationExpressionPromotion` before a module becomes persistent.
+`CognitionRuntime::propose_relation_expressions_from_memory` binds persistent
+modules to current answer-hidden traces and returns proposals and work counts;
+it has no acceptance authority.

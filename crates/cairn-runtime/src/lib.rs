@@ -20,7 +20,7 @@ use cairn_memory::{
     ExpansionStore, GroupMergeStore, GroupingMergeStore, InternalMechanismStore,
     LatentMechanismStore, LayerMechanismStore, MechanismStore, MemoryAssistedInventor,
     MemorySolveOutcome, ModuleStatus, ObservationPredicateStore, PredicateGroupingStore,
-    ProceduralMechanismModule, ProceduralMechanismStore, RawRelationStore,
+    ProceduralMechanismModule, ProceduralMechanismStore, RawRelationStore, RelationExpressionStore,
 };
 use cairn_rkl::{
     ExecLimits, ReferenceTheoryExecutor, RuntimeEnvironment, TheoryExecLimits,
@@ -39,8 +39,9 @@ use cairn_theory::{
     PredicateGroupingError, PredicateGroupingInventor, PredicateGroupingLimits,
     PrimitivePairEntity, RawEntityObservationTrace, RawGroupingError, RawGroupingEvidence,
     RawGroupingLimits, RawRelationGroupingInventor, RawRelationObservationInventor,
-    RawRelationObservationTrace, RelationAttributeBinding, RelationObservationError,
-    RelationObservationLimits, RelationalGeometryScene,
+    RawRelationObservationTrace, RelationAttributeBinding, RelationExpressionBinding,
+    RelationExpressionError, RelationExpressionInventor, RelationExpressionLimits,
+    RelationObservationError, RelationObservationLimits, RelationalGeometryScene,
 };
 use cairn_world::{
     ActionId, ActiveLatentInductionReport, ActiveLatentLimits, ActiveLatentWorldLearner,
@@ -67,6 +68,7 @@ pub struct CognitionRuntime {
     predicate_groupings: PredicateGroupingStore,
     observation_predicates: ObservationPredicateStore,
     raw_relations: RawRelationStore,
+    relation_expressions: RelationExpressionStore,
     knowledge: KnowledgeBase,
 }
 
@@ -230,6 +232,7 @@ pub enum CognitionError {
     ObservationPredicateMemory(ObservationPredicateMemoryRuntimeError),
     EntityObservationMemory(EntityObservationMemoryRuntimeError),
     RawRelationObservationMemory(RawRelationObservationMemoryRuntimeError),
+    RelationExpressionMemory(RelationExpressionMemoryRuntimeError),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -436,6 +439,27 @@ pub struct RawRelationObservationMemoryOutcome {
     pub relation_bindings_attempted: u64,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RelationExpressionMemoryRuntimeError {
+    NoVerifiedProposal,
+    Capacity,
+    InvalidEvidence,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RelationExpressionMemoryProposal {
+    pub mechanism: Hash32,
+    pub binding: RelationExpressionBinding,
+    pub output: BTreeSet<i64>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RelationExpressionMemoryOutcome {
+    pub proposals: Vec<RelationExpressionMemoryProposal>,
+    pub persistent_mechanisms_considered: u64,
+    pub relation_bindings_attempted: u64,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum InternalCompositionRuntimeError {
     UnavailableMechanism(Hash32),
@@ -460,6 +484,7 @@ impl CognitionRuntime {
             predicate_groupings: PredicateGroupingStore::new(),
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
+            relation_expressions: RelationExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -481,6 +506,7 @@ impl CognitionRuntime {
             predicate_groupings: PredicateGroupingStore::new(),
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
+            relation_expressions: RelationExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -505,6 +531,7 @@ impl CognitionRuntime {
             predicate_groupings: PredicateGroupingStore::new(),
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
+            relation_expressions: RelationExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -528,6 +555,7 @@ impl CognitionRuntime {
             predicate_groupings: PredicateGroupingStore::new(),
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
+            relation_expressions: RelationExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -551,6 +579,7 @@ impl CognitionRuntime {
             predicate_groupings: PredicateGroupingStore::new(),
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
+            relation_expressions: RelationExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -575,6 +604,7 @@ impl CognitionRuntime {
             predicate_groupings: PredicateGroupingStore::new(),
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
+            relation_expressions: RelationExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -599,6 +629,7 @@ impl CognitionRuntime {
             predicate_groupings: PredicateGroupingStore::new(),
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
+            relation_expressions: RelationExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -623,6 +654,7 @@ impl CognitionRuntime {
             predicate_groupings: PredicateGroupingStore::new(),
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
+            relation_expressions: RelationExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -645,6 +677,7 @@ impl CognitionRuntime {
             predicate_groupings: PredicateGroupingStore::new(),
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
+            relation_expressions: RelationExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -667,6 +700,7 @@ impl CognitionRuntime {
             predicate_groupings: PredicateGroupingStore::new(),
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
+            relation_expressions: RelationExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -689,6 +723,7 @@ impl CognitionRuntime {
             predicate_groupings: PredicateGroupingStore::new(),
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
+            relation_expressions: RelationExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -713,6 +748,7 @@ impl CognitionRuntime {
             predicate_groupings,
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
+            relation_expressions: RelationExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -736,6 +772,16 @@ impl CognitionRuntime {
     pub fn with_raw_relation_memory(raw_relations: RawRelationStore) -> Self {
         Self {
             raw_relations,
+            ..Self::new()
+        }
+    }
+
+    /// Construct a runtime with proof-gated complete relation-expression
+    /// mechanisms. Modules remain proposal-only.
+    #[must_use]
+    pub fn with_relation_expression_memory(relation_expressions: RelationExpressionStore) -> Self {
+        Self {
+            relation_expressions,
             ..Self::new()
         }
     }
@@ -861,6 +907,15 @@ impl CognitionRuntime {
     }
     pub const fn raw_relation_memory_mut(&mut self) -> &mut RawRelationStore {
         &mut self.raw_relations
+    }
+
+    #[must_use]
+    pub const fn relation_expression_memory(&self) -> &RelationExpressionStore {
+        &self.relation_expressions
+    }
+
+    pub const fn relation_expression_memory_mut(&mut self) -> &mut RelationExpressionStore {
+        &mut self.relation_expressions
     }
 
     #[must_use]
@@ -1814,6 +1869,74 @@ impl CognitionRuntime {
             ));
         }
         Ok(RawRelationObservationMemoryOutcome {
+            proposals,
+            persistent_mechanisms_considered,
+            relation_bindings_attempted,
+        })
+    }
+
+    /// Rebind proof-gated multi-operator expressions to current anonymous
+    /// attributes and emit untrusted answer-hidden proposals.
+    ///
+    /// # Errors
+    ///
+    /// Returns typed absence, malformed evidence, or an explicit capacity
+    /// terminal. This path has no answer-acceptance authority.
+    #[allow(clippy::too_many_arguments)]
+    pub fn propose_relation_expressions_from_memory(
+        &self,
+        trace: &RawRelationObservationTrace,
+        expression_limits: &RelationExpressionLimits,
+        entity_limits: EntityObservationLimits,
+        observation_limits: ObservationPredicateLimits,
+        predicate_limits: PredicateGroupingLimits,
+    ) -> Result<RelationExpressionMemoryOutcome, CognitionError> {
+        let mut proposals = Vec::new();
+        let mut persistent_mechanisms_considered = 0_u64;
+        let mut relation_bindings_attempted = 0_u64;
+        for module in self.relation_expressions.persistent_modules() {
+            persistent_mechanisms_considered = persistent_mechanisms_considered.saturating_add(1);
+            match RelationExpressionInventor.propose(
+                module.mechanism(),
+                trace,
+                expression_limits,
+                entity_limits,
+                observation_limits,
+                predicate_limits,
+            ) {
+                Ok(current) => {
+                    relation_bindings_attempted = relation_bindings_attempted
+                        .saturating_add(u64::try_from(current.len()).unwrap_or(u64::MAX));
+                    proposals.extend(current.into_iter().map(|proposal| {
+                        RelationExpressionMemoryProposal {
+                            mechanism: module.id(),
+                            binding: proposal.binding,
+                            output: proposal.output,
+                        }
+                    }));
+                }
+                Err(
+                    RelationExpressionError::Capacity
+                    | RelationExpressionError::Entity(EntityObservationError::Capacity),
+                ) => {
+                    return Err(CognitionError::RelationExpressionMemory(
+                        RelationExpressionMemoryRuntimeError::Capacity,
+                    ));
+                }
+                Err(RelationExpressionError::InvalidEvidence) => {
+                    return Err(CognitionError::RelationExpressionMemory(
+                        RelationExpressionMemoryRuntimeError::InvalidEvidence,
+                    ));
+                }
+                Err(_) => {}
+            }
+        }
+        if proposals.is_empty() {
+            return Err(CognitionError::RelationExpressionMemory(
+                RelationExpressionMemoryRuntimeError::NoVerifiedProposal,
+            ));
+        }
+        Ok(RelationExpressionMemoryOutcome {
             proposals,
             persistent_mechanisms_considered,
             relation_bindings_attempted,

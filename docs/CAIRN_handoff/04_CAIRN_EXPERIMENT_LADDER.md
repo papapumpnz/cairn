@@ -1093,3 +1093,18 @@ Next require durable evidence-only expression restart, broader tree/control
 structure, composition across interactive transitions and static relations,
 and learner-discovered primitive operators. This is not a general-intelligence
 claim.
+
+## G1/G2-DURABLE-RELATION-EXPRESSION
+
+Persist two independently verified expression cohorts using canonical evidence
+only. Destroy process state, recover the CAS, require zero restored authority,
+fresh invention, independent replay, two disjoint receipts, a new promotion,
+and one exact answer-hidden future proposal through the shared runtime. Reject
+missing lineage and insufficient replay capacity.
+
+Measured: two distinct artifacts; authority restored zero; cohorts freshly
+invented two; promotion one; expression structures 4→1; examples 4→0; future
+proposals 1/1 exact. A broader binary-tree experiment on the unchanged frozen
+family failed with exact ambiguity and is stopped under ADR-0052. Next require
+an independently frozen association-discrimination curriculum before reopening
+arbitrary tree growth.

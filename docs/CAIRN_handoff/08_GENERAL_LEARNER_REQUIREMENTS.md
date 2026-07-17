@@ -1416,3 +1416,20 @@ intelligence release boundary: the meta-grammar is left-associated and bounded,
 base operators and anonymous scalar channels are supplied, expression memory
 lacks durable CAS reconstruction, and broad autonomous interactive composition
 has not been demonstrated.
+
+## 61. Durable relation-expression checkpoint
+
+Two independently verified expression cohorts now persist as canonical raw
+evidence and commitments rather than learned authority. After complete process
+loss, a blank store has zero persistent modules, both cohorts are freshly
+re-invented and independently replayed, and a new consolidator certificate
+promotes one proposal-only expression. Future answer-hidden runtime use emits
+one proposal and it is exact; expression search remains 4→1 and source examples
+4→0.
+
+An attempted expansion to all binary-tree association shapes made the existing
+frozen evidence ambiguous. The system rejected it and retained the negative
+result under ADR-0052. The general-learning claim therefore still fails:
+association-discriminating curriculum generation, arbitrary control/recursion,
+learned primitive channels/operators, and broad static/interactive composition
+remain incomplete.

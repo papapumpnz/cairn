@@ -4,7 +4,9 @@ use cairn_curriculum::{
     SearchFailure, ValueClass, FAILURE_CORE_SEMANTICS_VERSION,
 };
 use cairn_invent::InventionLimits;
+use cairn_memory::RelationExpressionStore;
 use cairn_rkl::ExecLimits;
+use cairn_runtime::{CognitionError, CognitionRuntime, RelationExpressionMemoryRuntimeError};
 use cairn_sequence::{SequenceAdapter, SequenceAttributedPrimitiveObservation};
 use cairn_theory::{
     EntityObservationLimits, ObservationPredicateLimits, PredicateGroupingLimits,
@@ -234,6 +236,17 @@ fn promoted_operators_compose_into_an_omitted_nested_relation_program() {
         expression_promotion.mechanism(),
         learned[0].mechanism_hash().expect("hash")
     );
+    let mut expression_store = RelationExpressionStore::new();
+    let expression_id = expression_store
+        .insert_provisional(learned[0].source_independent())
+        .expect("provisional expression memory");
+    for receipt in &expression_receipts {
+        expression_store
+            .record_verified_reuse(expression_id, receipt.clone())
+            .expect("expression reuse ledger");
+    }
+    assert!(expression_store.apply_verified_promotion(expression_id, &expression_promotion));
+    let expression_runtime = CognitionRuntime::with_relation_expression_memory(expression_store);
 
     let held_out = [
         nested_episode(
@@ -275,15 +288,25 @@ fn promoted_operators_compose_into_an_omitted_nested_relation_program() {
         .expect("independent expression replay");
     assert_eq!(receipt.replayed_groups(), 9);
 
-    let source_independent = learned[0].source_independent();
     let mut proposal_attempts = 0_u64;
     for trace in &held_out {
         let expected = trace.outputs.clone();
         let mut answer_hidden = trace.clone();
         answer_hidden.outputs.clear();
-        let proposals = RelationExpressionInventor
-            .propose(
-                &source_independent,
+        assert_eq!(
+            CognitionRuntime::new().propose_relation_expressions_from_memory(
+                &answer_hidden,
+                &expression_limits,
+                entity_limits,
+                observation_limits,
+                predicate_limits,
+            ),
+            Err(CognitionError::RelationExpressionMemory(
+                RelationExpressionMemoryRuntimeError::NoVerifiedProposal
+            ))
+        );
+        let outcome = expression_runtime
+            .propose_relation_expressions_from_memory(
                 &answer_hidden,
                 &expression_limits,
                 entity_limits,
@@ -291,10 +314,14 @@ fn promoted_operators_compose_into_an_omitted_nested_relation_program() {
                 predicate_limits,
             )
             .expect("answer-hidden expression proposals");
+        assert_eq!(outcome.persistent_mechanisms_considered, 1);
         proposal_attempts = proposal_attempts
-            .checked_add(u64::try_from(proposals.len()).expect("proposal count"))
+            .checked_add(u64::try_from(outcome.proposals.len()).expect("proposal count"))
             .expect("proposal work");
-        assert!(proposals.iter().any(|proposal| proposal.output == expected));
+        assert!(outcome
+            .proposals
+            .iter()
+            .any(|proposal| proposal.output == expected));
     }
     assert_eq!(proposal_attempts, 2);
 
