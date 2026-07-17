@@ -282,4 +282,14 @@ serializing authority. Two canonical cohorts restore zero status, are freshly
 re-invented and independently replayed, regain one promotion, and yield one
 exact answer-hidden future proposal through the shared cognition runtime.
 
+ADR-0054 reopens broader association only through a content-free ambiguity
+curriculum and separately verified shape-extension certificate. A relation-only
+contrast first confirmed that equality partitions erase association; CAIRN now
+retains exact scalar results in a distinct evidence path. Two independent
+cohorts invent and promote `subtract(p0,minimum(p1,p2))`, reduce bounded
+expression structures 8→1 and examples 4→0, and cover 8/8 changed held-out
+values through proposal-only runtime memory. Operators, scalar channels, and
+tree bounds remain supplied, so this is bounded mechanism learning rather than
+general intelligence.
+
 The reference implementation is Rust with small, audited C/C++ solver dependencies when justified. The baseline machine is one commodity 8-core CPU with 16 GB RAM. The system must also support multi-process and multi-node CPU swarms through content-addressed, proof-carrying artifacts.

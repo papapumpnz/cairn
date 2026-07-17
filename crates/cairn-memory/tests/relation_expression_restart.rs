@@ -12,7 +12,8 @@ use cairn_rkl::ExecLimits;
 use cairn_theory::{
     EntityObservationLimits, ObservationPredicateLimits, PredicateGroupingLimits,
     RawAttributedObservationPrimitive, RawRelationObservationTrace, RelationExpressionError,
-    RelationExpressionInventor, RelationExpressionLimits, RelationKeyOperator,
+    RelationExpressionInventor, RelationExpressionLimits, RelationExpressionShapePolicy,
+    RelationKeyOperator,
 };
 use cairn_verifier::{RelationExpressionPromotionConsolidator, RelationExpressionVerifier};
 use std::collections::{BTreeMap, BTreeSet, HashSet};
@@ -36,6 +37,7 @@ fn expression_memory_is_reinvented_and_repromoted_after_process_loss() {
         maximum_candidates: 1_024,
         maximum_relation_evaluations: 100_000_000,
         maximum_absolute_attribute: 1_000_000_000,
+        shape_policy: RelationExpressionShapePolicy::LeftAssociated,
     };
     let entity_limits = EntityObservationLimits::default();
     let observation_limits = ObservationPredicateLimits::default();

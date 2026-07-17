@@ -14,6 +14,7 @@ use std::fmt;
 
 pub const FAILURE_CORE_SEMANTICS_VERSION: &str = "1.0.0";
 pub const DEVELOPMENTAL_CURRICULUM_SEMANTICS_VERSION: &str = "1.3.0";
+pub const HYPOTHESIS_AMBIGUITY_SEMANTICS_VERSION: &str = "1.0.0";
 pub const CURRICULUM_CHECKPOINT_SCHEMA: &str = "cairn.curriculum.checkpoint";
 pub const CURRICULUM_CHECKPOINT_SCHEMA_VERSION: u32 = 1;
 
@@ -494,6 +495,133 @@ pub enum DevelopmentalNeed {
     RelationalStructure,
     MechanismComposition,
     ValueLaw,
+    HypothesisDiscrimination,
+}
+
+/// Content-free report that multiple exact hypotheses survived one bounded
+/// learner. It contains no observation, expected result, expression, operator,
+/// variable name, task identifier, or domain label.
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct HypothesisAmbiguityCore {
+    pub semantics_version: String,
+    pub hypothesis_class: HypothesisClass,
+    pub parameter_arity: u32,
+    pub surviving_hypotheses: u64,
+    pub redaction: RedactionStatus,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum HypothesisClass {
+    ExpressionAssociation,
+}
+
+/// Opaque authority to request contrasts between expression associations. It
+/// does not identify or rank any candidate hypothesis.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct HypothesisDiscriminationRequest {
+    ambiguity_core: Hash32,
+    parameter_arity: u32,
+    minimum_independent_contrasts: u32,
+}
+
+impl HypothesisDiscriminationRequest {
+    #[must_use]
+    pub const fn ambiguity_core(&self) -> Hash32 {
+        self.ambiguity_core
+    }
+
+    #[must_use]
+    pub const fn parameter_arity(&self) -> u32 {
+        self.parameter_arity
+    }
+
+    #[must_use]
+    pub const fn minimum_independent_contrasts(&self) -> u32 {
+        self.minimum_independent_contrasts
+    }
+}
+
+/// Generated objective and opaque request for a separately governed contrast
+/// materializer.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct GeneratedDiscriminationObjective {
+    pub objective: DevelopmentalObjective,
+    pub need: DevelopmentalNeed,
+    request: HypothesisDiscriminationRequest,
+}
+
+impl GeneratedDiscriminationObjective {
+    #[must_use]
+    pub const fn request(&self) -> HypothesisDiscriminationRequest {
+        self.request
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DiscriminationObjectiveError {
+    UnsupportedSemantics,
+    RestrictedContent,
+    InvalidEvidence,
+    Canonicalization,
+}
+
+/// Generate an information-seeking objective from ambiguity alone.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct AmbiguityDrivenObjectiveGenerator;
+
+impl AmbiguityDrivenObjectiveGenerator {
+    /// Produce a deterministic contrast objective without selecting a winning
+    /// hypothesis or exposing source content.
+    ///
+    /// # Errors
+    ///
+    /// Rejects unsupported semantics, restricted content, fewer than two
+    /// surviving hypotheses, or expression arity below three.
+    pub fn generate(
+        &self,
+        core: &HypothesisAmbiguityCore,
+        active_support: &BTreeSet<MechanismTarget>,
+    ) -> Result<GeneratedDiscriminationObjective, DiscriminationObjectiveError> {
+        if core.semantics_version != HYPOTHESIS_AMBIGUITY_SEMANTICS_VERSION {
+            return Err(DiscriminationObjectiveError::UnsupportedSemantics);
+        }
+        if core.redaction != RedactionStatus::ContentFree {
+            return Err(DiscriminationObjectiveError::RestrictedContent);
+        }
+        if core.hypothesis_class != HypothesisClass::ExpressionAssociation
+            || core.parameter_arity < 3
+            || core.surviving_hypotheses < 2
+        {
+            return Err(DiscriminationObjectiveError::InvalidEvidence);
+        }
+        let ambiguity_core = hypothesis_ambiguity_hash(core)?;
+        let prerequisites = active_support
+            .iter()
+            .take(3)
+            .cloned()
+            .collect::<BTreeSet<_>>();
+        let identity = generated_objective_hash(ambiguity_core, &prerequisites)
+            .map_err(|_| DiscriminationObjectiveError::Canonicalization)?;
+        let suffix = identity.to_hex();
+        Ok(GeneratedDiscriminationObjective {
+            objective: DevelopmentalObjective {
+                id: ExperienceId(format!("generated-discrimination-{suffix}")),
+                axis: LearningAxis::Composition,
+                produces: MechanismTarget(format!("mechanism-discrimination-{suffix}")),
+                prerequisites,
+                competing_hypotheses: core.surviving_hypotheses,
+                expected_transfer_microunits: core.surviving_hypotheses.saturating_mul(1_000_000),
+                action_cost: u64::from(core.parameter_arity),
+                irreversible_risk: 0,
+            },
+            need: DevelopmentalNeed::HypothesisDiscrimination,
+            request: HypothesisDiscriminationRequest {
+                ambiguity_core,
+                parameter_arity: core.parameter_arity,
+                minimum_independent_contrasts: 2,
+            },
+        })
+    }
 }
 
 /// Deterministic content-free proposal generated from one redacted failure
@@ -609,7 +737,8 @@ impl FailureDrivenObjectiveGenerator {
             DevelopmentalNeed::LatentContext => LearningAxis::CausalLaw,
             DevelopmentalNeed::VariableCardinality => LearningAxis::Cardinality,
             DevelopmentalNeed::RelationalStructure => LearningAxis::Layout,
-            DevelopmentalNeed::MechanismComposition => LearningAxis::Composition,
+            DevelopmentalNeed::MechanismComposition
+            | DevelopmentalNeed::HypothesisDiscrimination => LearningAxis::Composition,
             DevelopmentalNeed::ValueLaw => LearningAxis::Value,
         };
         let prerequisites = if need == DevelopmentalNeed::MechanismComposition {
@@ -718,6 +847,27 @@ fn failure_core_hash(core: &LearningFailureCore) -> Result<Hash32, ObjectiveGene
         .encode_canonical()
         .map(|bytes| Hash32::digest(&bytes))
         .map_err(|_| ObjectiveGenerationError::Canonicalization)
+}
+
+fn hypothesis_ambiguity_hash(
+    core: &HypothesisAmbiguityCore,
+) -> Result<Hash32, DiscriminationObjectiveError> {
+    CanonicalValue::Array(vec![
+        CanonicalValue::Text("cairn.hypothesis-ambiguity.v1".to_owned()),
+        CanonicalValue::Text(core.semantics_version.clone()),
+        CanonicalValue::Unsigned(match core.hypothesis_class {
+            HypothesisClass::ExpressionAssociation => 0,
+        }),
+        CanonicalValue::Unsigned(u64::from(core.parameter_arity)),
+        CanonicalValue::Unsigned(core.surviving_hypotheses),
+        CanonicalValue::Unsigned(match core.redaction {
+            RedactionStatus::ContentFree => 0,
+            RedactionStatus::ContainsRestrictedContent => 1,
+        }),
+    ])
+    .encode_canonical()
+    .map(|bytes| Hash32::digest(&bytes))
+    .map_err(|_| DiscriminationObjectiveError::Canonicalization)
 }
 
 fn generated_objective_hash(

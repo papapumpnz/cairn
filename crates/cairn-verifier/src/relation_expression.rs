@@ -5,14 +5,15 @@ use crate::{
     VerifiedRawRelationObservationPromotion,
 };
 use cairn_core::{EntityId, Hash32, RelationRecord, RelationRole};
-use cairn_curriculum::RelationLanguageGrowthRequest;
+use cairn_curriculum::{HypothesisDiscriminationRequest, RelationLanguageGrowthRequest};
 use cairn_rkl::{BinaryOp, Binder, Definition, ExecLimits, Expr, IntRange, Type, VarName};
 use cairn_theory::{
-    EntityObservationLimits, LearnedRelationExpressionGrouping, ObservationPredicateLimits,
-    PredicateGroupingLimits, RawEntityObservationEvidence, RawEntityObservationTrace,
-    RawObservationPrimitive, RawRelationMechanism, RawRelationObservationTrace,
-    RelationExpressionBinding, RelationExpressionLimits, RelationKeyExpression,
-    RelationKeyOperator,
+    EntityObservationLimits, LearnedRelationExpressionGrouping, LearnedScalarExpression,
+    ObservationPredicateLimits, PredicateGroupingLimits, RawEntityObservationEvidence,
+    RawEntityObservationTrace, RawObservationPrimitive, RawRelationMechanism,
+    RawRelationObservationTrace, RelationExpressionBinding, RelationExpressionLimits,
+    RelationExpressionShapePolicy, RelationKeyExpression, RelationKeyOperator,
+    ScalarExpressionTrace,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -99,6 +100,105 @@ pub enum RelationExpressionLanguageError {
     Capacity,
 }
 
+/// Policy bounds for opening additional expression-tree shapes after an exact
+/// ambiguity is converted into a content-free discrimination objective.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct RelationExpressionShapeExtensionLimits {
+    pub maximum_parameter_arity: u32,
+    pub maximum_binary_nodes: u32,
+}
+
+impl Default for RelationExpressionShapeExtensionLimits {
+    fn default() -> Self {
+        Self {
+            maximum_parameter_arity: 8,
+            maximum_binary_nodes: 7,
+        }
+    }
+}
+
+/// Opaque proposal-language authority. It exposes tree shapes but supplies no
+/// expression, binding, observation, or answer.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct VerifiedRelationExpressionShapeExtension {
+    ambiguity_core: Hash32,
+    parameter_arity: u32,
+    maximum_binary_nodes: u32,
+}
+
+impl VerifiedRelationExpressionShapeExtension {
+    #[must_use]
+    pub const fn ambiguity_core(&self) -> Hash32 {
+        self.ambiguity_core
+    }
+
+    /// Apply full-tree reachability only to the exact language/arity that
+    /// produced the ambiguity request.
+    ///
+    /// # Errors
+    ///
+    /// Rejects language, arity, operator, or node-bound mismatch.
+    pub fn apply(
+        &self,
+        language: &VerifiedRelationExpressionLanguage,
+        mut limits: RelationExpressionLimits,
+    ) -> Result<RelationExpressionLimits, RelationExpressionShapeExtensionError> {
+        if language.parameter_arity != self.parameter_arity
+            || language.maximum_binary_nodes != self.maximum_binary_nodes
+            || limits.parameter_arity != usize::try_from(self.parameter_arity).unwrap_or(usize::MAX)
+            || limits.maximum_binary_nodes != self.maximum_binary_nodes
+            || limits.permitted_binary_operators != language.operators
+        {
+            return Err(RelationExpressionShapeExtensionError::LanguageMismatch);
+        }
+        limits.shape_policy = RelationExpressionShapePolicy::FullBinaryTrees;
+        Ok(limits)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RelationExpressionShapeExtensionError {
+    InvalidRequest,
+    LanguageMismatch,
+    Capacity,
+}
+
+/// Convert a redacted ambiguity request into bounded tree-shape reachability.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct RelationExpressionShapeExtensionConsolidator;
+
+impl RelationExpressionShapeExtensionConsolidator {
+    /// Issue no authority unless the request matches an already proof-gated
+    /// expression language and requires independent contrasts.
+    ///
+    /// # Errors
+    ///
+    /// Rejects mismatched arity, insufficient contrasts, or policy caps.
+    pub fn consolidate(
+        &self,
+        language: &VerifiedRelationExpressionLanguage,
+        request: &HypothesisDiscriminationRequest,
+        limits: RelationExpressionShapeExtensionLimits,
+    ) -> Result<VerifiedRelationExpressionShapeExtension, RelationExpressionShapeExtensionError>
+    {
+        if request.minimum_independent_contrasts() < 2
+            || request.parameter_arity() != language.parameter_arity
+        {
+            return Err(RelationExpressionShapeExtensionError::InvalidRequest);
+        }
+        if request.parameter_arity() > limits.maximum_parameter_arity
+            || language.maximum_binary_nodes > limits.maximum_binary_nodes
+        {
+            return Err(RelationExpressionShapeExtensionError::Capacity);
+        }
+        Ok(VerifiedRelationExpressionShapeExtension {
+            ambiguity_core: request.ambiguity_core(),
+            parameter_arity: language.parameter_arity,
+            maximum_binary_nodes: language.maximum_binary_nodes,
+        })
+    }
+}
+
 /// Separate authority converting multiple promoted operators and a redacted
 /// structural failure into a bounded expression-composition language.
 #[derive(Clone, Copy, Debug, Default)]
@@ -177,6 +277,227 @@ pub struct VerifiedRelationExpressionGrouping {
     mechanism: Hash32,
     experiences: BTreeSet<Hash32>,
     replayed_groups: u64,
+}
+
+/// Opaque exact replay and search-reduction evidence for one scalar-expression
+/// cohort.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedScalarExpressionReuse {
+    mechanism: Hash32,
+    experiences: BTreeSet<Hash32>,
+    replayed_examples: u64,
+    expressions_without: u64,
+    expressions_with: u64,
+}
+
+impl VerifiedScalarExpressionReuse {
+    #[must_use]
+    pub const fn mechanism(&self) -> Hash32 {
+        self.mechanism
+    }
+
+    #[must_use]
+    pub const fn experiences(&self) -> &BTreeSet<Hash32> {
+        &self.experiences
+    }
+
+    #[must_use]
+    pub const fn replayed_examples(&self) -> u64 {
+        self.replayed_examples
+    }
+
+    #[must_use]
+    pub const fn expressions_without(&self) -> u64 {
+        self.expressions_without
+    }
+
+    #[must_use]
+    pub const fn expressions_with(&self) -> u64 {
+        self.expressions_with
+    }
+}
+
+/// Opaque two-cohort promotion for a source-independent scalar expression.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VerifiedScalarExpressionPromotion {
+    mechanism: Hash32,
+    experiences: BTreeSet<Hash32>,
+    verified_reuses: u32,
+    expressions_saved: u64,
+}
+
+impl VerifiedScalarExpressionPromotion {
+    #[must_use]
+    pub const fn mechanism(&self) -> Hash32 {
+        self.mechanism
+    }
+
+    #[must_use]
+    pub const fn experiences(&self) -> &BTreeSet<Hash32> {
+        &self.experiences
+    }
+
+    #[must_use]
+    pub const fn verified_reuses(&self) -> u32 {
+        self.verified_reuses
+    }
+
+    #[must_use]
+    pub const fn expressions_saved(&self) -> u64 {
+        self.expressions_saved
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ScalarExpressionVerifyError {
+    InsufficientEvidence,
+    DuplicateExperience,
+    BindingMismatch,
+    InvalidEvidence,
+    Definition,
+    Execution,
+    Capacity,
+    Canonicalization,
+}
+
+/// Independent exact replay for scalar-valued expression mechanisms.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ScalarExpressionVerifier;
+
+impl ScalarExpressionVerifier {
+    /// Rebuild RKL and scalar evaluation without using producer execution.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed evidence, binding/definition mismatch, overflow, or
+    /// any wrong scalar output.
+    pub fn verify_reuse(
+        &self,
+        learned: &LearnedScalarExpression,
+        traces: &[ScalarExpressionTrace],
+        limits: &RelationExpressionLimits,
+    ) -> Result<VerifiedScalarExpressionReuse, ScalarExpressionVerifyError> {
+        if traces.len() < 2 {
+            return Err(ScalarExpressionVerifyError::InsufficientEvidence);
+        }
+        let experiences = traces
+            .iter()
+            .map(|trace| trace.experience)
+            .collect::<BTreeSet<_>>();
+        if experiences.len() != traces.len() {
+            return Err(ScalarExpressionVerifyError::DuplicateExperience);
+        }
+        if learned
+            .selected_bindings
+            .keys()
+            .copied()
+            .collect::<BTreeSet<_>>()
+            != experiences
+        {
+            return Err(ScalarExpressionVerifyError::BindingMismatch);
+        }
+        let expected_definition = verifier_scalar_definition(&learned.expression, limits)?;
+        if learned.definition != expected_definition {
+            return Err(ScalarExpressionVerifyError::Definition);
+        }
+        let mut replayed_examples = 0_u64;
+        for trace in traces {
+            let binding = learned
+                .selected_bindings
+                .get(&trace.experience)
+                .ok_or(ScalarExpressionVerifyError::BindingMismatch)?;
+            if trace.examples.len() < 3 {
+                return Err(ScalarExpressionVerifyError::InvalidEvidence);
+            }
+            for example in &trace.examples {
+                replayed_examples = replayed_examples
+                    .checked_add(1)
+                    .ok_or(ScalarExpressionVerifyError::Capacity)?;
+                if verifier_evaluate(&learned.expression, &example.inputs, binding).map_err(
+                    |error| match error {
+                        RelationExpressionVerifyError::Capacity => {
+                            ScalarExpressionVerifyError::Capacity
+                        }
+                        RelationExpressionVerifyError::RelationExecution => {
+                            ScalarExpressionVerifyError::Execution
+                        }
+                        _ => ScalarExpressionVerifyError::InvalidEvidence,
+                    },
+                )? != example.output
+                {
+                    return Err(ScalarExpressionVerifyError::InvalidEvidence);
+                }
+            }
+        }
+        let expressions_without = verifier_expression_structure_count(limits)
+            .map_err(|_| ScalarExpressionVerifyError::Capacity)?;
+        if learned.expression_candidates != expressions_without || expressions_without <= 1 {
+            return Err(ScalarExpressionVerifyError::InvalidEvidence);
+        }
+        Ok(VerifiedScalarExpressionReuse {
+            mechanism: learned
+                .mechanism_hash()
+                .map_err(|_| ScalarExpressionVerifyError::Canonicalization)?,
+            experiences,
+            replayed_examples,
+            expressions_without,
+            expressions_with: 1,
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ScalarExpressionPromotionError {
+    InsufficientEvidence,
+    MixedMechanism,
+    OverlappingExperience,
+    NoLearningReduction,
+    Capacity,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ScalarExpressionPromotionConsolidator;
+
+impl ScalarExpressionPromotionConsolidator {
+    /// Require two disjoint exact cohorts before proposal-only promotion.
+    ///
+    /// # Errors
+    ///
+    /// Rejects mixed identity, overlapping evidence, missing reduction, or
+    /// accounting overflow.
+    pub fn consolidate(
+        &self,
+        receipts: &[VerifiedScalarExpressionReuse],
+    ) -> Result<VerifiedScalarExpressionPromotion, ScalarExpressionPromotionError> {
+        if receipts.len() < 2 {
+            return Err(ScalarExpressionPromotionError::InsufficientEvidence);
+        }
+        let mechanism = receipts[0].mechanism;
+        let mut experiences = BTreeSet::new();
+        let mut expressions_saved = 0_u64;
+        for receipt in receipts {
+            if receipt.mechanism != mechanism {
+                return Err(ScalarExpressionPromotionError::MixedMechanism);
+            }
+            if !experiences.is_disjoint(&receipt.experiences) {
+                return Err(ScalarExpressionPromotionError::OverlappingExperience);
+            }
+            if receipt.expressions_without <= receipt.expressions_with {
+                return Err(ScalarExpressionPromotionError::NoLearningReduction);
+            }
+            experiences.extend(receipt.experiences.iter().copied());
+            expressions_saved = expressions_saved
+                .checked_add(receipt.expressions_without - receipt.expressions_with)
+                .ok_or(ScalarExpressionPromotionError::Capacity)?;
+        }
+        Ok(VerifiedScalarExpressionPromotion {
+            mechanism,
+            experiences,
+            verified_reuses: u32::try_from(receipts.len())
+                .map_err(|_| ScalarExpressionPromotionError::Capacity)?,
+            expressions_saved,
+        })
+    }
 }
 
 /// Opaque evidence that one learned expression replayed a disjoint cohort and
@@ -444,13 +765,7 @@ impl RelationExpressionVerifier {
             predicate_limits,
             execution_limits,
         )?;
-        let operator_count = u64::try_from(expression_limits.permitted_binary_operators.len())
-            .map_err(|_| RelationExpressionVerifyError::Capacity)?;
-        let exponent = u32::try_from(expression_limits.parameter_arity.saturating_sub(1))
-            .map_err(|_| RelationExpressionVerifyError::Capacity)?;
-        let expressions_without = operator_count
-            .checked_pow(exponent)
-            .ok_or(RelationExpressionVerifyError::Capacity)?;
+        let expressions_without = verifier_expression_structure_count(expression_limits)?;
         if expressions_without <= 1 || learned.expression_candidates != expressions_without {
             return Err(RelationExpressionVerifyError::InvalidEvidence);
         }
@@ -462,6 +777,42 @@ impl RelationExpressionVerifier {
             expressions_with: 1,
         })
     }
+}
+
+fn verifier_expression_structure_count(
+    limits: &RelationExpressionLimits,
+) -> Result<u64, RelationExpressionVerifyError> {
+    let internal_nodes = limits.parameter_arity.saturating_sub(1);
+    let operator_count = u64::try_from(limits.permitted_binary_operators.len())
+        .map_err(|_| RelationExpressionVerifyError::Capacity)?;
+    let exponent =
+        u32::try_from(internal_nodes).map_err(|_| RelationExpressionVerifyError::Capacity)?;
+    let operator_assignments = operator_count
+        .checked_pow(exponent)
+        .ok_or(RelationExpressionVerifyError::Capacity)?;
+    if limits.shape_policy == RelationExpressionShapePolicy::LeftAssociated {
+        return Ok(operator_assignments);
+    }
+
+    // Independent Catalan recurrence for the producer's full-tree shape count.
+    let mut catalan = vec![0_u64; internal_nodes.saturating_add(1)];
+    catalan[0] = 1;
+    for nodes in 1..=internal_nodes {
+        let mut count = 0_u64;
+        for left_nodes in 0..nodes {
+            count = count
+                .checked_add(
+                    catalan[left_nodes]
+                        .checked_mul(catalan[nodes - 1 - left_nodes])
+                        .ok_or(RelationExpressionVerifyError::Capacity)?,
+                )
+                .ok_or(RelationExpressionVerifyError::Capacity)?;
+        }
+        catalan[nodes] = count;
+    }
+    catalan[internal_nodes]
+        .checked_mul(operator_assignments)
+        .ok_or(RelationExpressionVerifyError::Capacity)
 }
 
 fn verifier_materialize(
@@ -622,6 +973,48 @@ fn verifier_definition(
             left: Box::new(verifier_lower(expression, &left)?),
             right: Box::new(verifier_lower(expression, &right)?),
         },
+        recursion: None,
+        proof_annotations: Vec::new(),
+    })
+}
+
+fn verifier_scalar_definition(
+    expression: &RelationKeyExpression,
+    limits: &RelationExpressionLimits,
+) -> Result<Definition, ScalarExpressionVerifyError> {
+    let arity = usize::try_from(expression.parameter_count())
+        .map_err(|_| ScalarExpressionVerifyError::Capacity)?;
+    if arity != limits.parameter_arity
+        || expression.binary_node_count() > limits.maximum_binary_nodes
+    {
+        return Err(ScalarExpressionVerifyError::Definition);
+    }
+    let variables = (0..arity)
+        .map(|index| VarName(format!("attribute_{index}")))
+        .collect::<Vec<_>>();
+    let output_bound = limits
+        .maximum_absolute_attribute
+        .checked_mul(i64::from(expression.binary_node_count()).saturating_add(1))
+        .ok_or(ScalarExpressionVerifyError::Capacity)?;
+    Ok(Definition {
+        name: "invented_scalar_expression".to_owned(),
+        parameters: variables
+            .iter()
+            .cloned()
+            .map(|name| Binder {
+                name,
+                ty: Type::Int(IntRange {
+                    lower: -limits.maximum_absolute_attribute,
+                    upper: limits.maximum_absolute_attribute,
+                }),
+            })
+            .collect(),
+        return_type: Type::Int(IntRange {
+            lower: -output_bound,
+            upper: output_bound,
+        }),
+        body: verifier_lower(expression, &variables)
+            .map_err(|_| ScalarExpressionVerifyError::Definition)?,
         recursion: None,
         proof_annotations: Vec::new(),
     })

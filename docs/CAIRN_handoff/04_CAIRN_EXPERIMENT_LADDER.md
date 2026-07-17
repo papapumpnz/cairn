@@ -1108,3 +1108,25 @@ proposals 1/1 exact. A broader binary-tree experiment on the unchanged frozen
 family failed with exact ambiguity and is stopped under ADR-0052. Next require
 an independently frozen association-discrimination curriculum before reopening
 arbitrary tree growth.
+
+## G0/G1/G2/G6-ASSOCIATION-DISCRIMINATION-CURRICULUM
+
+Start from a verified two-operator language whose default expression grammar is
+left-associated. Generate a content-free discrimination objective from an
+association ambiguity. Require a separate certificate before full bounded tree
+shapes become reachable, retain exact scalar results, jointly learn anonymous
+channel bindings and expression structure, replay through an independent
+evaluator, promote from two disjoint cohorts, and rebind through shared runtime
+memory on changed held-out values.
+
+Measured: left-only exact theories zero; tree shapes 1→2; eight expression
+structures reduce to one; both cohorts select
+`subtract(p0,minimum(p1,p2))`; receipts save 14 structures; examples fall
+4→0; and runtime memory covers 8/8 held-out cases after 96 current bindings.
+Wrong-arity requests accept zero. Relation-only evidence remains insufficient
+because equality partitions erase association.
+
+Next require evidence-only cold restart of scalar mechanisms, transfer through
+at least two unrelated adapters, learner-invented primitive scalar operations,
+and sustained autonomous selection among simultaneous static and interactive
+ambiguities. This is not a general-intelligence claim.

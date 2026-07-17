@@ -1,8 +1,10 @@
 use cairn_curriculum::{
-    AutonomousCurriculum, AutonomousCurriculumError, DeterminismStatus, DevelopmentalNeed,
-    DevelopmentalObjective, DevelopmentalOutcome, ExperienceId, FailureDrivenObjectiveGenerator,
-    LearningAxis, LearningFailureCore, MechanismTarget, ObjectiveGenerationError, RedactionStatus,
-    SearchFailure, ValueClass, FAILURE_CORE_SEMANTICS_VERSION,
+    AmbiguityDrivenObjectiveGenerator, AutonomousCurriculum, AutonomousCurriculumError,
+    DeterminismStatus, DevelopmentalNeed, DevelopmentalObjective, DevelopmentalOutcome,
+    DiscriminationObjectiveError, ExperienceId, FailureDrivenObjectiveGenerator,
+    HypothesisAmbiguityCore, HypothesisClass, LearningAxis, LearningFailureCore, MechanismTarget,
+    ObjectiveGenerationError, RedactionStatus, SearchFailure, ValueClass,
+    FAILURE_CORE_SEMANTICS_VERSION, HYPOTHESIS_AMBIGUITY_SEMANTICS_VERSION,
 };
 use std::collections::BTreeSet;
 
@@ -113,6 +115,43 @@ fn generated_objective_enters_a_live_curriculum_and_replays_at_its_event_boundar
     assert_eq!(
         restored.add_objective(generated.objective),
         Err(AutonomousCurriculumError::ObjectiveAdmissionWhileOutstanding)
+    );
+}
+
+#[test]
+fn expression_ambiguity_generates_only_a_content_free_discrimination_request() {
+    let support = BTreeSet::from([
+        MechanismTarget("operator-a".to_owned()),
+        MechanismTarget("operator-b".to_owned()),
+    ]);
+    let core = HypothesisAmbiguityCore {
+        semantics_version: HYPOTHESIS_AMBIGUITY_SEMANTICS_VERSION.to_owned(),
+        hypothesis_class: HypothesisClass::ExpressionAssociation,
+        parameter_arity: 3,
+        surviving_hypotheses: 2,
+        redaction: RedactionStatus::ContentFree,
+    };
+    let generated = AmbiguityDrivenObjectiveGenerator
+        .generate(&core, &support)
+        .expect("discrimination objective");
+    assert_eq!(generated.need, DevelopmentalNeed::HypothesisDiscrimination);
+    assert_eq!(generated.objective.axis, LearningAxis::Composition);
+    assert_eq!(generated.objective.prerequisites, support);
+    assert_eq!(generated.objective.competing_hypotheses, 2);
+    assert_eq!(generated.request().parameter_arity(), 3);
+    assert_eq!(generated.request().minimum_independent_contrasts(), 2);
+
+    let mut restricted = core.clone();
+    restricted.redaction = RedactionStatus::ContainsRestrictedContent;
+    assert_eq!(
+        AmbiguityDrivenObjectiveGenerator.generate(&restricted, &BTreeSet::new()),
+        Err(DiscriminationObjectiveError::RestrictedContent)
+    );
+    let mut singular = core;
+    singular.surviving_hypotheses = 1;
+    assert_eq!(
+        AmbiguityDrivenObjectiveGenerator.generate(&singular, &BTreeSet::new()),
+        Err(DiscriminationObjectiveError::InvalidEvidence)
     );
 }
 

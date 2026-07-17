@@ -1433,3 +1433,24 @@ result under ADR-0052. The general-learning claim therefore still fails:
 association-discriminating curriculum generation, arbitrary control/recursion,
 learned primitive channels/operators, and broad static/interactive composition
 remain incomplete.
+
+## 62. Association-discriminated scalar-expression checkpoint
+
+A content-free ambiguity artifact now changes future representational search
+without encoding a solution. The learner keeps scalar results that relation
+partitions previously discarded, searches both bounded association shapes,
+learns anonymous-channel bindings, compiles the result to RKL, and passes
+separate verifier reconstruction before two-cohort promotion.
+
+The left-only language has no exact theory. After the generated shape request,
+two independent cohorts select the same previously unreachable expression from
+eight structures. Verified promotion saves 14 structures, removes all four
+source examples at reuse time, and proposal-only memory covers 8/8 changed
+held-out values. This is direct evidence that a structural failure plus new
+experience can expand and compress the learner's future search.
+
+The general-learning release gate still fails. The experience is one bounded
+synthetic scalar family; primitive operators and numeric channels are supplied;
+the memory lacks durable scalar reconstruction; cross-domain and interactive
+reuse are unmeasured; autonomous curriculum operation is not yet sustained
+across concurrent gaps; and no broad external evaluation improvement follows.

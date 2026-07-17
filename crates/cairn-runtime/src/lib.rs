@@ -21,6 +21,7 @@ use cairn_memory::{
     LatentMechanismStore, LayerMechanismStore, MechanismStore, MemoryAssistedInventor,
     MemorySolveOutcome, ModuleStatus, ObservationPredicateStore, PredicateGroupingStore,
     ProceduralMechanismModule, ProceduralMechanismStore, RawRelationStore, RelationExpressionStore,
+    ScalarExpressionStore,
 };
 use cairn_rkl::{
     ExecLimits, ReferenceTheoryExecutor, RuntimeEnvironment, TheoryExecLimits,
@@ -42,6 +43,7 @@ use cairn_theory::{
     RawRelationObservationTrace, RelationAttributeBinding, RelationExpressionBinding,
     RelationExpressionError, RelationExpressionInventor, RelationExpressionLimits,
     RelationObservationError, RelationObservationLimits, RelationalGeometryScene,
+    ScalarExpressionError, ScalarExpressionInventor,
 };
 use cairn_world::{
     ActionId, ActiveLatentInductionReport, ActiveLatentLimits, ActiveLatentWorldLearner,
@@ -69,6 +71,7 @@ pub struct CognitionRuntime {
     observation_predicates: ObservationPredicateStore,
     raw_relations: RawRelationStore,
     relation_expressions: RelationExpressionStore,
+    scalar_expressions: ScalarExpressionStore,
     knowledge: KnowledgeBase,
 }
 
@@ -233,6 +236,7 @@ pub enum CognitionError {
     EntityObservationMemory(EntityObservationMemoryRuntimeError),
     RawRelationObservationMemory(RawRelationObservationMemoryRuntimeError),
     RelationExpressionMemory(RelationExpressionMemoryRuntimeError),
+    ScalarExpressionMemory(ScalarExpressionMemoryRuntimeError),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -460,6 +464,27 @@ pub struct RelationExpressionMemoryOutcome {
     pub relation_bindings_attempted: u64,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ScalarExpressionMemoryRuntimeError {
+    NoVerifiedProposal,
+    Capacity,
+    InvalidEvidence,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ScalarExpressionMemoryProposal {
+    pub mechanism: Hash32,
+    pub binding: RelationExpressionBinding,
+    pub output: i64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ScalarExpressionMemoryOutcome {
+    pub proposals: Vec<ScalarExpressionMemoryProposal>,
+    pub persistent_mechanisms_considered: u64,
+    pub bindings_attempted: u64,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum InternalCompositionRuntimeError {
     UnavailableMechanism(Hash32),
@@ -485,6 +510,7 @@ impl CognitionRuntime {
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
             relation_expressions: RelationExpressionStore::new(),
+            scalar_expressions: ScalarExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -507,6 +533,7 @@ impl CognitionRuntime {
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
             relation_expressions: RelationExpressionStore::new(),
+            scalar_expressions: ScalarExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -532,6 +559,7 @@ impl CognitionRuntime {
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
             relation_expressions: RelationExpressionStore::new(),
+            scalar_expressions: ScalarExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -556,6 +584,7 @@ impl CognitionRuntime {
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
             relation_expressions: RelationExpressionStore::new(),
+            scalar_expressions: ScalarExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -580,6 +609,7 @@ impl CognitionRuntime {
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
             relation_expressions: RelationExpressionStore::new(),
+            scalar_expressions: ScalarExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -605,6 +635,7 @@ impl CognitionRuntime {
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
             relation_expressions: RelationExpressionStore::new(),
+            scalar_expressions: ScalarExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -630,6 +661,7 @@ impl CognitionRuntime {
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
             relation_expressions: RelationExpressionStore::new(),
+            scalar_expressions: ScalarExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -655,6 +687,7 @@ impl CognitionRuntime {
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
             relation_expressions: RelationExpressionStore::new(),
+            scalar_expressions: ScalarExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -678,6 +711,7 @@ impl CognitionRuntime {
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
             relation_expressions: RelationExpressionStore::new(),
+            scalar_expressions: ScalarExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -701,6 +735,7 @@ impl CognitionRuntime {
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
             relation_expressions: RelationExpressionStore::new(),
+            scalar_expressions: ScalarExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -724,6 +759,7 @@ impl CognitionRuntime {
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
             relation_expressions: RelationExpressionStore::new(),
+            scalar_expressions: ScalarExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -749,6 +785,7 @@ impl CognitionRuntime {
             observation_predicates: ObservationPredicateStore::new(),
             raw_relations: RawRelationStore::new(),
             relation_expressions: RelationExpressionStore::new(),
+            scalar_expressions: ScalarExpressionStore::new(),
             knowledge: KnowledgeBase::new(),
         }
     }
@@ -782,6 +819,16 @@ impl CognitionRuntime {
     pub fn with_relation_expression_memory(relation_expressions: RelationExpressionStore) -> Self {
         Self {
             relation_expressions,
+            ..Self::new()
+        }
+    }
+
+    /// Construct a runtime with proof-gated scalar-expression mechanisms.
+    /// Modules remain proposal-only and must bind to current input channels.
+    #[must_use]
+    pub fn with_scalar_expression_memory(scalar_expressions: ScalarExpressionStore) -> Self {
+        Self {
+            scalar_expressions,
             ..Self::new()
         }
     }
@@ -916,6 +963,15 @@ impl CognitionRuntime {
 
     pub const fn relation_expression_memory_mut(&mut self) -> &mut RelationExpressionStore {
         &mut self.relation_expressions
+    }
+
+    #[must_use]
+    pub const fn scalar_expression_memory(&self) -> &ScalarExpressionStore {
+        &self.scalar_expressions
+    }
+
+    pub const fn scalar_expression_memory_mut(&mut self) -> &mut ScalarExpressionStore {
+        &mut self.scalar_expressions
     }
 
     #[must_use]
@@ -1940,6 +1996,59 @@ impl CognitionRuntime {
             proposals,
             persistent_mechanisms_considered,
             relation_bindings_attempted,
+        })
+    }
+
+    /// Rebind persistent scalar expressions to current anonymous channels and
+    /// emit untrusted value proposals with no answer-acceptance authority.
+    ///
+    /// # Errors
+    ///
+    /// Returns typed absence, malformed evidence, or explicit capacity.
+    pub fn propose_scalar_expressions_from_memory(
+        &self,
+        inputs: &[i64],
+        expression_limits: &RelationExpressionLimits,
+    ) -> Result<ScalarExpressionMemoryOutcome, CognitionError> {
+        let mut proposals = Vec::new();
+        let mut persistent_mechanisms_considered = 0_u64;
+        let mut bindings_attempted = 0_u64;
+        for module in self.scalar_expressions.persistent_modules() {
+            persistent_mechanisms_considered = persistent_mechanisms_considered.saturating_add(1);
+            match ScalarExpressionInventor.propose(module.mechanism(), inputs, expression_limits) {
+                Ok(current) => {
+                    bindings_attempted = bindings_attempted
+                        .saturating_add(u64::try_from(current.len()).unwrap_or(u64::MAX));
+                    proposals.extend(current.into_iter().map(|(binding, output)| {
+                        ScalarExpressionMemoryProposal {
+                            mechanism: module.id(),
+                            binding,
+                            output,
+                        }
+                    }));
+                }
+                Err(ScalarExpressionError::Capacity) => {
+                    return Err(CognitionError::ScalarExpressionMemory(
+                        ScalarExpressionMemoryRuntimeError::Capacity,
+                    ));
+                }
+                Err(ScalarExpressionError::InvalidEvidence) => {
+                    return Err(CognitionError::ScalarExpressionMemory(
+                        ScalarExpressionMemoryRuntimeError::InvalidEvidence,
+                    ));
+                }
+                Err(_) => {}
+            }
+        }
+        if proposals.is_empty() {
+            return Err(CognitionError::ScalarExpressionMemory(
+                ScalarExpressionMemoryRuntimeError::NoVerifiedProposal,
+            ));
+        }
+        Ok(ScalarExpressionMemoryOutcome {
+            proposals,
+            persistent_mechanisms_considered,
+            bindings_attempted,
         })
     }
 

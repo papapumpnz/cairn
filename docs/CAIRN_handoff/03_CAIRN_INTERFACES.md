@@ -1368,3 +1368,31 @@ performs fresh task learning plus independent verification.
 `CognitionRuntime::propose_relation_expressions_from_memory` binds persistent
 modules to current answer-hidden traces and returns proposals and work counts;
 it has no acceptance authority.
+
+## 41. Ambiguity and scalar-expression contracts
+
+`HypothesisAmbiguityCore` is a content-free failure description.
+`AmbiguityDrivenObjectiveGenerator` returns an opaque
+`HypothesisDiscriminationRequest`; neither type can contain observation values,
+expression trees, expected outputs, task IDs, or benchmark identifiers.
+
+`RelationExpressionShapePolicy` defaults to `LeftAssociated`.
+`RelationExpressionShapeExtensionConsolidator` may return an opaque
+`VerifiedRelationExpressionShapeExtension` only for a valid arity-three
+association request supported by a verified multi-operator language. Applying
+the certificate changes bounded proposal reachability to `FullBinaryTrees`; it
+does not persist a mechanism or accept an answer.
+
+`ScalarExpressionTrace` contains an experience hash and exact bounded
+input/output examples. `ScalarExpressionInventor` learns a
+`RelationKeyExpression` plus per-experience `RelationExpressionBinding` and
+lowers it to RKL. Source bindings are excluded from
+`ScalarExpressionMechanism` identity under marker
+`cairn.scalar-expression.v1`.
+
+`ScalarExpressionVerifier` reconstructs definition and evaluation independently.
+`ScalarExpressionPromotionConsolidator` requires two disjoint exact receipts.
+`ScalarExpressionStore` grants persistence only when the certificate covers its
+complete local ledger. `CognitionRuntime::propose_scalar_expressions_from_memory`
+returns untrusted current-binding/value proposals and work counts; downstream
+verification remains mandatory. No durable scalar cohort schema exists yet.

@@ -406,6 +406,16 @@ intervention versus three for uninformed coverage, predicts 150/150 held-out
 joint states, and finds a correct two-action plan to an inferred goal. Two
 mode-conditioned laws then pass through the same relational transfer path. See
 [ACTIVE_LATENT_WORLD_LEARNING.md](docs/experiments/ACTIVE_LATENT_WORLD_LEARNING.md).
+An ambiguity-driven curriculum can now expand expression association without
+receiving an operator tree or answer. Relation-only contrasts first exposed an
+important failure—equality partitions erase association—so the architecture
+now retains exact scalar evidence in a separate task-learning channel. Two
+independent cohorts invent and verifier-promote
+`subtract(p0, minimum(p1,p2))`; expression search contracts 8→1, examples
+4→0, and proposal-only runtime memory covers 8/8 changed held-out cases after
+anonymous-channel rebinding. This is bounded mechanism learning, not general
+intelligence, and no ARC result is attributed to it. See
+[ASSOCIATION_DISCRIMINATION_CURRICULUM.md](docs/experiments/ASSOCIATION_DISCRIMINATION_CURRICULUM.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding,
 arbitrary non-contiguous internal-subgraph mining and RKL lowering,

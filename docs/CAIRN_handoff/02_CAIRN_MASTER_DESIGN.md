@@ -2731,3 +2731,27 @@ full-binary-tree expansion made the unchanged evidence ambiguous; ADR-0052
 stops that path rather than imposing a hidden tie-break. Durable bounded reuse
 therefore passes, while arbitrary grammar invention and general intelligence
 remain open.
+
+## 53. Ambiguity-driven scalar expression association
+
+Expression association is now a curriculum-controlled search dimension rather
+than an unconditional grammar expansion. A content-free ambiguity core records
+only hypothesis class, arity, survivor count, and redaction state. A separate
+consolidator checks verified prerequisite operators and issues an opaque shape
+extension. It exposes full binary-tree shapes under a finite bound but supplies
+no expression or output.
+
+The failed relation-only contrast established that equality partitions can
+erase association. `ScalarExpressionTrace` therefore preserves exact bounded
+integer results while keeping frontend channels anonymous. The task learner
+jointly selects tree and per-experience binding; the verifier independently
+rebuilds RKL and scalar evaluation. Two disjoint receipts gate proposal-only
+`ScalarExpressionStore` promotion, and `CognitionRuntime` rebinds persistent
+mechanisms to current inputs without acceptance authority.
+
+The frozen family rejects the left-only language, selects
+`subtract(p0,minimum(p1,p2))` from eight full-tree structures in two cohorts,
+reduces structure search 8→1 and examples 4→0, and covers 8/8 changed held-out
+cases through memory. This remains bounded synthetic scalar learning. Primitive
+operators, numeric channels, and tree caps are supplied; durable CAS replay,
+broad cross-domain reuse, and general intelligence remain open.

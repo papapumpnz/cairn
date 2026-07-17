@@ -73,6 +73,17 @@ pub struct RelationExpressionLimits {
     pub maximum_candidates: u64,
     pub maximum_relation_evaluations: u64,
     pub maximum_absolute_attribute: i64,
+    pub shape_policy: RelationExpressionShapePolicy,
+}
+
+/// Reachable expression-tree structures. The default preserves the historical
+/// left-associated language; full trees require an opaque curriculum/verifier
+/// extension.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum RelationExpressionShapePolicy {
+    #[default]
+    LeftAssociated,
+    FullBinaryTrees,
 }
 
 impl Default for RelationExpressionLimits {
@@ -84,6 +95,7 @@ impl Default for RelationExpressionLimits {
             maximum_candidates: 0,
             maximum_relation_evaluations: 0,
             maximum_absolute_attribute: 1_000_000_000,
+            shape_policy: RelationExpressionShapePolicy::LeftAssociated,
         }
     }
 }
@@ -113,6 +125,215 @@ pub struct RelationExpressionMechanism {
 pub struct RelationExpressionProposal {
     pub binding: RelationExpressionBinding,
     pub output: BTreeSet<i64>,
+}
+
+/// One exact scalar input/output example. Inputs are anonymous frontend
+/// channels; their task-local binding is learned rather than entering the
+/// reusable expression identity.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ScalarExpressionExample {
+    pub inputs: Vec<i64>,
+    pub output: i64,
+}
+
+/// One independently scoped scalar-expression experience.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ScalarExpressionTrace {
+    pub experience: Hash32,
+    pub examples: Vec<ScalarExpressionExample>,
+}
+
+/// Learned source-independent scalar mechanism plus task-local bindings.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LearnedScalarExpression {
+    pub expression: RelationKeyExpression,
+    pub definition: Definition,
+    pub selected_bindings: BTreeMap<Hash32, RelationExpressionBinding>,
+    pub expression_candidates: u64,
+    pub candidate_evaluations: u64,
+}
+
+/// Reusable scalar expression with no source channel positions.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ScalarExpressionMechanism {
+    pub expression: RelationKeyExpression,
+    pub definition: Definition,
+}
+
+impl LearnedScalarExpression {
+    #[must_use]
+    pub fn source_independent(&self) -> ScalarExpressionMechanism {
+        ScalarExpressionMechanism {
+            expression: self.expression.clone(),
+            definition: self.definition.clone(),
+        }
+    }
+
+    /// Canonical identity excluding current channel bindings.
+    ///
+    /// # Errors
+    ///
+    /// Returns canonical serialization failure.
+    pub fn mechanism_hash(&self) -> Result<Hash32, cairn_core::CanonicalError> {
+        self.source_independent().semantic_hash()
+    }
+}
+
+impl ScalarExpressionMechanism {
+    /// Canonical identity of the exact scalar AST and RKL definition.
+    ///
+    /// # Errors
+    ///
+    /// Returns canonical serialization failure.
+    pub fn semantic_hash(&self) -> Result<Hash32, cairn_core::CanonicalError> {
+        CanonicalValue::Array(vec![
+            CanonicalValue::Text("cairn.scalar-expression.v1".to_owned()),
+            expression_value(&self.expression),
+            CanonicalValue::Bytes(self.definition.encode_canonical()?),
+        ])
+        .encode_canonical()
+        .map(|bytes| Hash32::digest(&bytes))
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ScalarExpressionError {
+    InsufficientExperiences,
+    DuplicateExperience,
+    InvalidEvidence,
+    EmptyLanguage,
+    Capacity,
+    NoExactTheory,
+    Ambiguous,
+    InvalidBinding,
+    Execution,
+    Definition,
+}
+
+/// Exact task learner for scalar expression structure and anonymous channel
+/// bindings. This path retains scalar values instead of collapsing them into
+/// equality partitions.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ScalarExpressionInventor;
+
+impl ScalarExpressionInventor {
+    /// Learn one expression that uniquely explains every experience under a
+    /// task-local binding per experience.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed evidence, empty/capped language, binding ambiguity,
+    /// or multiple source-independent exact expressions.
+    pub fn invent(
+        &self,
+        traces: &[ScalarExpressionTrace],
+        limits: &RelationExpressionLimits,
+    ) -> Result<LearnedScalarExpression, ScalarExpressionError> {
+        validate_scalar_traces(traces, limits)?;
+        let expressions =
+            enumerate_expressions(limits).map_err(|error| map_scalar_expression_error(&error))?;
+        let mut exact = Vec::new();
+        let mut candidate_evaluations = 0_u64;
+        for expression in &expressions {
+            let mut selected_bindings = BTreeMap::new();
+            let mut expression_exact = true;
+            for trace in traces {
+                let channel_count = trace.examples[0].inputs.len();
+                let bindings = ordered_bindings(
+                    channel_count,
+                    limits.parameter_arity,
+                    limits.maximum_candidates,
+                )
+                .map_err(|error| map_scalar_expression_error(&error))?;
+                let mut matching = Vec::new();
+                for binding in bindings
+                    .into_iter()
+                    .filter(|binding| canonical_initial_binding(expression, binding))
+                {
+                    let mut binding_exact = true;
+                    for example in &trace.examples {
+                        candidate_evaluations = candidate_evaluations
+                            .checked_add(1)
+                            .ok_or(ScalarExpressionError::Capacity)?;
+                        if candidate_evaluations > limits.maximum_relation_evaluations {
+                            return Err(ScalarExpressionError::Capacity);
+                        }
+                        if evaluate_expression(expression, &example.inputs, &binding)
+                            .map_err(|error| map_scalar_expression_error(&error))?
+                            != example.output
+                        {
+                            binding_exact = false;
+                            break;
+                        }
+                    }
+                    if binding_exact {
+                        matching.push(binding);
+                    }
+                }
+                if matching.len() != 1 {
+                    expression_exact = false;
+                    break;
+                }
+                selected_bindings.insert(trace.experience, matching.remove(0));
+            }
+            if expression_exact {
+                exact.push((expression.clone(), selected_bindings));
+            }
+        }
+        if exact.is_empty() {
+            return Err(ScalarExpressionError::NoExactTheory);
+        }
+        if exact.len() != 1 {
+            return Err(ScalarExpressionError::Ambiguous);
+        }
+        let (expression, selected_bindings) =
+            exact.pop().ok_or(ScalarExpressionError::NoExactTheory)?;
+        let definition = compile_scalar_expression(&expression, limits)?;
+        Ok(LearnedScalarExpression {
+            expression,
+            definition,
+            selected_bindings,
+            expression_candidates: u64::try_from(expressions.len())
+                .map_err(|_| ScalarExpressionError::Capacity)?,
+            candidate_evaluations,
+        })
+    }
+
+    /// Rebind a learned scalar mechanism to all compatible current channels.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed inputs, incompatible arity, capacity, or execution
+    /// overflow. Returned values are proposals only.
+    pub fn propose(
+        &self,
+        mechanism: &ScalarExpressionMechanism,
+        inputs: &[i64],
+        limits: &RelationExpressionLimits,
+    ) -> Result<Vec<(RelationExpressionBinding, i64)>, ScalarExpressionError> {
+        if inputs.len() < limits.parameter_arity
+            || mechanism.expression.parameter_count()
+                != u32::try_from(limits.parameter_arity)
+                    .map_err(|_| ScalarExpressionError::Capacity)?
+            || mechanism.expression.binary_node_count() > limits.maximum_binary_nodes
+        {
+            return Err(ScalarExpressionError::InvalidBinding);
+        }
+        ordered_bindings(
+            inputs.len(),
+            limits.parameter_arity,
+            limits.maximum_candidates,
+        )
+        .map_err(|error| map_scalar_expression_error(&error))?
+        .into_iter()
+        .filter(|binding| canonical_initial_binding(&mechanism.expression, binding))
+        .map(|binding| {
+            evaluate_expression(&mechanism.expression, inputs, &binding)
+                .map(|output| (binding, output))
+                .map_err(|error| map_scalar_expression_error(&error))
+        })
+        .collect()
+    }
 }
 
 impl RelationExpressionMechanism {
@@ -330,6 +551,64 @@ fn validate_traces(
     Ok(())
 }
 
+fn validate_scalar_traces(
+    traces: &[ScalarExpressionTrace],
+    limits: &RelationExpressionLimits,
+) -> Result<(), ScalarExpressionError> {
+    if traces.len() < 2 {
+        return Err(ScalarExpressionError::InsufficientExperiences);
+    }
+    if traces
+        .iter()
+        .map(|trace| trace.experience)
+        .collect::<BTreeSet<_>>()
+        .len()
+        != traces.len()
+    {
+        return Err(ScalarExpressionError::DuplicateExperience);
+    }
+    if limits.permitted_binary_operators.is_empty()
+        || limits.parameter_arity < 3
+        || limits.maximum_binary_nodes
+            < u32::try_from(limits.parameter_arity - 1).unwrap_or(u32::MAX)
+        || limits.maximum_candidates == 0
+        || limits.maximum_relation_evaluations == 0
+        || limits.maximum_absolute_attribute <= 0
+    {
+        return Err(ScalarExpressionError::EmptyLanguage);
+    }
+    for trace in traces {
+        let Some(channel_count) = trace.examples.first().map(|example| example.inputs.len()) else {
+            return Err(ScalarExpressionError::InvalidEvidence);
+        };
+        if trace.examples.len() < 3
+            || channel_count < limits.parameter_arity
+            || trace.examples.iter().any(|example| {
+                example.inputs.len() != channel_count
+                    || example.inputs.iter().chain([&example.output]).any(|value| {
+                        value
+                            .checked_abs()
+                            .is_none_or(|magnitude| magnitude > limits.maximum_absolute_attribute)
+                    })
+            })
+        {
+            return Err(ScalarExpressionError::InvalidEvidence);
+        }
+    }
+    Ok(())
+}
+
+const fn map_scalar_expression_error(error: &RelationExpressionError) -> ScalarExpressionError {
+    match error {
+        RelationExpressionError::Capacity => ScalarExpressionError::Capacity,
+        RelationExpressionError::EmptyLanguage => ScalarExpressionError::EmptyLanguage,
+        RelationExpressionError::InvalidBinding => ScalarExpressionError::InvalidBinding,
+        RelationExpressionError::RelationExecution => ScalarExpressionError::Execution,
+        RelationExpressionError::RelationDefinition => ScalarExpressionError::Definition,
+        _ => ScalarExpressionError::InvalidEvidence,
+    }
+}
+
 fn validate_trace(
     trace: &RawRelationObservationTrace,
     limits: &RelationExpressionLimits,
@@ -360,6 +639,9 @@ fn validate_trace(
 fn enumerate_expressions(
     limits: &RelationExpressionLimits,
 ) -> Result<Vec<RelationKeyExpression>, RelationExpressionError> {
+    if limits.shape_policy == RelationExpressionShapePolicy::FullBinaryTrees {
+        return enumerate_expression_range(0, limits.parameter_arity, limits);
+    }
     let mut expressions = vec![RelationKeyExpression::Parameter(0)];
     for parameter in 1..limits.parameter_arity {
         let parameter = u32::try_from(parameter).map_err(|_| RelationExpressionError::Capacity)?;
@@ -377,6 +659,40 @@ fn enumerate_expressions(
             }
         }
         expressions = next;
+    }
+    Ok(expressions)
+}
+
+fn enumerate_expression_range(
+    start: usize,
+    end: usize,
+    limits: &RelationExpressionLimits,
+) -> Result<Vec<RelationKeyExpression>, RelationExpressionError> {
+    if end == start.saturating_add(1) {
+        return Ok(vec![RelationKeyExpression::Parameter(
+            u32::try_from(start).map_err(|_| RelationExpressionError::Capacity)?,
+        )]);
+    }
+    let mut expressions = Vec::new();
+    for split in start.saturating_add(1)..end {
+        let left = enumerate_expression_range(start, split, limits)?;
+        let right = enumerate_expression_range(split, end, limits)?;
+        for left_expression in &left {
+            for right_expression in &right {
+                for operator in &limits.permitted_binary_operators {
+                    expressions.push(RelationKeyExpression::Binary {
+                        operator: *operator,
+                        left: Box::new(left_expression.clone()),
+                        right: Box::new(right_expression.clone()),
+                    });
+                    if u64::try_from(expressions.len()).unwrap_or(u64::MAX)
+                        > limits.maximum_candidates
+                    {
+                        return Err(RelationExpressionError::Capacity);
+                    }
+                }
+            }
+        }
     }
     Ok(expressions)
 }
@@ -487,31 +803,41 @@ fn canonical_initial_binding(
     expression: &RelationKeyExpression,
     binding: &RelationExpressionBinding,
 ) -> bool {
-    let mut current = expression;
-    loop {
-        match current {
-            RelationKeyExpression::Parameter(_) => return true,
-            RelationKeyExpression::Binary {
-                operator,
-                left,
-                right,
-            } => {
-                if matches!(
-                    (&**left, &**right),
-                    (
-                        RelationKeyExpression::Parameter(0),
-                        RelationKeyExpression::Parameter(1)
-                    )
-                ) {
-                    return !matches!(
-                        operator,
-                        RelationKeyOperator::Add
-                            | RelationKeyOperator::Minimum
-                            | RelationKeyOperator::Maximum
-                    ) || binding.attributes[0] < binding.attributes[1];
+    match expression {
+        RelationKeyExpression::Parameter(_) => true,
+        RelationKeyExpression::Binary {
+            operator,
+            left,
+            right,
+        } => {
+            let local = match (&**left, &**right) {
+                (
+                    RelationKeyExpression::Parameter(left_parameter),
+                    RelationKeyExpression::Parameter(right_parameter),
+                ) if matches!(
+                    operator,
+                    RelationKeyOperator::Add
+                        | RelationKeyOperator::Minimum
+                        | RelationKeyOperator::Maximum
+                ) =>
+                {
+                    usize::try_from(*left_parameter)
+                        .ok()
+                        .and_then(|index| binding.attributes.get(index))
+                        .zip(
+                            usize::try_from(*right_parameter)
+                                .ok()
+                                .and_then(|index| binding.attributes.get(index)),
+                        )
+                        .is_some_and(|(left_attribute, right_attribute)| {
+                            left_attribute < right_attribute
+                        })
                 }
-                current = left;
-            }
+                _ => true,
+            };
+            local
+                && canonical_initial_binding(left, binding)
+                && canonical_initial_binding(right, binding)
         }
     }
 }
@@ -656,6 +982,48 @@ fn compile_expression(
     TypeChecker::new(256)
         .check_definition(&definition)
         .map_err(|_| RelationExpressionError::RelationDefinition)?;
+    Ok(definition)
+}
+
+fn compile_scalar_expression(
+    expression: &RelationKeyExpression,
+    limits: &RelationExpressionLimits,
+) -> Result<Definition, ScalarExpressionError> {
+    let arity = usize::try_from(expression.parameter_count())
+        .map_err(|_| ScalarExpressionError::Capacity)?;
+    let variables = (0..arity)
+        .map(|index| VarName(format!("attribute_{index}")))
+        .collect::<Vec<_>>();
+    let input_range = IntRange {
+        lower: -limits.maximum_absolute_attribute,
+        upper: limits.maximum_absolute_attribute,
+    };
+    let output_bound = limits
+        .maximum_absolute_attribute
+        .checked_mul(i64::from(expression.binary_node_count()).saturating_add(1))
+        .ok_or(ScalarExpressionError::Capacity)?;
+    let definition = Definition {
+        name: "invented_scalar_expression".to_owned(),
+        parameters: variables
+            .iter()
+            .cloned()
+            .map(|name| Binder {
+                name,
+                ty: Type::Int(input_range),
+            })
+            .collect(),
+        return_type: Type::Int(IntRange {
+            lower: -output_bound,
+            upper: output_bound,
+        }),
+        body: lower_expression(expression, &variables)
+            .map_err(|error| map_scalar_expression_error(&error))?,
+        recursion: None,
+        proof_annotations: Vec::new(),
+    };
+    TypeChecker::new(256)
+        .check_definition(&definition)
+        .map_err(|_| ScalarExpressionError::Definition)?;
     Ok(definition)
 }
 
