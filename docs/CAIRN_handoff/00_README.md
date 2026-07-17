@@ -292,4 +292,9 @@ values through proposal-only runtime memory. Operators, scalar channels, and
 tree bounds remain supplied, so this is bounded mechanism learning rather than
 general intelligence.
 
+ADR-0055 makes that scalar mechanism restart-safe without restoring authority.
+Two canonical evidence cohorts reopen from CAS, freshly reconstruct the same
+mechanism under independent replay, issue a new promotion, and cover 8/8 future
+cases. No AST, definition, binding, receipt, certificate, or status is stored.
+
 The reference implementation is Rust with small, audited C/C++ solver dependencies when justified. The baseline machine is one commodity 8-core CPU with 16 GB RAM. The system must also support multi-process and multi-node CPU swarms through content-addressed, proof-carrying artifacts.

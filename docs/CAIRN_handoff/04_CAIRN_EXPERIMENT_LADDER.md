@@ -1131,3 +1131,16 @@ Next require evidence-only cold restart of scalar mechanisms, transfer through
 at least two unrelated adapters, learner-invented primitive scalar operations,
 and sustained autonomous selection among simultaneous static and interactive
 ambiguities. This is not a general-intelligence claim.
+
+## G1/G2-DURABLE-SCALAR-EXPRESSION
+
+Persist two independently verified scalar-expression cohorts as canonical
+evidence only. Destroy process state, recover CAS, require zero restored
+authority, fresh invention, separate replay, two new receipts, a new promotion,
+and exact future proposal coverage. Reject missing lineage and insufficient
+replay capacity.
+
+Measured: two distinct artifacts; two fresh reconstructions; one fresh
+promotion; structures 8→1; examples 4→0; future exact cases 8/8; and zero
+insufficient-cap acceptance. Next require sustained restartable curricula that
+select among several unresolved static and interactive mechanism gaps.

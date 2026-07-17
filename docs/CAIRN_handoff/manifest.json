@@ -2,14 +2,14 @@
   "schema_version": "1.0",
   "bundle": "CAIRN_ARCHITECTURE_HANDOFF",
   "architecture": "CAIRN — Causal Analogical Induction over Relational Networks",
-  "generated_utc": "2026-07-17T06:22:07Z",
+  "generated_utc": "2026-07-17T06:45:02Z",
   "hash_algorithm": "SHA-256",
   "manifest_excludes": [
     "manifest.json",
     "manifest.sha256"
   ],
   "file_count": 63,
-  "total_bytes": 608970,
+  "total_bytes": 612068,
   "source_archives": [
     {
       "name": "mosasic_experiments.zip",
@@ -27,8 +27,8 @@
   "files": [
     {
       "path": "00_README.md",
-      "bytes": 18652,
-      "sha256": "27476b55b22d71e7292de793e700a6ac05187bbe6d6bf061b3162fe5c6fe6a0e"
+      "bytes": 18968,
+      "sha256": "7b1350d815b148718d7a61cf5d83216080e9dbef428aa9eb819cfe429a5e7b85"
     },
     {
       "path": "01_REVIEW_FINDINGS.md",
@@ -37,18 +37,18 @@
     },
     {
       "path": "02_CAIRN_MASTER_DESIGN.md",
-      "bytes": 115605,
-      "sha256": "ea4f0bebcaf7c3688978cf2e68250197fd9fd716328b582b9d5b590c9cbf9542"
+      "bytes": 116334,
+      "sha256": "a7e5516490ebdbb482befa19d0c5a9f67ee22c6648d1aadce5c6475abd870f07"
     },
     {
       "path": "03_CAIRN_INTERFACES.md",
-      "bytes": 57025,
-      "sha256": "7952222a54a45ea3cce3da1503d43c694a581aef88bf9a1af2d37ef0e089f051"
+      "bytes": 57749,
+      "sha256": "0b25d90cde60d03973b0f78e179b4ad28ac946051341fec4d05aea929c5e2cca"
     },
     {
       "path": "04_CAIRN_EXPERIMENT_LADDER.md",
-      "bytes": 50179,
-      "sha256": "7bfd89728c46b4be9241118e2637211b347cb3f7bf04d42c331fb7f3ffbc9237"
+      "bytes": 50836,
+      "sha256": "74712fc0612a43ddd4c46729ac31a645a1e4b70f204875ee828eb029bb5ba9dd"
     },
     {
       "path": "05_CAIRN_SWARM_PROTOCOL.md",
@@ -67,8 +67,8 @@
     },
     {
       "path": "08_GENERAL_LEARNER_REQUIREMENTS.md",
-      "bytes": 80482,
-      "sha256": "80c442888f9e92fdfbaea28df71622730d645c9db5593fa7279f4147407ca571"
+      "bytes": 81154,
+      "sha256": "76481ddd0ab13e5e56c18ffaa04e6b04a9fc375ba98da1c4d59e1a4ab30bdd0f"
     },
     {
       "path": "BIBLIOGRAPHY.md",

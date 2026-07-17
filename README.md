@@ -417,6 +417,12 @@ covers 8/8 changed vector-frontend cases after anonymous-channel rebinding.
 This is bounded mechanism learning, not general
 intelligence, and no ARC result is attributed to it. See
 [ASSOCIATION_DISCRIMINATION_CURRICULUM.md](docs/experiments/ASSOCIATION_DISCRIMINATION_CURRICULUM.md).
+That scalar mechanism is now restart-safe without serializing authority. Two
+canonical cohort artifacts restore zero executable state; after CAS recovery,
+both expressions are freshly re-invented and independently replayed before a
+new promotion. Search remains 8→1, examples 4→0, and the reconstructed proposal
+covers 8/8 changed future cases. See
+[DURABLE_SCALAR_EXPRESSION_MEMORY.md](docs/experiments/DURABLE_SCALAR_EXPRESSION_MEMORY.md).
 The new entity/event, proof, component-induction, CEGIS, and ARC paths are
 initial bounded implementations. Full generator coverage, certificate decoding,
 arbitrary non-contiguous internal-subgraph mining and RKL lowering,

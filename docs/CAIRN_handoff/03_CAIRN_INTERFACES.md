@@ -1399,4 +1399,18 @@ assign no channel role, operator, tree shape, or expected mechanism.
 `ScalarExpressionStore` grants persistence only when the certificate covers its
 complete local ledger. `CognitionRuntime::propose_scalar_expressions_from_memory`
 returns untrusted current-binding/value proposals and work counts; downstream
-verification remains mandatory. No durable scalar cohort schema exists yet.
+verification remains mandatory. Durable evidence uses the separate contract
+below and restores no proposal authority.
+
+## 42. Durable scalar-expression evidence contracts
+
+`ScalarExpressionCohortArtifact` uses schema
+`cairn.memory.scalar-expression-cohort` version 1 and semantics 1.0.0. It stores
+sorted scalar traces, a mechanism commitment, and verifier-derived work counts.
+It excludes AST, RKL, channel bindings, receipts, certificates, and status.
+
+`ScalarExpressionCohortArchive::load` returns untrusted evidence.
+`ScalarExpressionCohortArchive::replay` invokes fresh task learning and
+independent verification and rejects identity or accounting drift.
+`ReplayedScalarExpressionCohort` is process-local evidence for the ordinary
+two-receipt promotion path; it carries no acceptance authority.

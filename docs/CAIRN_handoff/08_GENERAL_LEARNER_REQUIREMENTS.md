@@ -1452,7 +1452,20 @@ experience can expand and compress the learner's future search.
 
 The general-learning release gate still fails. The experience is one bounded
 synthetic scalar family; primitive operators and numeric channels are supplied;
-the memory lacks durable scalar reconstruction; the two typed scalar frontends
-do not establish broad cross-domain transfer and interactive reuse is
+the two typed scalar frontends do not establish broad cross-domain transfer and
+interactive reuse is
 unmeasured; autonomous curriculum operation is not yet sustained
 across concurrent gaps; and no broad external evaluation improvement follows.
+
+## 63. Durable scalar-expression checkpoint
+
+The association-sensitive mechanism can now be reconstructed after complete
+process loss from canonical evidence rather than serialized authority. A blank
+store restores zero modules; two cohorts are freshly learned, independently
+replayed, and newly promoted. Structure search remains 8→1, examples 4→0, and
+the reconstructed mechanism covers 8/8 changed future values.
+
+This strengthens continual-learning durability but does not pass the general-
+learning release gate. Operators and evidence channels remain supplied, the
+family is bounded and synthetic, and sustained autonomous integration with
+interactive causal gaps and broad external tasks remains unmeasured.

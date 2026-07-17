@@ -2756,3 +2756,16 @@ sequence evidence to 8/8 changed vector cases through memory. This remains
 bounded synthetic scalar learning. Primitive
 operators, numeric channels, and tree caps are supplied; durable CAS replay,
 broad cross-domain reuse, and general intelligence remain open.
+
+## 54. Durable scalar-expression reconstruction
+
+Scalar persistence stores canonical traces and a semantic commitment, never an
+expression, definition, binding, verifier receipt, promotion certificate, or
+module status. CAS load restores untrusted evidence only. A fresh process must
+repeat scalar invention and independent replay for two disjoint cohorts before
+a new consolidator promotion admits proposal-only memory.
+
+The restart experiment restores zero authority, reconstructs two cohorts,
+retains the 8→1 structure and 4→0 example reductions, and covers 8/8 changed
+future cases. This closes process durability for the bounded scalar mechanism;
+it does not expand the learned grammar or satisfy general intelligence.

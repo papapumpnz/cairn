@@ -58,7 +58,7 @@ shapes, or output logic. No ARC case or answer was used.
 
 This is bounded mechanism invention and continual reuse, not general
 intelligence. Operators and integer channels remain developer-supplied, the
-tree bound is finite, scalar memory is not yet CAS-reconstructable, the held-out
-domains are still typed synthetic frontends, and no sustained mixed
+tree bound is finite, the held-out domains are still typed synthetic frontends,
+and no sustained mixed
 static/interactive
 curriculum or ARC improvement is claimed.
