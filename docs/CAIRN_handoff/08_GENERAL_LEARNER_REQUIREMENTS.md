@@ -1469,3 +1469,16 @@ This strengthens continual-learning durability but does not pass the general-
 learning release gate. Operators and evidence channels remain supplied, the
 family is bounded and synthetic, and sustained autonomous integration with
 interactive causal gaps and broad external tasks remains unmeasured.
+
+## 64. Frozen-core autonomy audit
+
+The first decisive audit fails. Cognition was frozen at
+`6eb8468578a31390bda6ef3ea67e7fcbc7e72db1`, but no independently authored
+post-freeze domain suite is available. Existing generators are separated yet
+co-developed with the solver, and sustained autonomous acquisition across ten
+new mechanisms and three independent domains has not been demonstrated.
+
+Further internal milestones alone cannot establish general intelligence. A
+valid rerun requires sealed external environments, unchanged cognition,
+self-generated curriculum, falling marginal learning cost, and independent
+confirmation.

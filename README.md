@@ -451,6 +451,13 @@ The frozen first-ten pass and untouched follow-on failure are documented in
 The normative target and claim boundary are in
 [`08_GENERAL_LEARNER_REQUIREMENTS.md`](docs/CAIRN_handoff/08_GENERAL_LEARNER_REQUIREMENTS.md).
 
+The first frozen-core autonomy audit is an explicit `FAIL`. The bounded suites
+pass, but their generators were co-developed with the architecture, fewer than
+ten unscripted cross-domain acquisitions exist, and no independent post-freeze
+sealed suite has been run. Internal milestones therefore do not establish a
+path to general intelligence. See
+[FROZEN_CORE_AUTONOMY_AUDIT.md](docs/experiments/FROZEN_CORE_AUTONOMY_AUDIT.md).
+
 ## Developer checks
 
 ```sh
